@@ -1,0 +1,382 @@
+---
+title: "Kids Basic Mutual Exclusivity"
+author: "Manuel Bohn"
+output: html_document
+---
+
+```{r import data, include = F}
+###
+library(tidyverse)
+library(knitr)
+library(langcog)
+library(ggthemes)
+library(jsonlite)
+library(readxl)
+
+## importing data
+files <- dir("~/Work/Spin/raw_data/kids/me_novel/")
+
+raw_data <- data_frame()
+for (f in files) {
+  jf <- paste("~/Work/Spin/raw_data/kids/me_novel/",f,sep="")
+  jd <- jsonlite::fromJSON(paste(readLines(jf), collapse=""))
+  date <- str_sub(jf,44,str_length(jf)-11)
+  id <- as_data_frame(jd$data$data) %>% mutate(test_date = date)
+  raw_data <- bind_rows(raw_data, id)
+}
+
+
+# length(unique(raw_data$subid))
+# 
+# d_raw <-raw_data %>%
+#   mutate(test_date = as.Date(test_date),
+#          experiment = "mcc_kids_inf_2_2",
+#          subid= ifelse(subid=="193101_1_inf2","190131_1_inf2",subid))
+# 
+# log <- read_excel("../../../MCC-subject_log.xlsx", 1)%>%
+#   filter(Condition == "inf2")%>%
+#   select(subid,experimenter,keep_drop,sex,dob)
+# 
+# length(unique(log$subid))
+# 
+# 
+# sum(log$keep_drop=="drop")
+# 
+# d <- left_join(d_raw,log, by = "subid")%>%
+#   filter(keep_drop == "keep")%>%
+#   mutate(dob = as.numeric(dob),
+#          dob = as.Date(dob,origin = "1899-12-30"),
+#          age_num = lubridate::time_length(difftime(test_date,dob), "years"),
+#          check_age = ifelse(substr(age_num,1,1) == subage, T, F))
+# 
+# length(unique(d$subid))
+
+
+#write_csv(d, "data/kids_inf_2_data.csv")
+
+```
+
+# Sample size per age bin
+
+```{r kids per age group,echo = F }
+
+d %>%
+  group_by(subage)%>%
+  summarise(n = length(unique(subid)))%>%
+  knitr::kable(digits = 2)
+
+```
+
+# Plot filler by age
+
+```{r filler by age, echo= FALSE, warning= FALSE}
+pf1 <- d %>%
+      filter(trial == "filler1" | trial == "filler2")%>%
+  group_by(control,subage, subid) %>%
+  summarise(correct = mean(correct)) 
+
+pf2 <- pf1 %>%
+  multi_boot_standard(col = "correct")
+
+
+ggplot() +
+  geom_jitter(data = pf1, aes(x = control, y = correct, col = subage, alpha = .2),width = .3,height = .025)+
+  geom_pointrange(data = pf2, aes(x = control, y = mean, col = subage, ymin = ci_lower, ymax = ci_upper),size = .8)+
+  geom_hline(yintercept = 0.5, lty=2)+
+  labs(x="",y="Proportion Expected Choice")+
+  theme_few() +
+  facet_wrap(~subage)+
+  ylim(-0.05,1.05)+
+  guides(alpha = F)+ 
+  theme(axis.text.x=element_blank(),axis.ticks.x=element_blank())+
+  scale_colour_solarized(name="Control",
+                     breaks=c("false", "true"),
+                     labels=c("No", "Yes"))
+```
+
+
+# Plot test trials by age bin
+
+```{r plot by age, echo= FALSE}
+
+p1 <- d %>%
+  filter(trial != "filler1",
+         trial != "filler2")%>%
+  group_by(control,subage, subid) %>%
+  summarise(correct = mean(correct)) 
+
+p2 <- p1 %>%
+  multi_boot_standard(col = "correct")
+
+
+ggplot() +
+  geom_jitter(data = p1, aes(x = control, y = correct, col = subage, alpha = .2),width = .3,height = .025)+
+  geom_pointrange(data = p2, aes(x = control, y = mean, col = subage, ymin = ci_lower, ymax = ci_upper),size = .8)+
+  geom_hline(yintercept = 0.5, lty=2)+
+  labs(x="",y="Proportion Expected Choice")+
+  theme_few() +
+  facet_wrap(~subage)+
+  ylim(-0.05,1.05)+
+  guides(alpha = F)+ 
+  theme(axis.text.x=element_blank(),axis.ticks.x=element_blank())+
+  scale_colour_solarized(name="Control",
+                     breaks=c("false", "true"),
+                     labels=c("No", "Yes"))
+```
+
+# Plot with age as continuous variable
+
+```{r plot by numerical age, echo = F}
+p5 <- d %>%
+  filter(trial != "filler1",
+         trial != "filler2") %>%
+  group_by(age_num, subid) %>%
+  summarise(correct = mean(correct)) 
+
+ggplot(data = p5, aes(x = age_num, y = correct)) +
+  geom_smooth(method = "lm", se = T)+
+  geom_jitter( alpha = .5, height = 0.04)+
+  geom_hline(yintercept = 0.5, lty=2)+
+  labs(x="",y="Proportion Expected Choice")+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  guides(alpha = F)+ 
+  #theme(axis.text.x=element_blank(),axis.ticks.x=element_blank())+
+  scale_colour_solarized(name="Speaker Change",
+                     breaks=c("false", "true"),
+                     labels=c("No", "Yes"))
+```
+
+# Performance by trial and age bin
+
+```{r plot trials, echo = F}
+ms <- d %>%
+  filter(trial != "filler1",
+         trial != "filler2") %>%
+  group_by(subage, trial, subid) %>%
+  summarise(correct = mean(correct)) %>%
+  multi_boot_standard(col = "correct")
+
+ggplot(ms, 
+       aes(x = trial, y = mean, col = subage)) +
+  geom_line(aes(group= subage)) + 
+  geom_pointrange(aes(ymin = ci_lower, ymax = ci_upper), 
+                  position = position_dodge(width = .1)) + 
+  geom_hline(yintercept = 0.5, lty=2)+
+  theme_few() + 
+  scale_colour_solarized()
+```
+
+## T-tests against chance per age bin
+```{r, echo = F}
+## t tests against chance
+d %>%
+  filter(trial != "filler1",
+         trial != "filler2") %>%
+  group_by(subage, subid) %>%
+  summarise(correct = mean(correct)) %>%
+  summarise(correct = list(correct)) %>%
+  group_by(subage) %>%
+  mutate(df= t.test(unlist(correct), mu = 0.5)$parameter,
+         t_value = t.test(unlist(correct), mu = 0.5)$statistic,
+         p_value = t.test(unlist(correct), mu = 0.5)$p.value) %>%
+  select(subage,df,t_value,p_value) %>%
+  knitr::kable(digits = 3)
+ 
+```
+
+
+## GLMM
+
+```{r, include=F}
+## model
+library(lme4)
+
+lm_data <- d%>%
+  filter(trial != "filler1",
+         trial != "filler2") %>%
+  mutate(age_num = scale(age_num, center = TRUE, scale = TRUE))
+
+# maximal converging model
+lm <- glmer(correct ~ age_num + (1 | subid), 
+              data = lm_data, family = binomial, 
+              control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)))
+
+```
+
+```{r, echo = F}
+summary(lm)
+```
+
+
+# Effect of target position 
+
+Target was either the closer (inner) or further away (outer) object.
+
+```{r, echo = F}
+p5 <- d %>%
+  filter(trial != "filler1",
+         trial != "filler2")%>%
+  group_by( subage, targetPosition, subid) %>%
+  summarise(correct = mean(correct)) 
+
+p6 <- p5 %>%
+  multi_boot_standard(col = "correct")
+
+ggplot() +
+  geom_jitter(data = p5, aes(x = targetPosition, y = correct, col = subage, alpha = .2),width = .3,height = .025)+
+  geom_pointrange(data = p6, aes(x = targetPosition, y = mean, col = subage, ymin = ci_lower, ymax = ci_upper),size = .8)+
+  geom_hline(yintercept = 0.5, lty=2)+
+  labs(x="",y="Proportion Expected Choice")+
+  theme_few() +
+  facet_wrap(~subage)+
+  ylim(-0.05,1.05)+
+  guides(alpha = F)+ 
+  scale_colour_solarized(name="Control",
+                     breaks=c("false", "true"),
+                     labels=c("No", "Yes"))
+```
+
+# Target switch
+
+In half of the trials, the target switched sides from exposure to test. 
+
+```{r, echo = F}
+p7 <- d %>%
+  filter(trial != "filler1",
+         trial != "filler2")%>%
+  group_by( subage, targetSwitch, subid) %>%
+  summarise(correct = mean(correct)) 
+
+p8 <- p7 %>%
+  multi_boot_standard(col = "correct")
+
+ggplot() +
+  geom_jitter(data = p7, aes(x = targetSwitch, y = correct, col = subage, alpha = .2),width = .3,height = .025)+
+  geom_pointrange(data = p8, aes(x = targetSwitch, y = mean, col = subage, ymin = ci_lower, ymax = ci_upper),size = .8)+
+  geom_hline(yintercept = 0.5, lty=2)+
+  labs(x="",y="Proportion Expected Choice")+
+  theme_few() +
+  facet_wrap(~subage)+
+  ylim(-0.05,1.05)+
+  guides(alpha = F)+ 
+  scale_colour_solarized(name="Control",
+                     breaks=c("false", "true"),
+                     labels=c("No", "Yes"))
+```
+
+# Joining round 1 and round 2
+
+```{r}
+files <- dir("~/Work/MCC/git-mcc/kids_info_data/")
+
+raw_data <- data_frame()
+for (f in files) {
+  jf <- paste("~/Work/MCC/git-mcc/kids_info_data/",f,sep="")
+  jd <- jsonlite::fromJSON(paste(readLines(jf), collapse=""))
+  date <- str_sub(jf,45,str_length(jf)-11)
+  id <- as_data_frame(jd$data$data) %>% mutate(test_date = date)
+  raw_data <- bind_rows(raw_data, id)
+}
+
+d_raw <-raw_data %>%
+  mutate(test_date= ifelse(test_date == "18-10-10", paste(20,test_date,sep = ""),test_date),
+         subid= ifelse(subid == "101018_8_inf", "181010_8_inf",subid),
+         subid= ifelse(subid == "181031_3", "181031_3_inf",subid),
+         test_date= ifelse(test_date == "18-XX-XX", "2018-10-10",test_date),
+         test_date= ifelse(test_date == "18-09-12", "2018-09-12",test_date),
+         experiment = "mcc_kids_inf_2")
+
+
+log <- read_excel("../../../MCC-subject_log.xlsx", 1)%>%
+  filter(Condition == "inf")%>%
+  select(subid,experimenter,keep_drop,sex,dob)
+
+d2 <- left_join(d_raw,log, by = "subid")%>%
+  filter(keep_drop == "keep")%>%
+  mutate(dob = as.numeric(dob),
+         dob = as.Date(dob,origin = "1899-12-30"),
+         age_num = lubridate::time_length(difftime(test_date,dob), "years"),
+         check_age = ifelse(substr(age_num,1,1) == subage, T, F))
+
+d_sum <- bind_rows(d%>%select(-test_date),d2%>%select(-test_date)%>%filter(subage!="2"))%>%
+    filter(trial != "filler1",
+         trial != "filler2")
+  
+```
+
+```{r}
+d_sum %>%
+  group_by(subage)%>%
+  summarise(n = length(unique(subid)))%>%
+  knitr::kable(digits = 2)
+```
+
+```{r plot by age, echo= FALSE}
+
+p_sum1 <- d_sum %>%
+  filter(trial != "filler1",
+         trial != "filler2")%>%
+  group_by(control,subage, subid) %>%
+  summarise(correct = mean(correct)) 
+
+p_sum2 <- p_sum1 %>%
+  multi_boot_standard(col = "correct")
+
+
+ggplot() +
+  geom_jitter(data = p_sum1, aes(x = control, y = correct, col = subage, alpha = .2),width = .3,height = .025)+
+  geom_pointrange(data = p_sum2, aes(x = control, y = mean, col = subage, ymin = ci_lower, ymax = ci_upper),size = .8)+
+  geom_hline(yintercept = 0.5, lty=2)+
+  labs(x="",y="Proportion Expected Choice")+
+  theme_few() +
+  facet_wrap(~subage)+
+  ylim(-0.05,1.05)+
+  guides(alpha = F)+ 
+  theme(axis.text.x=element_blank(),axis.ticks.x=element_blank())+
+  scale_colour_solarized(name="Control",
+                     breaks=c("false", "true"),
+                     labels=c("No", "Yes"))
+```
+
+# Plot with age as continuous variable
+
+```{r plot by numerical age, echo = F}
+p_sum3 <- d_sum %>%
+  filter(trial != "filler1",
+         trial != "filler2") %>%
+  group_by(age_num, subid) %>%
+  summarise(correct = mean(correct)) 
+
+ggplot(data = p_sum3, aes(x = age_num, y = correct)) +
+  geom_smooth(method = "lm", se = T)+
+  geom_point( alpha = .5, width = 0.02)+
+  geom_hline(yintercept = 0.5, lty=2)+
+  labs(x="",y="Proportion Expected Choice")+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  guides(alpha = F)+ 
+  #theme(axis.text.x=element_blank(),axis.ticks.x=element_blank())+
+  scale_colour_solarized(name="Speaker Change",
+                     breaks=c("false", "true"),
+                     labels=c("No", "Yes"))
+```
+
+
+```{r, include=F}
+## model
+library(lme4)
+
+lm_data_sum <- d_sum%>%
+  mutate(age_num = scale(age_num, center = TRUE, scale = TRUE))
+
+# maximal converging model
+lm_sum <- glmer(correct ~ age_num + (1 | subid), 
+              data = lm_data_sum, family = binomial, 
+              control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)))
+
+```
+
+```{r, echo = F}
+summary(lm_sum)
+```
