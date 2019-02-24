@@ -159,7 +159,7 @@ var  testNovels= shuffle(["t01","t02","t03","t04","t06","t07","t08","t09","t11",
 var novels = trainNovels.concat(testNovels);
 
 var trainFamiliars = ["t13","t10"];
-var  testFamiliars= shuffle(["papaya","gear","bread","horse","truck","antenna","tent","bottle","apple","hat","bean","cup","bowl","bear","duck","garlic","sharpener","grill","kite","eggplant","mouse","laptop","stethoscope","plug","balloon","cone","phone"]);
+var  testFamiliars= shuffle(["pawn","horseshoe","carrot","barrel","papaya","bread","apple","duck","garlic","kite","eggplant","plug"]);
 var familiars = trainFamiliars.concat(testFamiliars);
 
 // orientation of agent 
