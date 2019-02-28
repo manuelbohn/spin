@@ -365,13 +365,13 @@ eat2: function(event) {
         playSound(); 
         };
       
-    // choice can be made by clicking the objects after - possible after 8s
+    // choice can be made by clicking the objects after - possible after 5s
     setTimeout(function() {
         $(".object_l").click(experiment.eat);
 
         $(".object_r").click(experiment.eat);
 
-    }, 000);
+    }, 5000);
   },
         
 // moving on within a trial
