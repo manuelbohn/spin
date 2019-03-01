@@ -28,26 +28,24 @@ for (f in files) {
 
 # length(unique(raw_data$subid))
 # 
-# d_raw <-raw_data %>%
-#   mutate(test_date = as.Date(test_date),
-#          experiment = "mcc_kids_inf_2_2",
-#          subid= ifelse(subid=="193101_1_inf2","190131_1_inf2",subid))
+d_raw <-raw_data %>%
+  mutate(test_date = as.Date(test_date))
 # 
-# log <- read_excel("../../../MCC-subject_log.xlsx", 1)%>%
-#   filter(Condition == "inf2")%>%
-#   select(subid,experimenter,keep_drop,sex,dob)
+log <- read_excel("../../../SPIN-subject_log.xlsx", 1)%>%
+  filter(Condition == "me")%>%
+  select(subid,experimenter,keep_drop,sex,dob)
 # 
 # length(unique(log$subid))
 # 
 # 
 # sum(log$keep_drop=="drop")
 # 
-# d <- left_join(d_raw,log, by = "subid")%>%
-#   filter(keep_drop == "keep")%>%
-#   mutate(dob = as.numeric(dob),
-#          dob = as.Date(dob,origin = "1899-12-30"),
-#          age_num = lubridate::time_length(difftime(test_date,dob), "years"),
-#          check_age = ifelse(substr(age_num,1,1) == subage, T, F))
+d <- left_join(d_raw,log, by = "subid")%>%
+  filter(keep_drop == "keep")%>%
+  mutate(dob = as.numeric(dob),
+         dob = as.Date(dob,origin = "1899-12-30"),
+         age_num = lubridate::time_length(difftime(test_date,dob), "years"),
+         check_age = ifelse(substr(age_num,1,1) == subage, T, F))
 # 
 # length(unique(d$subid))
 

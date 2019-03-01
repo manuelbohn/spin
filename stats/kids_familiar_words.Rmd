@@ -62,7 +62,7 @@ d <- all_d %>%
 spin_select <- c("carrot","duck","bread","apple","kite","horseshoe","plug","garlic","barrel","eggplant","pawn","papaya")
 
 d_select <- d %>%
-  mutate(select = if_else(d$Word %in% select, 1.5,-1),
+  mutate(select = if_else(d$Word %in% spin_select, 1.5,-1),
          image = paste("../experiments/kids/images/",Word,".png", sep=""))
 ```
 
