@@ -17,7 +17,7 @@ for (i = 0; i < preSounds.length; i++) {
 	sound[i].src = "sound/" + preSounds[i];
 }
 
-// ## Helper functions
+// ## Helper functions bla
 function showSlide(id) {
   // Hide all slides
 	$(".slide").hide();
