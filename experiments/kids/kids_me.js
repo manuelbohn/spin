@@ -1,5 +1,5 @@
 // preload
-var preObjects = ["pawn.png","horseshoe.png","carrot.png","barrel.png","papaya.png","bread.png","apple.png","duck.png","garlic.png","kite.png","eggplant.png","plug.png","duck.png","car.png","bear.png","ball.png","t01.png", "t02.png", "t03.png", "t04.png", "t05.png", "t06.png", "t07.png", "t08.png", "t09.png", "t10.png", "t11.png", "t12.png", "t13.png", "t14.png", "t15.png", "t16.png", "t17.png", "t18.png","t20.png","t21.png","back1.jpg","back2.jpg","back3.jpg","back4.jpg","back5.jpg","back6.jpg","back7.jpg","back8.jpg","back9.jpg","back10.jpg","empty.png"];
+var preObjects = ["pawn.png","horseshoe.png","carrot.png","barrel.png","papaya.png","bread.png","apple.png","duck.png","garlic.png","kite.png","eggplant.png","plug.png","duck.png","car.png","bear.png","ball.png","t01.png", "t02.png", "t03.png", "t04.png", "t05.png", "t19.png", "t07.png", "t08.png", "t09.png", "t10.png", "t11.png", "t12.png", "t13.png", "t14.png", "t15.png", "t16.png", "t17.png", "t18.png","t20.png","t21.png","t22.png","back1.jpg","back2.jpg","back3.jpg","back4.jpg","back5.jpg","back6.jpg","back7.jpg","back8.jpg","back9.jpg","back10.jpg","empty.png"];
 //for critical trials and fillers
 var images = new Array();
 for (i = 0; i < preObjects.length; i++) {
@@ -155,7 +155,7 @@ var testAgents = shuffle(allAgents)
 var agents = trainAgents.concat(testAgents);
 
 var trainNovels = ["car","ball"];
-var  testNovels= shuffle(["t01","t02","t03","t04","t06","t07","t08","t09","t11","t12","t14","t15","t16","t17","t20","t21"]);
+var  testNovels= shuffle(["t01","t02","t03","t04","t19","t07","t08","t09","t11","t12","t14","t15","t16","t17","t20","t21"]);
 var novels = trainNovels.concat(testNovels);
 
 var trainFamiliars = ["t13","t10"];
