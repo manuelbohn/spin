@@ -1,0 +1,179 @@
+---
+title: "SPIN Novelty"
+author: "Manuel Bohn"
+output: html_document
+---
+
+```{r setup, include= FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+###
+library(tidyverse)
+library(knitr)
+library(langcog)
+library(ggthemes)
+library(jsonlite)
+library(readxl)
+library(brms)
+library(here)
+library(brmstools)
+library(ggpubr)
+library(rwebppl)
+
+# import spin data
+
+files <- dir("~/Work/Spin/raw_data/kids/novelty/")
+
+raw_data <- data_frame()
+for (f in files) {
+  jf <- paste("~/Work/Spin/raw_data/kids/novelty/",f,sep="")
+  jd <- jsonlite::fromJSON(paste(readLines(jf), collapse=""))
+  date <- str_sub(jf,46,str_length(jf)-11)
+  id <- as_data_frame(jd$data$data) %>% mutate(test_date = date)
+  raw_data <- bind_rows(raw_data, id)
+}
+
+
+length(unique(raw_data$subid))
+
+d_raw <-raw_data %>%
+  mutate(test_date = as.Date(test_date))
+
+log <- read_excel("../../SPIN-subject_log.xlsx", 1)%>%
+  filter(Condition == "nov")%>%
+  mutate(dob = as.character(dob),
+         dob = as.Date(dob))%>%
+  select(subid,experimenter,keep_drop,sex,dob)
+
+d_raw%>%
+  group_by(subid)%>%
+  summarise(n())%>%
+  filter(!(subid %in% unique(log$subid)))
+
+ 
+d <- left_join(d_raw,log, by = "subid")%>%
+  filter(keep_drop == "keep",
+         trial != "train1", trial != "train2")%>%
+  mutate(age_num = lubridate::time_length(difftime(test_date,dob), "years"),
+         check_age = ifelse(substr(age_num,1,1) == subage, T, F))%>%
+  select(-pick_src)
+
+
+## import mcc data
+
+files <- dir("~/Work/MCC/git-mcc/kids_novel_data/round2/")
+
+raw_data_mcc <- data_frame()
+for (f in files) {
+  jf <- paste("~/Work/MCC/git-mcc/kids_novel_data/round2/",f,sep="")
+  jd <- jsonlite::fromJSON(paste(readLines(jf), collapse=""))
+  date <- str_sub(jf,51,str_length(jf)-11)
+  id <- as_data_frame(jd$data$data) %>% mutate(test_date = date)
+  raw_data_mcc <- bind_rows(raw_data_mcc, id)
+}
+
+d_raw_mcc <-raw_data_mcc %>%
+  mutate(subage = ifelse(subid =="180810_14_nov","2",subage),
+         test_date = as.Date(test_date))
+
+
+log_mcc <- read_excel("~/Work/MCC/git-mcc/MCC-subject_log.xlsx", 1)%>%
+  filter(Condition == "nov")%>%
+  mutate(dob = as.numeric(dob),
+         dob = as.Date(dob,origin = "1899-12-30"))%>%
+  select(subid,experimenter,keep_drop,sex,dob)
+
+
+d_mcc <- left_join(d_raw_mcc,log_mcc, by = "subid")%>%
+  filter(keep_drop == "keep")%>%
+  mutate(age_num = lubridate::time_length(difftime(test_date,dob), "years"),
+         check_age = ifelse(substr(age_num,1,1) == subage, T, F),
+         leftObject = leftFruit,
+         rightObject = rightFruit, 
+         pick = str_sub(pick,72,str_length(pick)-4),
+         condition = "dis_novelty_mcc")%>%
+  filter(speakerChange == "false", trial != "train")%>%
+  select(-speakerChange,-altAgent,-leftFruit,-rightFruit)
+
+
+# join datasets
+
+d <- bind_rows(d, d_mcc)
+
+```
+
+```{r sanity checks, echo = FALSE,warning = FALSE, message = FALSE}
+
+## sanity checks
+d %>%
+  group_by(condition,subage) %>%
+  summarise(n = length(unique(subid)))
+
+```
+
+```{r}
+p1 <- d %>%
+  group_by(condition,subage, subid) %>%
+  summarise(correct = mean(correct)) 
+
+p2 <- p1 %>%
+  multi_boot_standard(col = "correct")
+
+
+ggplot() +
+  geom_jitter(data = p1, aes(x = subage, y = correct, col = condition, alpha = .2),width = .3,height = .025, position = position_dodge(width = .5))+
+  geom_pointrange(data = p2, aes(x = subage, y = mean, col = condition, ymin = ci_lower, ymax = ci_upper),size = .8, position = position_dodge(width = .5))+
+  geom_hline(yintercept = 0.5, lty=2)+
+  labs(x="",y="Proportion Correct")+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  guides(alpha = F)+ 
+  theme(axis.text.x=element_blank(),axis.ticks.x=element_blank())+
+  scale_color_solarized()
+```
+
+
+## Plot with age as continuous variable
+
+```{r plot by numerical age}
+p5 <- d %>%
+  group_by(condition,age_num, subid) %>%
+  summarise(correct = mean(correct)) 
+
+ggplot(data = p5, aes(x = age_num, y = correct, col = condition)) +
+  geom_smooth(data = d, aes(x = age_num, y = correct),method = "glm", method.args = list(family = "binomial"), se = T, alpha = .3)+
+  geom_jitter( alpha = .5, height = 0.04)+
+  geom_hline(yintercept = 0.5, lty=2)+
+  labs(x="",y="Proportion Expected Choice")+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  guides(alpha = F)+ 
+  #theme(axis.text.x=element_blank(),axis.ticks.x=element_blank())+
+  scale_colour_solarized()
+```
+
+## GLMM
+
+```{r}
+## model
+library(brms)
+
+model_data <- d%>%
+  mutate(age_num = scale(age_num, center = TRUE, scale = TRUE))
+
+# maximal converging model
+bm <- brm(correct ~ age_num * condition + (1 | subid) + (age_num * condition | agent), 
+          data = model_data, family = bernoulli(),
+          control = list(adapt_delta = 0.95),
+          sample_prior = F,
+          save_all_pars = TRUE,
+          iter = 2000)
+
+summary(bm)
+
+```
+
+
+
+
+
+

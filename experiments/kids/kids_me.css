@@ -41,6 +41,7 @@ button {
 	min-width: 70px;
     z-index: 5
 }
+
 button:active {
 	border-left: 1px solid #c9c9c9;
 	border-top: 1px solid #c9c9c9;
@@ -59,25 +60,23 @@ button[disabled] {
 }
 
 startButton {
-    display: inline-block;
-	background: lightgrey;
-    position: absolute;
-    bottom: 300px;
-    left: 410px;
-    z-index: 2;
-    font-size: 24px;
-    text-align: center;
-    padding: 30;
+	background: url(images/button-gradient.png);
+	border: 1px solid #999;
+	border-top: 1px solid #e0e0e0;
+	border-left: 1px solid #e0e0e0;
+	margin: 10px;
+	padding-left: 5px;
+	padding-right: 5px;
+	height: 35px;
+	min-width: 70px;
+   
 }
 
 startButton:active {
+	border-left: 1px solid #c9c9c9;
+	border-top: 1px solid #c9c9c9;
 	background: none;
 	background-color: #c9c9c9;
-    bottom: 10px;
-    position: absolute;
-    bottom: 300px;
-    left: 420px;
-    z-index: 2
 }
 
 startButton[disabled] {
