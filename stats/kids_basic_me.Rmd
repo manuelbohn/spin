@@ -4,8 +4,7 @@ author: "Manuel Bohn"
 output: html_document
 ---
 
-```{r import data, include = F}
-###
+```{r setup}
 library(tidyverse)
 library(knitr)
 library(langcog)
@@ -17,9 +16,12 @@ library(here)
 library(brmstools)
 library(ggpubr)
 library(rwebppl)
+```
 
+Importing and processing raw data locally (see next chunk for loading processed data)
 
-## importing data
+```{r import data, include = F}
+## importing data locally
 
 files <- dir("~/Work/Spin/raw_data/kids/basic_me/")
 
@@ -65,8 +67,22 @@ d <- left_join(d_raw,log, by = "subid")%>%
          check_age = ifelse(substr(age_num,1,1) == subage, T, F))
 
 #write_csv(d, "../data/child_basic_me.csv")
-
 ```
+
+```{r}
+# import data
+d <- read_csv("../data/child_basic_me.csv")%>%
+  mutate(subage = factor(subage))
+
+aoa_ratings_all <- read_xlsx(path = "../data/words_aoa_ratings.xlsx", sheet = 1)
+
+aoa_ratings <- aoa_ratings_all %>%
+  filter(Word %in% d_raw$familiar )%>%
+  mutate(mean_aoa = as.numeric(Rating.Mean),
+         familiar = Word)%>%
+  select(familiar,mean_aoa)
+```
+
 
 # Sample size per age bin
 
@@ -106,14 +122,6 @@ ggplot() +
 # Itmes by age bin
 
 ```{r plot by age, echo= FALSE}
-aoa_ratings_all <- read_xlsx(path = "../data/words_aoa_ratings.xlsx", sheet = 1)
-
-aoa_ratings <- aoa_ratings_all %>%
-  filter(Word %in% d_raw$familiar )%>%
-  mutate(mean_aoa = as.numeric(Rating.Mean),
-         familiar = Word)%>%
-  select(familiar,mean_aoa)
-
 p1 <- d %>%
   filter(trial != "train1",
          trial != "train2")%>%
@@ -150,10 +158,9 @@ data_plot <- ggplot(data = p2, aes(x = age_num, y = correct, col = familiar, fil
   geom_hline(yintercept = 0.5, lty=2)+
   geom_jitter(width = 0, height = 0.05, alpha = .6)+
   geom_smooth(method = "glm", method.args = list(family = "binomial"), se = F, alpha = .5)+
-  labs(x="Age",y="Proportion correct")+
+  labs(x="Age",y="Mutual Exclusivity effect")+
   #facet_grid(~familiar)+
   ggtitle("Data")+
-  guides(col = F, fill = F)+
   theme_few() +
   ylim(-0.05,1.05)+
   xlim(2,5)+
@@ -227,4 +234,30 @@ ggplot(cor_plot, aes(x = mean_aoa, y = Estimate.Intercept))+
   
 ```
 
+```{r}
+reduced_model <- brm(correct ~ 1 + (1|subid) + (age_num | familiar),
+                    data = d_model, family = bernoulli(),
+          control = list(adapt_delta = 0.95),
+          sample_prior = F,
+          save_all_pars = TRUE,
+          iter = 2000)
+
+summary(reduced_model)
+
+
+child_waic <- brms::WAIC(model, reduced_model, compare = F)
+
+child_weights <- model_weights(model, reduced_model)
+
+# Bayes Factors (slightly variable)
+bf_full_null <- bayes_factor(model, reduced_model, log = F, maxiter = 5000)
+
+data_frame(
+  model = c("model_w_age","reduced_model"),
+  WAIC = c(child_waic$model$estimates[3,1],child_waic$reduced_model$estimates[3,1]),
+  SE = c(child_waic$model$estimates[3,2],child_waic$reduced_model$estimates[3,2]),
+  weight = c(child_weights[1],child_weights[2]),
+  BF10 = c(round(bf_full_null$bf,2),"-"))%>%
+  mutate_if(is.numeric, round, 2)
+```
 

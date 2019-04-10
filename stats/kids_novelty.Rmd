@@ -97,7 +97,7 @@ d_mcc <- left_join(d_raw_mcc,log_mcc, by = "subid")%>%
 
 # join datasets
 
-d <- bind_rows(d, d_mcc)
+d <- bind_rows(d_raw, d_mcc)
 
 ```
 
@@ -120,15 +120,15 @@ p2 <- p1 %>%
 
 
 ggplot() +
-  geom_jitter(data = p1, aes(x = subage, y = correct, col = condition, alpha = .2),width = .3,height = .025, position = position_dodge(width = .5))+
+  geom_point(data = p1, aes(x = subage, y = correct, col = condition, alpha = .2), position = position_jitterdodge(dodge.width = .6, jitter.width = .2, jitter.height = .05))+
   geom_pointrange(data = p2, aes(x = subage, y = mean, col = condition, ymin = ci_lower, ymax = ci_upper),size = .8, position = position_dodge(width = .5))+
   geom_hline(yintercept = 0.5, lty=2)+
-  labs(x="",y="Proportion Correct")+
+  labs(x="Age",y="Proportion Correct")+
   theme_few() +
   ylim(-0.05,1.05)+
-  guides(alpha = F)+ 
-  theme(axis.text.x=element_blank(),axis.ticks.x=element_blank())+
+  guides(alpha = F)+
   scale_color_solarized()
+
 ```
 
 
@@ -143,7 +143,7 @@ ggplot(data = p5, aes(x = age_num, y = correct, col = condition)) +
   geom_smooth(data = d, aes(x = age_num, y = correct),method = "glm", method.args = list(family = "binomial"), se = T, alpha = .3)+
   geom_jitter( alpha = .5, height = 0.04)+
   geom_hline(yintercept = 0.5, lty=2)+
-  labs(x="",y="Proportion Expected Choice")+
+  labs(x="Age",y="Proportion Expected Choice")+
   theme_few() +
   ylim(-0.05,1.05)+
   guides(alpha = F)+ 
