@@ -4,7 +4,7 @@
 <head>
 	<title>Learning words from animals</title>
 	<script src="jquery-1.11.2.min.js"></script>
-	<script src="mmturkey_spin_kids_me_novel.js"></script>
+	<script src="mmturkey_spin_kids_combination.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.9.2/jquery-ui.min.js"></script>
     <link type="text/css" href ="https://ajax.googleapis.com/ajax/libs/jqueryui/1.9.2/themes/base/jquery-ui.css" rel="stylesheet" />
@@ -68,10 +68,8 @@
                 <p class="block-text">
                     These little animals like to play with funny things. They want the things on the tables, but they can't reach them. You can give them the things by tapping them. Your task is to find out which thing they want. Listen carefully!
                 </p>
-                <p class="block-text">
-                    Pay close attention to the animals. Sometimes a different animal returns.
-                </p>
-					<tr align="center" height="300px">
+
+					<tr align="center" height="350px">
 						<td>
                         
                         </td>
@@ -231,7 +229,45 @@
 		</div>
 	</div>
 		 
-    
+ 
+ <!-- The training slide. -->
+    <div class="slide" id="pause">
+        <div align="center" width="500px">
+            <table style="width:100%">
+                <tbody>
+                    <tr align="center" height="200px">
+                        <td>
+                        </td>
+                        <td>
+                            <p id='logo-text'>
+                                You finished half of the game!
+                            </p>
+                            <p class="block-text" align="center">
+                                Do you wan to continue with the game and see some more animals?
+                            </p>
+
+                            <startButton type="button" onClick="this.blur(); experiment.next(); ">Continue Game</startButton>
+
+
+
+                        </td>
+                    </tr>
+                    <tr align="center" height="200px">
+                        <td>
+                        </td>
+                        <td>
+                            <startButton type="button" onClick="this.blur(); experiment.end()">End Game</startButton>
+
+                        </td>
+                        <td>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+
 	
  <!-- main slide. -->   
     <div class="slide" id="stage"> 
@@ -442,7 +478,7 @@
 	<!-- Include the <a href="experiment.html">JavaScript file for the experiment</a>. As written, that script immediately executes commands, so we include it here at the end of the HTML file to ensure that resources referenced by the script actually exist. For instance, one of the immediately executed commands is <code>showSlide("instructions")</code>. If we loaded experiment.js, say, in the <code>head</code> section, <code>showSlide("instructions")</code> would fail because the <code>instructions</code> slide doesn't exist yet. It is possible to load the script in <code>head</code> but you have to ensure that any immediately executed commands, if they rely on potentially uninitialized HTML elements, are _delayed_ until the page is ready, using either [window.onload][onload] or jQuery's more robust [$(document).ready()][domReady]  -->
 	<!-- [onload]: https://developer.mozilla.org/en/DOM/window.onload -->
 	<!-- [domReady]: http://api.jquery.com/ready/ -->
-	<script src="kids_me_novel.js"></script>
+	<script src="kids_combination.js"></script>
 
 </body>
 

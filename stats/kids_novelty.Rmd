@@ -54,7 +54,8 @@ d <- left_join(d_raw,log, by = "subid")%>%
   filter(keep_drop == "keep",
          trial != "train1", trial != "train2")%>%
   mutate(age_num = lubridate::time_length(difftime(test_date,dob), "years"),
-         check_age = ifelse(substr(age_num,1,1) == subage, T, F))%>%
+         check_age = ifelse(substr(age_num,1,1) == subage, T, F),
+         experiment = condition)%>%
   select(-pick_src)
 
 
@@ -90,7 +91,7 @@ d_mcc <- left_join(d_raw_mcc,log_mcc, by = "subid")%>%
          leftObject = leftFruit,
          rightObject = rightFruit, 
          pick = str_sub(pick,72,str_length(pick)-4),
-         condition = "dis_novelty_mcc")%>%
+         experiment = "dis_novelty_mcc")%>%
   filter(speakerChange == "false", trial != "train")%>%
   select(-speakerChange,-altAgent,-leftFruit,-rightFruit)
 
@@ -105,14 +106,14 @@ d <- bind_rows(d_raw, d_mcc)
 
 ## sanity checks
 d %>%
-  group_by(condition,subage) %>%
+  group_by(experiment,subage) %>%
   summarise(n = length(unique(subid)))
 
 ```
 
 ```{r}
 p1 <- d %>%
-  group_by(condition,subage, subid) %>%
+  group_by(experiment,subage, subid) %>%
   summarise(correct = mean(correct)) 
 
 p2 <- p1 %>%
@@ -120,8 +121,8 @@ p2 <- p1 %>%
 
 
 ggplot() +
-  geom_point(data = p1, aes(x = subage, y = correct, col = condition, alpha = .2), position = position_jitterdodge(dodge.width = .6, jitter.width = .2, jitter.height = .05))+
-  geom_pointrange(data = p2, aes(x = subage, y = mean, col = condition, ymin = ci_lower, ymax = ci_upper),size = .8, position = position_dodge(width = .5))+
+  geom_point(data = p1, aes(x = subage, y = correct, col = experiment, alpha = .2), position = position_jitterdodge(dodge.width = .6, jitter.width = .2, jitter.height = .05))+
+  geom_pointrange(data = p2, aes(x = subage, y = mean, col = experiment, ymin = ci_lower, ymax = ci_upper),size = .8, position = position_dodge(width = .5))+
   geom_hline(yintercept = 0.5, lty=2)+
   labs(x="Age",y="Proportion Correct")+
   theme_few() +
@@ -136,10 +137,10 @@ ggplot() +
 
 ```{r plot by numerical age}
 p5 <- d %>%
-  group_by(condition,age_num, subid) %>%
+  group_by(experiment,age_num, subid) %>%
   summarise(correct = mean(correct)) 
 
-ggplot(data = p5, aes(x = age_num, y = correct, col = condition)) +
+ggplot(data = p5, aes(x = age_num, y = correct, col = experiment)) +
   geom_smooth(data = d, aes(x = age_num, y = correct),method = "glm", method.args = list(family = "binomial"), se = T, alpha = .3)+
   geom_jitter( alpha = .5, height = 0.04)+
   geom_hline(yintercept = 0.5, lty=2)+
@@ -161,7 +162,7 @@ model_data <- d%>%
   mutate(age_num = scale(age_num, center = TRUE, scale = TRUE))
 
 # maximal converging model
-bm <- brm(correct ~ age_num * condition + (1 | subid) + (age_num * condition | agent), 
+bm <- brm(correct ~ age_num * experiment + (1 | subid) + (age_num * experiment | agent), 
           data = model_data, family = bernoulli(),
           control = list(adapt_delta = 0.95),
           sample_prior = F,

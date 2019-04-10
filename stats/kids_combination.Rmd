@@ -1,0 +1,32 @@
+---
+title: "Kids Combination"
+author: "Manuel Bohn"
+output: html_document
+---
+
+```{r import data, include = F}
+###
+library(tidyverse)
+library(knitr)
+library(langcog)
+library(ggthemes)
+library(jsonlite)
+library(readxl)
+
+## importing data
+files <- dir("~/Work/Spin/raw_data/kids/combination/")
+
+raw_data <- data_frame()
+for (f in files) {
+  jf <- paste("~/Work/Spin/raw_data/kids/combination/",f,sep="")
+  jd <- jsonlite::fromJSON(paste(readLines(jf), collapse=""))
+  date <- str_sub(jf,56,str_length(jf)-11)
+  id <- as_data_frame(jd$data$data) %>% mutate(test_date = date)
+  raw_data <- bind_rows(raw_data, id)
+}
+
+raw_data %>%
+  mutate(discourseNovel = str_sub(discourseNovel,11),
+         mutExNovel = str_sub(mutExNovel, 10))
+
+```

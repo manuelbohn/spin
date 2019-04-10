@@ -1,5 +1,5 @@
 // preload
-var preObjects = ["duck.png","car.png","bear.png","ball.png","t01.png", "t02.png", "t03.png", "t04.png", "t05.png", "t19.png", "t07.png", "t08.png", "t09.png", "t10.png", "t11.png", "t12.png", "t13.png", "t14.png", "t15.png", "t16.png", "t17.png","t20.png","t21.png","t22.png", "t18.png","back1.jpg","back2.jpg","back3.jpg","back4.jpg","back5.jpg","back6.jpg","back7.jpg","back8.jpg","back9.jpg","back10.jpg","empty.png"];
+var preObjects = ["duck.png","car.png","bear.png","ball.png","t01.png", "t02.png", "t03.png", "t04.png", "t05.png", "t06.png", "t07.png", "t08.png", "t09.png", "t10.png", "t11.png", "t12.png", "t13.png", "t14.png", "t15.png", "t16.png", "t17.png", "t18.png", "t19.png","t20.png","t21.png","t22.png","back1.jpg","back2.jpg","back3.jpg","back4.jpg","back5.jpg","back6.jpg","back7.jpg","back8.jpg","back9.jpg","back10.jpg","empty.png"];
 //for critical trials and fillers
 var images = new Array();
 for (i = 0; i < preObjects.length; i++) {
@@ -8,8 +8,7 @@ for (i = 0; i < preObjects.length; i++) {
     images[i].id = preObjects[i];
 }
 
-
-var preSounds = ["Frog_choice.mp3", "Mouse_choice.mp3", "Bear_choice.mp3", "Beaver_choice.mp3", "Monkey_choice.mp3", "Dog_choice.mp3", "Cat_choice.mp3", "Bunny_choice.mp3", "Tiger_choice.mp3", "Sheep_choice.mp3","Pig_choice.mp3","Pig_train.mp3","Elephant_choice.mp3","Frog_hello.mp3", "Mouse_hello.mp3", "Bear_hello.mp3", "Monkey_hello.mp3", "Dog_hello.mp3", "Cat_hello.mp3", "Bunny_hello.mp3", "Tiger_hello.mp3", "Sheep_hello.mp3","Pig_hello.mp3","Elephant_hello.mp3", "Beaver_hello.mp3"];
+var preSounds = ["Frog_choice.mp3", "Mouse_choice.mp3", "Bear_choice.mp3", "Beaver_choice.mp3", "Monkey_choice.mp3", "Dog_choice.mp3", "Cat_choice.mp3", "Bunny_choice.mp3", "Tiger_choice.mp3", "Sheep_choice.mp3","Pig_choice.mp3","Pig_train.mp3","Elephant_choice.mp3","Frog_hello.mp3", "Mouse_hello.mp3", "Bear_hello.mp3", "Monkey_hello.mp3", "Dog_hello.mp3", "Cat_hello.mp3", "Bunny_hello.mp3", "Tiger_hello.mp3", "Sheep_hello.mp3","Pig_hello.mp3","Elephant_hello.mp3", "Beaver_hello.mp3", ];
 //for critical trials and fillers
 var sound = new Array();
 for (i = 0; i < preSounds.length; i++) {
@@ -145,39 +144,28 @@ function playSound() {
 
 // Variables and randomization for the experiment
 
-var trial = ["train1","train2",1,2,3,4,5,6,7,8]
+var trial = ["train1","train2",1,2,3,4,5,6,"pause",7,8,9,10,11,12]
 // agent order for training
 var trainAgents = ["Elephant","Pig"]
-var allAgents = ["Elephant","Pig","Frog","Mouse","Monkey","Bunny","Dog","Bear","Tiger","Cat","Sheep","Beaver"];
-// randomization of agent order for test trials
-var testAgents = allAgents.sort(() => .5 - Math.random()).slice(0,8);
-var remainingAgent = $.grep(allAgents, function(value) {
-    return $.inArray(value, testAgents) < 0;});
-var testAltAgent = remainingAgent.sort(() => .5 - Math.random()).slice(0,4);
+var testAgents = shuffle(["Elephant","Pig","Frog","Mouse","Monkey","Bunny","Dog","Bear","Tiger","Cat","Sheep","Beaver"]);
 var agents = trainAgents.concat(testAgents);
-var altAgents = testAltAgent;
-
-var trainSpeakerChange = [["same_speaker","same_speaker"]];
-var testSpeakerChange = shuffle([shuffle(["same_speaker","different_speaker"]),shuffle(["same_speaker","different_speaker"]),shuffle(["same_speaker","different_speaker"]),shuffle(["same_speaker","different_speaker"]),shuffle(["same_speaker","different_speaker"])]);
-var speakerChange = trainSpeakerChange.concat(testSpeakerChange);
 
 var trainNovels = ["car","ball"];
+var  testNovels= shuffle(["t01","t02","t03","t04","t19","t07","t08","t09","t11","t12","t14","t15","t16","t13","t20","t21"]);
+var novelObjects = trainNovels.concat(testNovels);
 
-var  testNovels= shuffle(["t01","t02","t03","t04","t19","t07","t08","t09","t11","t12","t14","t15","t16","t17","t20","t21"]);
-var novels = trainNovels.concat(testNovels);
-
-var trainFamiliars = ["t13","t10"];
-var  testFamiliars= shuffle(["papaya","gear","truck","bread","horse","truck","antenna","tent","bottle","apple","hat","bean","cup","bowl","bear","duck","garlic","sharpener","grill","kite","eggplant","mouse","laptop","stethoscope","plug","balloon","cone","phone"]);
-var familiars = trainFamiliars.concat(testFamiliars);
+var trainFamiliars = ["t17","t10"];
+var  testFamiliars= shuffle(["pawn","horseshoe","carrot","barrel","papaya","bread","apple","duck","garlic","kite","eggplant","plug"]);
+var familiarObjects = trainFamiliars.concat(testFamiliars);
 
 // orientation of agent 
-
-
 var trainAgentOrientations = [
     ["straight","down"],
     ["straight","down"]];
 
 var testAgentOrientations = shuffle([
+    ["straight", "point_l", "point_r", "disappear","gone","down"],
+    ["straight", "point_r", "point_l", "disappear","gone","down"],
     ["straight", "point_l", "point_r", "disappear","gone","down"],
     ["straight", "point_r", "point_l", "disappear","gone","down"],
     ["straight", "point_l", "point_r", "disappear","gone","down"],
@@ -197,32 +185,35 @@ var agentOrient = trainAgentOrientations.concat(testAgentOrientations)
 // conditions
 
 var trainCond = [
-    ["train1", "same_speaker", "me_novel_left", "dis_novel_left"],
-    ["train2", "same_speaker", "me_novel_right", "dis_novel_right"]];
+    ["train","me_novel_left", "dis_novel_left"],
+    ["train","me_novel_right", "dis_novel_right"]];
 var testCond1 = shuffle([
-    ["Same_Speaker_Congruent", "same_speaker", "me_novel_left", "dis_novel_left"],
-    ["Different_Speaker_Congruent", "different_speaker", "me_novel_right", "dis_novel_right"],
-    ["Same_Speaker_Incongruent", "same_speaker", "me_novel_right", "dis_novel_left"],
-    ["Different_Speaker_Incongruent", "different_speaker", "me_novel_left", "dis_novel_right"]])
+    ["congruent", "me_novel_left", "dis_novel_left"],
+    ["congruent", "me_novel_right", "dis_novel_right"],
+    ["congruent", "me_novel_left", "dis_novel_left"],
+    ["incongruent", "me_novel_right", "dis_novel_left"],
+    ["incongruent", "me_novel_left", "dis_novel_right"],
+    ["incongruent", "me_novel_left", "dis_novel_right"]])
 
 var testCond2 = shuffle([
-    ["Same_Speaker_Congruent", "same_speaker", "me_novel_right", "dis_novel_right"],
-    ["Different_Speaker_Congruent", "different_speaker", "me_novel_left", "dis_novel_left"],
-    ["Same_Speaker_Incongruent", "same_speaker", "me_novel_left", "dis_novel_right"],
-    ["Different_Speaker_Incongruent", "different_speaker", "me_novel_right", "dis_novel_left"]]);
+    ["congruent", "me_novel_left", "dis_novel_left"],
+    ["congruent", "me_novel_right", "dis_novel_right"],
+    ["congruent", "me_novel_right", "dis_novel_right"],
+    ["incongruent", "me_novel_right", "dis_novel_left"],
+    ["incongruent", "me_novel_right", "dis_novel_left"],
+    ["incongruent", "me_novel_left", "dis_novel_right"]]);
 
 if (shuffle([1, 2])[0] == 1) {
 
-    var cond = trainCond.concat(testCond1.concat(testCond2))
+    var condition = trainCond.concat(testCond1.concat(testCond2))
 
 } else {
 
-    var cond = trainCond.concat(testCond2.concat(testCond1))
+    var condition = trainCond.concat(testCond2.concat(testCond1))
 
 }
 
-
-var back = shuffle([1,2,3,4,5,6,7,8,9,1]);
+var back = shuffle([1,2,3,4,5,6,7,8,9,1,2,3,4,5]);
 
 
 // beginning of actual experiment
@@ -235,11 +226,10 @@ var experiment = {
   // Parameters for this sequence.
   trial: trial,
   agents: agents,
-  altAgents: altAgents,
-  cond:cond,
-  agentOrient: agentOrient,
-  novels: novels,
-  familiars: familiars,
+  agentOrient:agentOrient,
+  condition:condition,
+  novelObjects: novelObjects,
+  familiarObjects: familiarObjects,
   back: back,
   data: [],
     
@@ -292,12 +282,13 @@ var experiment = {
       
        
     // Code correct: does name of chosen object contain the name of the correct object
-    if (pick_src.indexOf(novels[0]) > -1) {
+    
+    if (pick_src.indexOf(novelObjects[0]) > -1) {
         var correct =1
-        var pick = novels[0]
+        var pick = novelObjects[0]
         } else {
         var correct = 0
-        var pick = familiars[0]
+        var pick = familiarObjects[0]
         };
        
     var subid = experiment.subid; 
@@ -307,21 +298,21 @@ var experiment = {
       data = {
         subid: subid,
         subage: subage,
-        condition: "me_novel",
+        condition: "combination_dis_me",
         trial: trial[0],
         agent: agents[0],
-        novel: novels[0],
-        familiar: familiars[0],
+        condition:condition[0][0],
+        discourseNovel: condition[0][2],
+        mutExNovel: condition[0][1],
         pick: pick,
-        position_me_novel: cond[0][2],
-        position_dis_novel: cond[0][3],
-        speaker: cond[0][1],
+        novelObject: novelObjects[0],
+        familiarObject: familiarObjects[0],
         pick_src: pick_src,
         correct: correct,
         rt: endTime - startTime,
             };
       experiment.data.push(data);
-             
+       
   },
  
 eat2: function(event) {
@@ -333,11 +324,7 @@ eat2: function(event) {
     sourceSound("sound/end.mp3");
     playSound();
    
-    if (experiment.cond[0][1] == "different_speaker"){
-        showEat(altAgents[0])
-    } else {
-        showEat(agents[0])
-    };
+    showEat(agents[0])
    
     $(".agent_eat").click(experiment.newtrial);     
   
@@ -361,23 +348,26 @@ eat2: function(event) {
     sourceRightObject("images/empty.png");
             showRightObject();
 
-     
-     if (experiment.cond[0][1] == "different_speaker") {
-         experiment.altAgents.shift()
-     };
-     
+ 
+ 
     experiment.trial.shift();   
     experiment.agentOrient.shift();   
     experiment.agents.shift();
-    experiment.novels.shift();
-    experiment.familiars.shift();
-    experiment.back.shift(); 
-    experiment.cond.shift();
+    experiment.condition.shift();
+    experiment.novelObjects.shift();
+    experiment.familiarObjects.shift();
+    experiment.back.shift();
  
    experiment.next();
   },
 
 
+pause: function () {
+
+    showSlide("pause");
+
+},
+    
 // recording the choice 
   choice: function(event) {
     
@@ -385,74 +375,53 @@ eat2: function(event) {
     
     background2("images/back"+back[0]+".jpg");
    
-   if (experiment.cond[0][1] == "different_speaker") {
-        showAgent(altAgents[0],"choice");
-    }else {
-       showAgent(agents[0],"choice");
-    };
-    
+
+      showAgent(agents[0],"choice");
+
    
     // animate agent in test trials
      if (experiment.trial[0] == "train1" || experiment.trial[0] == "train2"){
     } else {     
     $("#"+agents[0]+"_choice").animate({height: "450px",opacity: '0.3', queue: false, duration: "slow"});
     $("#"+agents[0]+"_choice").animate({height: "350px",opacity: '1', queue: false, duration: "slow"});
-      
-    $("#"+altAgents[0]+"_choice").animate({height: "450px",opacity: '0.3', queue: false, duration: "slow"});
-    $("#"+altAgents[0]+"_choice").animate({height: "350px",opacity: '1', queue: false, duration: "slow"});
      };  
         
     // specify what is shown on the tables depending on training and test condition
-   
-      
-      if (experiment.cond[0][2] == "me_novel_left"){
+    if (experiment.condition[0][1] == "me_novel_left"){
 
-        choiceLeftObject("images/"+novels[0]+".png");
+        choiceLeftObject("images/"+novelObjects[0]+".png");
       
-        choiceRightObject("images/"+familiars[0]+".png");     
+        choiceRightObject("images/"+familiarObjects[0]+".png");     
         
         } else {
 
-        choiceLeftObject("images/"+familiars[0]+".png");
+        choiceLeftObject("images/"+familiarObjects[0]+".png");
       
-        choiceRightObject("images/"+novels[0]+".png");   
+        choiceRightObject("images/"+novelObjects[0]+".png");   
         
         } 
+          
         
   
     // play choice sound
     if (experiment.trial[0] == "train1" || experiment.trial[0] == "train2") {
         sourceSound("sound/" + agents[0] + "_train.mp3");
         playSound();
-    } else if (experiment.cond[0][1] == "different_speaker") {
-        setTimeout(function () {
-            sourceSound("sound/" + altAgents[0] + "_hello.mp3");
-            playSound();
-        }, 0);
-        setTimeout(function () {
-            sourceSound("sound/" + altAgents[0] + "_choice.mp3");
-            playSound();
-        }, 2500);
     } else {
-        sourceSound("sound/" + agents[0] + "_return.mp3");
-        setTimeout(function () {
-            playSound();
-        }, 0);
         setTimeout(function () {
             sourceSound("sound/" + agents[0] + "_choice.mp3");
             playSound();
-        }, 2500);
+        }, 700);
     };
     
     
- 
-    // choice can be made by clicking the objects after - possible after 8s
+    // choice can be made by clicking the objects after - possible after 5s
     setTimeout(function() {
         $(".object_l").click(experiment.eat);
 
         $(".object_r").click(experiment.eat);
 
-    }, 000);
+    }, 5000);
   },
         
 // moving on within a trial
@@ -483,7 +452,139 @@ eat2: function(event) {
     // show agent
     showAgent(agents[0],experiment.agentOrient[0][0]);
     
-    // play hello sound and write name of agent
+   
+
+  // display obejcts on table depending on training and test condition
+
+         
+// after the animal has commented on both tables and leaves, the novel object appears
+      if (experiment.agentOrient[0][0] == "gone") {
+          pause("next",3000);
+      };
+  
+      
+      if (experiment.trial[0] == "train1") {
+          
+        sourceLeftObject("images/" +novelObjects[0] + ".png");
+        showLeftObject();
+
+        sourceRightObject("images/" + familiarObjects[0] + ".png");
+        showRightObject();
+      
+      } else if (experiment.trial[0] == "train2") {
+        
+        sourceLeftObject("images/" + familiarObjects[0] + ".png");
+        showLeftObject();
+
+        sourceRightObject("images/" + novelObjects[0] + ".png");
+        showRightObject();
+          
+      } else if (experiment.trial[0] == "pause") {
+          experiment.pause();
+          experiment.trial.shift();
+          return;
+    
+    } else if (experiment.condition[0][2] == "dis_novel_left"){
+        
+            if (experiment.agentOrient[0][0] == "gone"){
+                
+                
+                 if (experiment.condition[0][1] == "me_novel_left") {
+                     sourceLeftObject("images/" + novelObjects[0] + ".png");
+                     showLeftObject();
+
+                     sourceRightObject("images/" + familiarObjects[0] + ".png");
+                     showRightObject();
+
+                 } else {
+                     sourceLeftObject("images/" + familiarObjects[0] + ".png");
+                     showLeftObject();
+
+                     sourceRightObject("images/" + novelObjects[0] + ".png");
+                     showRightObject();
+                 }
+                
+                    $("#object_l").css("bottom", "460px");     
+                    $("#object_l").animate({bottom: "295px"},{duration: 1500});
+                    
+                    setTimeout(function() { 
+                        $("#object_r").animate({width: "200px", opacity: '0.3'});
+                        $("#object_l").animate({width: "200px",opacity: '0.3'});
+                        $("#object_l").animate({width: "150px",opacity: '1'});
+                        $("#object_r").animate({width: "150px",opacity: '1'})}, 2500)
+              
+                } else {
+                    
+                     if (experiment.condition[0][1] == "me_novel_left") {
+                         sourceLeftObject("images/empty.png");
+                         showLeftObject();
+
+                         sourceRightObject("images/" + familiarObjects[0] + ".png");
+                         showRightObject();
+
+                     } else {
+                         sourceLeftObject("images/empty.png");
+                         showLeftObject();
+
+                         sourceRightObject("images/" + novelObjects[0] + ".png");
+                         showRightObject();
+                     } 
+    
+                } 
+                      
+              
+        } else {
+                   
+            if (experiment.agentOrient[0][0] == "gone"){
+                
+                
+                if (experiment.condition[0][1] == "me_novel_left") {
+                     sourceLeftObject("images/" + novelObjects[0] + ".png");
+                     showLeftObject();
+
+                     sourceRightObject("images/" + familiarObjects[0] + ".png");
+                     showRightObject();
+
+                 } else {
+                     sourceLeftObject("images/" + familiarObjects[0] + ".png");
+                     showLeftObject();
+
+                     sourceRightObject("images/" + novelObjects[0] + ".png");
+                     showRightObject();
+                 }
+                
+                    $("#object_r").css("bottom", "460px");     
+                    $("#object_r").animate({bottom: "295px"},{duration: 1500});
+                    
+                    setTimeout(function() { 
+                        $("#object_r").animate({width: "200px", opacity: '0.3'});
+                        $("#object_l").animate({width: "200px",opacity: '0.3'});
+                        $("#object_l").animate({width: "150px",opacity: '1'});
+                        $("#object_r").animate({width: "150px",opacity: '1'})}, 2500)
+              
+                } else {
+                    
+                    if (experiment.condition[0][1] == "me_novel_left") {
+                         sourceLeftObject("images/" + novelObjects[0] + ".png");
+                         showLeftObject();
+
+                         sourceRightObject("images/empty.png");
+                         showRightObject();
+
+                     } else {
+                         sourceLeftObject("images/" + familiarObjects[0] + ".png");
+                         showLeftObject();
+
+                         sourceRightObject("images/empty.png");
+                         showRightObject();
+                     }  
+    
+                } 
+
+    };
+      
+      
+   // play hello sound and write name of agent
       if (experiment.agentOrient[0][0] == "straight") {
           pause("next", 1600);
           sourceSound("sound/" + agents[0] + "_hello.mp3");
@@ -495,7 +596,7 @@ eat2: function(event) {
 
           pause("next", 2300);
 
-          if (experiment.cond[0][3] == "dis_novel_left") {
+          if (experiment.condition[0][2] == "dis_novel_left") {
 
               sourceSound("sound/" + agents[0] + "_point_nothing.mp3");
               playSound();
@@ -512,7 +613,7 @@ eat2: function(event) {
 
            pause("next", 2300);
 
-           if (experiment.cond[0][3] == "dis_novel_right") {
+           if (experiment.condition[0][2] == "dis_novel_right") {
 
                sourceSound("sound/" + agents[0] + "_point_nothing.mp3");
                playSound();
@@ -538,157 +639,6 @@ eat2: function(event) {
                 hideAgent()
             }, 2000);
         };
-     
-
-  // display obejcts on table depending on training and test condition
-
-         
-// after the animal has commented on both tables and leaves, the novel object appears
-      if (experiment.agentOrient[0][0] == "gone") {
-          pause("next",3000);
-      };
-  
-      
-      if (experiment.trial[0] == "train1") {
-          
-        sourceLeftObject("images/" + novels[0] + ".png");
-        showLeftObject();
-
-        sourceRightObject("images/" + familiars[0] + ".png");
-        showRightObject();
-      
-      } else if (experiment.trial[0] == "train2") {
-        
-        sourceLeftObject("images/" + familiars[0] + ".png");
-        showLeftObject();
-
-        sourceRightObject("images/" + novels[0] + ".png");
-        showRightObject();
-    
-    } else if (experiment.cond[0][3] == "dis_novel_left"){
-          
-          if (experiment.cond[0][2] == "me_novel_left"){
-          
-            if (experiment.agentOrient[0][0] == "gone"){
-                
-                    sourceLeftObject("images/"+novels[0]+".png");
-                    showLeftObject();
-                    
-                    sourceRightObject("images/"+familiars[0]+".png");
-                    showRightObject();
-                
-                    $("#object_l").css("bottom", "460px");     
-                    $("#object_l").animate({bottom: "295px"},{duration: 1500});
-                    
-                    setTimeout(function() { 
-                        $("#object_r").animate({width: "200px", opacity: '0.3'});
-                        $("#object_l").animate({width: "200px",opacity: '0.3'});
-                        $("#object_l").animate({width: "150px",opacity: '1'});
-                        $("#object_r").animate({width: "150px",opacity: '1'})}, 2500)
-              
-                } else {
-                    
-                    sourceLeftObject("images/empty.png");
-                    showLeftObject();
-                    
-                    sourceRightObject("images/"+familiars[0]+".png");
-                    showRightObject();     
-    
-                } 
-          } else {
-                  
-              if (experiment.agentOrient[0][0] == "gone"){
-                
-                  sourceLeftObject("images/"+familiars[0]+".png");
-                  showLeftObject();
-                    
-                  sourceRightObject("images/"+novels[0]+".png");
-                  showRightObject();
-                
-                  $("#object_l").css("bottom", "460px");     
-                  $("#object_l").animate({bottom: "295px"},{duration: 1500});
-                    
-                  setTimeout(function() { 
-                      $("#object_r").animate({width: "200px", opacity: '0.3'});
-                      $("#object_l").animate({width: "200px",opacity: '0.3'});
-                      $("#object_l").animate({width: "150px",opacity: '1'});
-                      $("#object_r").animate({width: "150px",opacity: '1'})}, 2500)
-              
-              } else {
-                    
-                  sourceLeftObject("images/empty.png");
-                  showLeftObject();
-                    
-                  sourceRightObject("images/"+novels[0]+".png");
-                  showRightObject();     
-                    
-              } 
-          } 
-                
-              
-        } else {
-               
-            
-     if (experiment.cond[0][2] == "me_novel_left"){
-          
-            if (experiment.agentOrient[0][0] == "gone"){
-                
-                    sourceLeftObject("images/"+novels[0]+".png");
-                    showLeftObject();
-                    
-                    sourceRightObject("images/"+familiars[0]+".png");
-                    showRightObject();
-                
-                    $("#object_r").css("bottom", "460px");     
-                    $("#object_r").animate({bottom: "295px"},{duration: 1500});
-                    
-                    setTimeout(function() { 
-                        $("#object_r").animate({width: "200px", opacity: '0.3'});
-                        $("#object_l").animate({width: "200px",opacity: '0.3'});
-                        $("#object_l").animate({width: "150px",opacity: '1'});
-                        $("#object_r").animate({width: "150px",opacity: '1'})}, 2500)
-              
-                } else {
-                    
-                    sourceLeftObject("images/"+novels[0]+".png");
-                    showLeftObject();
-                    
-                    sourceRightObject("images/empty.png");
-                    showRightObject();     
-    
-                } 
-          } else {
-                  
-              if (experiment.agentOrient[0][0] == "gone"){
-                
-                  sourceLeftObject("images/"+familiars[0]+".png");
-                  showLeftObject();
-                    
-                  sourceRightObject("images/"+novels[0]+".png");
-                  showRightObject();
-                
-                  $("#object_r").css("bottom", "460px");     
-                  $("#object_r").animate({bottom: "295px"},{duration: 1500});
-                    
-                  setTimeout(function() { 
-                      $("#object_r").animate({width: "200px", opacity: '0.3'});
-                      $("#object_l").animate({width: "200px",opacity: '0.3'});
-                      $("#object_l").animate({width: "150px",opacity: '1'});
-                      $("#object_r").animate({width: "150px",opacity: '1'})}, 2500)
-              
-              } else {
-                    
-                    sourceLeftObject("images/"+familiars[0]+".png");
-                    showLeftObject();
-                    
-                    sourceRightObject("images/empty.png");
-                    showRightObject();      
-                    
-              } 
-          } 
-    };
-      
-      
       
       
     // move on to next phase of exposure

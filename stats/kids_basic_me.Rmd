@@ -146,6 +146,31 @@ ggplot(data = p1, aes(x = familiar, y = mean, group=1, col = subage)) +
 
 # Plot with age as continuous variable
 
+## Facets by item
+
+```{r plot by numerical age, echo = F}
+p2 <- d %>%
+  filter(trial != "train1",
+         trial != "train2")%>%
+    left_join(aoa_ratings)%>%
+  ungroup()%>%
+  mutate(familiar = fct_reorder(factor(familiar), mean_aoa))
+
+ggplot(data = p2, aes(x = age_num, y = correct, col = familiar, fill = familiar)) +
+  geom_hline(yintercept = 0.5, lty=2)+
+  geom_jitter(width = 0, height = 0.05, alpha = .6)+
+  geom_smooth(method = "glm", method.args = list(family = "binomial"), se = T, alpha = .5)+
+  labs(x="Age",y="Mutual Exclusivity effect")+
+  facet_grid(~familiar)+
+  ggtitle("Data")+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F)+ 
+  scale_colour_viridis_d(name = "familiar object")+
+  scale_fill_viridis_d(name = "familiar object")
+```
+
 ```{r plot by numerical age, echo = F}
 p2 <- d %>%
   filter(trial != "train1",
@@ -168,6 +193,26 @@ data_plot <- ggplot(data = p2, aes(x = age_num, y = correct, col = familiar, fil
   scale_colour_viridis_d(name = "familiar object")+
   scale_fill_viridis_d(name = "familiar object")
 ```
+
+```{r plot by numerical age, echo = F}
+p4 <- d %>%
+  filter(trial != "train1",
+         trial != "train2")%>%
+    group_by(subage,age_num,subid,subage)%>%
+  multi_boot_standard(col = "correct")
+
+ggplot(data = p4, aes(x = age_num, y = mean)) +
+  geom_pointrange(aes(ymin = ci_lower, ymax = ci_upper),size = .8)+
+  geom_smooth(method = "lm", se = T, alpha = .5)+
+  labs(x="Age",y="Mutual Exclusivity effect")+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F)+ 
+  scale_colour_viridis_d(name = "familiar object")+
+  scale_fill_viridis_d(name = "familiar object")
+```
+
 
 ```{r}
 d_model <- d %>%
@@ -260,4 +305,6 @@ data_frame(
   BF10 = c(round(bf_full_null$bf,2),"-"))%>%
   mutate_if(is.numeric, round, 2)
 ```
+
+
 
