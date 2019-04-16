@@ -13,6 +13,7 @@ library(brms)
 library(coda)
 library(ggthemes)
 library(readxl)
+library(ggpubr)
 
 estimate_mode <- function(s) {
   d <- density(s)
@@ -257,8 +258,7 @@ ggplot(plot_sem_know, aes(x = age+2, y= sem_know, col = familiar))+
   scale_colour_viridis_d(name = "familiar object")
 ```
 
-
-# Ignore: Model for ME Effect
+## For comparison: GLMM for ME effect and data
 ```{r}
 me_data <- read_csv("../data/child_basic_me.csv")%>%
     filter(trial != "train1",
@@ -273,7 +273,7 @@ me_data <- read_csv("../data/child_basic_me.csv")%>%
 #                 save_all_pars = TRUE,
 #                 iter = 2000)
 
-saveRDS(me_model, "../saves/me_effect_model.rds")
+#saveRDS(me_model, "../saves/me_effect_model.rds")
 
 me_model <- readRDS("../saves/me_effect_model.rds")
 
@@ -290,6 +290,47 @@ age_me_effect <- as_tibble(ranef$familiar, rownames = "familiar")%>%
   expand(Estimate.Intercept,Estimate.z_age,grand_intercept,grand_slope,z_age = me_data$age_num - mean(me_data$age_num), mean_age = mean(me_data$age_num))%>%
   mutate(me_effect = plogis(grand_intercept + Estimate.Intercept+(Estimate.z_age+grand_slope)*z_age), 
          age = z_age+mean_age)%>%
-  select(familiar, me_effect, age)
+  select(familiar, me_effect, age)%>%
+  left_join(aoa_ratings)%>%
+  ungroup()%>%
+  mutate(familiar = fct_reorder(factor(familiar), mean_aoa))
 
+
+model_plot <- ggplot(age_me_effect, aes(x=age,y = me_effect, col = familiar))+
+  geom_hline(yintercept = 0.5, lty=2)+
+  geom_line(size = 1)+
+  ggtitle("Model")+
+  labs(x="Age",y="Proportion correct")+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F)+ 
+  scale_colour_viridis_d(name = "familiar object")
+
+
+p2 <- read_csv("../data/child_basic_me.csv")%>%
+  filter(trial != "train1",
+         trial != "train2")%>%
+    left_join(aoa_ratings)%>%
+  ungroup()%>%
+  mutate(familiar = fct_reorder(factor(familiar), mean_aoa))
+
+data_plot <- ggplot(data = p2, aes(x = age_num, y = correct, col = familiar, fill = familiar)) +
+  geom_hline(yintercept = 0.5, lty=2)+
+  geom_jitter(width = 0, height = 0.05, alpha = .6)+
+  geom_smooth(method = "glm", method.args = list(family = "binomial"), se = F, alpha = .5)+
+  labs(x="Age",y="Mutual Exclusivity effect")+
+  #facet_grid(~familiar)+
+  ggtitle("Data")+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F)+ 
+  scale_colour_viridis_d(name = "familiar object")+
+  scale_fill_viridis_d(name = "familiar object")
+
+```
+
+```{r}
+ggarrange(data_plot,model_plot, common.legend = T, legend = "right")
 ```
