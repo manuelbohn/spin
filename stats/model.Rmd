@@ -157,6 +157,8 @@ var data = dataFromR.data
 
 var familiars = levels(data, "familiar")
 
+var priorProbs = [.5,.5]
+
 var model  = function(){
 
   var params = map(function(cndtn){
