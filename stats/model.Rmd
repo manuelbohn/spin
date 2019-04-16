@@ -1,7 +1,6 @@
 ---
 title: "Model"
 author: "M. Bohn"
-date: "12 4 2019"
 output: html_document
 ---
 
@@ -11,6 +10,26 @@ output: html_document
 library(tidyverse)
 library(rwebppl)
 library(brms)
+library(coda)
+library(ggthemes)
+library(readxl)
+
+estimate_mode <- function(s) {
+  d <- density(s)
+  return(d$x[which.max(d$y)])
+}
+
+
+hdi_upper<- function(s){
+  m <- HPDinterval(mcmc(s))
+  return(m["var1","upper"])
+}
+
+hdi_lower<- function(s){
+  m <- HPDinterval(mcmc(s))
+  return(m["var1","lower"])
+}
+
 ```
 
 ```{r rsaUtils}
@@ -52,6 +71,22 @@ var lexiconObject = {
 var utterancePrior = function(){ return uniformDraw([ {label: "novel_word"}, {label: "familiar_word"}]) }
 
 var LexiconPrior = Categorical({vs: ["novel_word = novel_object","novel_word = familiar_object" ], ps: [1, 1]})
+
+var foreach = function(fn, lst) {
+    var foreach_ = function(i) {
+        if (i < lst.length) {
+            fn(lst[i]);
+            foreach_(i + 1);
+        }
+    };
+    foreach_(0);
+};
+
+var logistic = function(x) {1 / (1 + Math.exp(-x))}
+
+var levels = function(df, label){
+  return _.uniq(_.map(df, label));
+}
 '
 ```
 
@@ -89,11 +124,18 @@ var pragmaticListener = cache(function(utterance, priorProbs, speakerOptimality,
   }})
 })
 
-var priorProbs = [.5,.5]
+'
+```
 
-var speakerOptimality = 1;
+
+```{r}
+baseMeModel <- '
 
 var sem_knowledge = 1
+
+var priorProbs = [.5,.5]
+
+var speakerOptimality = 1
 
 var modelPredictions = pragmaticListener({label: "novel_word"}, priorProbs, speakerOptimality,sem_knowledge)
 
@@ -104,9 +146,119 @@ modelPredictions
 
 
 ```{r}
-webppl(program_code = paste(rsaUtils, rsaModel, sep='\n'))
+webppl(program_code = paste(rsaUtils, rsaModel, baseMeModel,sep='\n'))
 ```
-# Model for ME Effect
+
+# Inferring semantic knowledge
+```{r}
+semStr <- '
+var data = dataFromR.data
+
+var familiars = levels(data, "familiar")
+
+var model  = function(){
+
+  var params = map(function(cndtn){
+
+    var conditionData = _.filter(data, {condition: cndtn})
+    
+    var sem_slope = uniformDrift({a: -5, b: 5, width: 0.2})
+    var sem_int = uniformDrift({a: 0, b: 5, width: 0.2})    
+    
+    foreach(function(row){
+
+      var age = row.age
+
+      var sem_knowledge = logistic(sem_int + sem_slope * age)
+
+      var modelPredictions = pragmaticListener({label: "novel_word"}, priorProbs, speakerOptimality,sem_knowledge)
+      
+      observe(modelPredictions, row.correct)
+
+    }, conditionData)
+
+    return extend([
+      {int: sem_int, slope: sem_slope, familiar: cndtn}
+    ])
+ 
+  }, familiars)
+
+params
+
+}
+'
+```
+
+```{r}
+me_model_data <- read_csv("../data/child_basic_me.csv")%>%
+    filter(trial != "train1",
+           trial != "train2")%>%
+  mutate(age = age_num - min(age_num))
+
+
+sem_know_model<- webppl(
+  program_code = paste(rsaUtils, rsaModel, semStr , sep='\n'),
+  data = list(data = me_model_data),
+  data_var = "dataFromR",
+  model_var = "model",
+  chains = 4,
+  cores = 4,
+  inference_opts = list(method = "MCMC", samples = 5000, burn = 2000, verbose = T)
+)
+  
+sem_know <- sem_know_model %>%
+  select(value) %>%
+  map_df(bind_rows)%>%
+  rename(int = `0.int`,
+         slope = `0.slope`,
+         familiar = `0.familiar`)%>% 
+  gather(parameter, value, -familiar)
+
+sem_know_params <- sem_know %>%
+  group_by(familiar,parameter)%>%
+  summarise(mode = estimate_mode(value),
+            uci = hdi_upper(value),
+            lci = hdi_lower(value))
+```
+
+```{r}
+ggplot(sem_know, aes(value))+
+  geom_density()+
+  xlab("Parameter")+
+  facet_grid(parameter ~familiar)+
+  theme_few()
+```
+## Plotting semantic knowledge
+```{r}
+
+aoa_ratings_all <- read_xlsx(path = "../data/words_aoa_ratings.xlsx", sheet = 1)
+
+aoa_ratings <- aoa_ratings_all %>%
+  filter(Word %in% sem_know_params$familiar )%>%
+  mutate(mean_aoa = as.numeric(Rating.Mean),
+         familiar = Word)%>%
+  select(familiar,mean_aoa)
+
+plot_sem_know <- sem_know_params%>%
+  select(-uci,-lci)%>%
+  spread(parameter, -familiar)%>%
+  expand(familiar, slope, int,age = me_model_data$age)%>%
+  mutate(sem_know = plogis(int + slope * age))%>%
+  left_join(aoa_ratings)%>%
+  ungroup()%>%
+  mutate(familiar = fct_reorder(factor(familiar), mean_aoa))
+
+ggplot(plot_sem_know, aes(x = age+2, y= sem_know, col = familiar))+
+  geom_line(size = 1)+
+  ylab("Semantic knowledge")+
+  xlab("Age")+
+  ylim(0,1)+
+  theme_few()+
+  scale_colour_viridis_d(name = "familiar object")
+```
+
+
+# Ignore: Model for ME Effect
 ```{r}
 me_data <- read_csv("../data/child_basic_me.csv")%>%
     filter(trial != "train1",
@@ -141,6 +293,3 @@ age_me_effect <- as_tibble(ranef$familiar, rownames = "familiar")%>%
   select(familiar, me_effect, age)
 
 ```
-
-
-
