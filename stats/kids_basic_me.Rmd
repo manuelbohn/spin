@@ -218,7 +218,7 @@ ggplot(data = p4, aes(x = age_num, y = mean)) +
 d_model <- d %>%
     filter(trial != "train1",
          trial != "train2")%>%
-  mutate(age_num = scale(age_num))
+  mutate(age_num = age_num - mean(age_num))
 
 model <- brm(correct ~ age_num + (1|subid) + (age_num | familiar),
                     data = d_model, family = bernoulli(),
@@ -237,7 +237,7 @@ ranef_plot <- as_tibble(ranef$familiar, rownames = "familiar")%>%
   mutate(grand_intercept = fixef%>%filter(term=="Intercept")%>%pull(Estimate),
          grand_slope = fixef%>%filter(term=="age_num")%>%pull(Estimate))%>%
   group_by(familiar) %>%
-  expand(Estimate.Intercept,Estimate.age_num,grand_intercept,grand_slope,age = scale(d$age_num))%>%
+  expand(Estimate.Intercept,Estimate.age_num,grand_intercept,grand_slope,age = d$age_num - mean(d$age_num))%>%
   mutate(y = plogis(grand_intercept + Estimate.Intercept+(Estimate.age_num+grand_slope)*age), 
          age = age+mean(d$age_num))%>%
   left_join(aoa_ratings)%>%

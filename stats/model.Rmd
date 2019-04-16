@@ -1,0 +1,146 @@
+---
+title: "Model"
+author: "M. Bohn"
+date: "12 4 2019"
+output: html_document
+---
+
+## Model utilities
+
+```{r}
+library(tidyverse)
+library(rwebppl)
+library(brms)
+```
+
+```{r rsaUtils}
+rsaUtils <- '
+var all_objects = [
+{ shape: "novel_object"},  
+{ shape: "familiar_object"}
+]
+
+var labels = ["novel_word","familiar_word"]
+
+
+var lexicon1 = function(utterance, obj, sem_knowledge){
+utterance.label == "novel_word" ? obj.shape == "novel_object" :
+utterance.label == "familiar_word" ? flip(sem_knowledge) ? obj.shape == "familiar_object" :  obj.shape == "novel_object" : 
+true
+}
+
+var lexicon2 = function(utterance, obj, sem_knowledge){
+utterance.label == "novel_word" ? obj.shape == "familiar_object" :
+utterance.label == "familiar_word" ? flip(sem_knowledge) ? obj.shape == "familiar_object" :  obj.shape == "novel_object" : 
+true
+}
+
+var lexiconObjects = {
+"novel_word = novel_object": {
+novel_object: "novel_word", familiar_object: "familiar_word"
+},
+"novel_word = familiar_object": {
+novel_object: "familiar_word", familiar_object: "familiar_word"
+},
+}
+
+var lexiconObject = {
+"novel_word = novel_object": lexicon1,
+"novel_word = familiar_object" : lexicon2
+}
+
+var utterancePrior = function(){ return uniformDraw([ {label: "novel_word"}, {label: "familiar_word"}]) }
+
+var LexiconPrior = Categorical({vs: ["novel_word = novel_object","novel_word = familiar_object" ], ps: [1, 1]})
+'
+```
+
+```{r rsa model}
+rsaModel <- '
+var literalListener = cache(function(utterance, priorProbs, sem_knowledge){
+  Infer({method: "enumerate", model: function(){
+    var lexiconName = sample(LexiconPrior); 
+    var lexicon = lexiconObject[lexiconName];
+    var obj = sample( Categorical({vs: all_objects, ps: priorProbs}));
+    if ("label" in utterance) {
+      var truthValue = lexicon(utterance, obj, sem_knowledge);
+      condition(truthValue)
+    }
+    return obj.shape 
+  }})
+})
+
+var speaker = cache(function(obj, lexiconName, priorProbs, speakerOptimality, sem_knowledge){
+  Infer({method: "enumerate", model: function(){
+    var utterance = utterancePrior();
+    var L0 = literalListener(utterance, priorProbs, sem_knowledge);
+    factor(speakerOptimality * L0.score(obj.shape))
+    return utterance
+  }})
+})
+
+var pragmaticListener = cache(function(utterance, priorProbs, speakerOptimality, sem_knowledge){
+  Infer({method: "enumerate", model: function(){
+    var lexiconName = sample(LexiconPrior);
+    var obj = sample( Categorical({vs: all_objects, ps: priorProbs}));
+    var S1 = speaker(obj, lexiconName, priorProbs, speakerOptimality, sem_knowledge);
+    observe(S1, utterance)
+    return obj.shape == "novel_object" ? 1 : 0
+  }})
+})
+
+var priorProbs = [.5,.5]
+
+var speakerOptimality = 1;
+
+var sem_knowledge = 1
+
+var modelPredictions = pragmaticListener({label: "novel_word"}, priorProbs, speakerOptimality,sem_knowledge)
+
+modelPredictions
+
+'
+```
+
+
+```{r}
+webppl(program_code = paste(rsaUtils, rsaModel, sep='\n'))
+```
+# Model for ME Effect
+```{r}
+me_data <- read_csv("../data/child_basic_me.csv")%>%
+    filter(trial != "train1",
+           trial != "train2")%>%
+  mutate(z_age = age_num - mean(age_num))
+
+# me_model <- brm(correct ~ z_age + (1|subid) + (z_age | familiar),
+#                 data = me_data,
+#                 family = bernoulli(),
+#                 control = list(adapt_delta = 0.95),
+#                 sample_prior = F,
+#                 save_all_pars = TRUE,
+#                 iter = 2000)
+
+saveRDS(me_model, "../saves/me_effect_model.rds")
+
+me_model <- readRDS("../saves/me_effect_model.rds")
+
+summary(me_model)
+
+fixef <- as_tibble(fixef(me_model), rownames = "term")
+
+ranef <-  ranef(me_model)
+
+age_me_effect <- as_tibble(ranef$familiar, rownames = "familiar")%>%
+  mutate(grand_intercept = fixef%>%filter(term=="Intercept")%>%pull(Estimate),
+         grand_slope = fixef%>%filter(term=="z_age")%>%pull(Estimate))%>%
+  group_by(familiar) %>%
+  expand(Estimate.Intercept,Estimate.z_age,grand_intercept,grand_slope,z_age = me_data$age_num - mean(me_data$age_num), mean_age = mean(me_data$age_num))%>%
+  mutate(me_effect = plogis(grand_intercept + Estimate.Intercept+(Estimate.z_age+grand_slope)*z_age), 
+         age = z_age+mean_age)%>%
+  select(familiar, me_effect, age)
+
+```
+
+
+
