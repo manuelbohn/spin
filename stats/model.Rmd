@@ -155,24 +155,31 @@ webppl(program_code = paste(rsaUtils, rsaModel, baseMeModel,sep='\n'))
 semStr <- '
 var data = dataFromR.data
 
-var familiars = levels(data, "familiar")
-
 var priorProbs = [.5,.5]
+
+var speakerOptimality = 1
+
+var familiars = levels(data, "familiar")
 
 var model  = function(){
 
   var params = map(function(cndtn){
 
-    var conditionData = _.filter(data, {condition: cndtn})
+    var conditionData = _.filter(data, {familiar: cndtn})
     
-    var sem_slope = uniformDrift({a: -5, b: 5, width: 0.2})
-    var sem_int = uniformDrift({a: 0, b: 5, width: 0.2})    
+    var sem_slope = uniformDrift({a: -2, b: 2, width: 0.2})
+    var sem_int = uniformDrift({a: 0, b: 5, width: 0.2})   
+
+    // var so_slope = uniformDrift({a: -2, b: 2, width: 0.2})
+    // var so_int = uniformDrift({a: -2, b: 2, width: 0.2})
     
     foreach(function(row){
 
       var age = row.age
 
       var sem_knowledge = logistic(sem_int + sem_slope * age)
+
+      // var speakerOptimality = so_int  + so_slope * age
 
       var modelPredictions = pragmaticListener({label: "novel_word"}, priorProbs, speakerOptimality,sem_knowledge)
       
@@ -181,7 +188,7 @@ var model  = function(){
     }, conditionData)
 
     return extend([
-      {int: sem_int, slope: sem_slope, familiar: cndtn}
+      {sem_int: sem_int, sem_slope: sem_slope, familiar: cndtn}
     ])
  
   }, familiars)
@@ -206,15 +213,17 @@ sem_know_model<- webppl(
   model_var = "model",
   chains = 4,
   cores = 4,
-  inference_opts = list(method = "MCMC", samples = 5000, burn = 2000, verbose = T)
+  inference_opts = list(method = "MCMC", samples = 1000, burn = 1000, verbose = T)
 )
   
 sem_know <- sem_know_model %>%
   select(value) %>%
   map_df(bind_rows)%>%
-  rename(int = `0.int`,
-         slope = `0.slope`,
-         familiar = `0.familiar`)%>% 
+  rename(sem_int = `0.sem_int`,
+         sem_slope = `0.sem_slope`,
+         familiar = `0.familiar`)%>%
+         #so_int = `0.so_int`,
+         #so_slope = `0.so_slope`)%>% 
   gather(parameter, value, -familiar)
 
 sem_know_params <- sem_know %>%
@@ -245,8 +254,8 @@ aoa_ratings <- aoa_ratings_all %>%
 plot_sem_know <- sem_know_params%>%
   select(-uci,-lci)%>%
   spread(parameter, -familiar)%>%
-  expand(familiar, slope, int,age = me_model_data$age)%>%
-  mutate(sem_know = plogis(int + slope * age))%>%
+  expand(familiar, sem_slope, sem_int,age = me_model_data$age)%>%
+  mutate(sem_know = plogis(sem_int + sem_slope * age))%>%
   left_join(aoa_ratings)%>%
   ungroup()%>%
   mutate(familiar = fct_reorder(factor(familiar), mean_aoa))
