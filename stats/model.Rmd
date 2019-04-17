@@ -203,16 +203,16 @@ me_model_data <- read_csv("../data/child_basic_me.csv")%>%
            trial != "train2")%>%
   mutate(age = age_num - min(age_num))
 
-sem_know_model<- webppl(
-  program_code = paste(rsaUtils, rsaModel, semStr , sep='\n'),
-  data = list(data = me_model_data),
-  data_var = "dataFromR",
-  model_var = "model",
-  chains = 4,
-  cores = 4,
-  inference_opts = list(method = "MCMC", samples = 900, burn = 300, verbose = T)
-)
-# 
+# sem_know_model<- webppl(
+#   program_code = paste(rsaUtils, rsaModel, semStr , sep='\n'),
+#   data = list(data = me_model_data),
+#   data_var = "dataFromR",
+#   model_var = "model",
+#   chains = 4,
+#   cores = 4,
+#   inference_opts = list(method = "MCMC", samples = 900, burn = 300, verbose = T)
+# )
+#  
 # saveRDS(sem_know_model, "../saves/sem_know_model.rds")
 
 sem_know_model <- readRDS("../saves/sem_know_model.rds")
