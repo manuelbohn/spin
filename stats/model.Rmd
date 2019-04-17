@@ -138,7 +138,7 @@ var priorProbs = [.5,.5]
 
 var speakerOptimality = 1
 
-var modelPredictions = pragmaticListener({label: "novel_word"}, priorProbs, speakerOptimality,sem_knowledge)
+var modelPredictions = pragmaticListener({label: "novel_word"}, priorProbs, speakerOptimality, sem_knowledge)
 
 modelPredictions
 
@@ -163,10 +163,13 @@ var model  = function(){
 
   var params = map(function(cndtn){
 
-    var conditionData = _.filter(data, {condition: cndtn})
+    // display(data.slice(0, 4))
+    // display(cndtn)
+    var conditionData = _.filter(data, {familiar: cndtn})
     
     var sem_slope = uniformDrift({a: -5, b: 5, width: 0.2})
     var sem_int = uniformDrift({a: 0, b: 5, width: 0.2})    
+    // display(conditionData)
     
     foreach(function(row){
 
@@ -175,19 +178,16 @@ var model  = function(){
       var sem_knowledge = logistic(sem_int + sem_slope * age)
 
       var modelPredictions = pragmaticListener({label: "novel_word"}, priorProbs, speakerOptimality,sem_knowledge)
-      
+      // display(row.correct)
       observe(modelPredictions, row.correct)
 
     }, conditionData)
 
-    return extend([
-      {int: sem_int, slope: sem_slope, familiar: cndtn}
-    ])
+    return {int: sem_int, slope: sem_slope, familiar: cndtn}
  
   }, familiars)
 
 params
-
 }
 '
 ```
@@ -204,9 +204,9 @@ sem_know_model<- webppl(
   data = list(data = me_model_data),
   data_var = "dataFromR",
   model_var = "model",
-  chains = 4,
-  cores = 4,
-  inference_opts = list(method = "MCMC", samples = 5000, burn = 2000, verbose = T)
+  chains = 1,
+  cores = 1,
+  inference_opts = list(method = "MCMC", samples = 5, burn = 1, verbose = T)
 )
   
 sem_know <- sem_know_model %>%
