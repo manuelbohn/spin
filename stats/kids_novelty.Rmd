@@ -50,7 +50,7 @@ d_raw%>%
   filter(!(subid %in% unique(log$subid)))
 
  
-d <- left_join(d_raw,log, by = "subid")%>%
+d_spin <- left_join(d_raw,log, by = "subid")%>%
   filter(keep_drop == "keep",
          trial != "train1", trial != "train2")%>%
   mutate(age_num = lubridate::time_length(difftime(test_date,dob), "years"),
@@ -98,7 +98,7 @@ d_mcc <- left_join(d_raw_mcc,log_mcc, by = "subid")%>%
 
 # join datasets
 
-d <- bind_rows(d_raw, d_mcc)
+d <- bind_rows(d_spin, d_mcc)
 
 ```
 
