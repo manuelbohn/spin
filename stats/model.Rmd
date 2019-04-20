@@ -14,7 +14,7 @@ library(coda)
 library(ggthemes)
 library(readxl)
 library(ggpubr)
-
+library(stringr)
 estimate_mode <- function(s) {
   d <- density(s)
   return(d$x[which.max(d$y)])
@@ -104,7 +104,7 @@ var literalListener = cache(function(utterance, priorProbs, sem_knowledge){
     }
     return obj.shape 
   }})
-})
+}, 10000)
 
 var speaker = cache(function(obj, lexiconName, priorProbs, speakerOptimality, sem_knowledge){
   Infer({method: "enumerate", model: function(){
@@ -113,7 +113,7 @@ var speaker = cache(function(obj, lexiconName, priorProbs, speakerOptimality, se
     factor(speakerOptimality * L0.score(obj.shape))
     return utterance
   }})
-})
+}, 10000)
 
 var pragmaticListener = cache(function(utterance, priorProbs, speakerOptimality, sem_knowledge){
   Infer({method: "enumerate", model: function(){
@@ -123,7 +123,7 @@ var pragmaticListener = cache(function(utterance, priorProbs, speakerOptimality,
     observe(S1, utterance)
     return obj.shape == "novel_object" ? 1 : 0
   }})
-})
+}, 10000)
 
 '
 ```
@@ -164,12 +164,12 @@ var model  = function(){
   var so_slope = uniformDrift({a: -2, b: 2, width: 0.2})
   var so_int = uniformDrift({a: -2, b: 2, width: 0.2})
 
-  var params = map(function(cndtn){
+  foreach(function(cndtn){
 
     var conditionData = _.filter(data, {familiar: cndtn})
     
     var sem_slope = uniformDrift({a: -2, b: 2, width: 0.2})
-    var sem_int = uniformDrift({a: 0, b: 5, width: 0.2})  
+    var sem_int = uniformDrift({a: 0, b: 5, width: 0.2})
 
     foreach(function(row){
 
@@ -180,16 +180,17 @@ var model  = function(){
       var speakerOptimality = so_int  + so_slope * age
 
       var modelPredictions = pragmaticListener({label: "novel_word"}, priorProbs, speakerOptimality,sem_knowledge)
-      // display(row.correct)
+      // display(modelPredictions.score(row.correct))
       observe(modelPredictions, row.correct)
 
     }, conditionData)
     
-    return {sem_int: sem_int, sem_slope: sem_slope, familiar: cndtn, so_int: so_int, so_slope: so_slope}
-    
+    query.add(cndtn, [sem_int, sem_slope])
+
   }, familiars)
 
-params
+  query.add("speaker_optimality", [so_int, so_slope])
+  return query 
 }
 '
 ```
@@ -212,31 +213,47 @@ me_model_data <- read_csv("../data/child_basic_me.csv")%>%
 #  
 # saveRDS(sem_know_model, "../saves/sem_know_model.rds")
 
-sem_know_model <- readRDS("../saves/sem_know_model.rds")
+#sem_know_model <- readRDS("../saves/sem_know_model.rds")
 
 sem_know_model<- webppl(
   program_code = paste(rsaUtils, rsaModel, semStr , sep='\n'),
   data = list(data = me_model_data),
   data_var = "dataFromR",
   model_var = "model",
-  chains = 1,
-  cores = 1,
-  inference_opts = list(method = "MCMC", samples = 5, burn = 1, verbose = T)
+  chains = 3,
+  cores = 3,
+  inference_opts = list(method = "incrementalMH", 
+                        samples = 5000, 
+                        burn = 2500,
+                        verbose = T,
+                        verboseLag = 500)
 )
+```
 
-  
+```{r}
+
 sem_know <- sem_know_model %>%
-  select(value) %>%
-  map_df(bind_rows)%>%
-  rename(sem_int = `0.sem_int`,
-         sem_slope = `0.sem_slope`,
-         familiar = `0.familiar`,
-         so_int = `0.so_int`,
-         so_slope = `0.so_slope`)%>% 
-  gather(parameter, value, -familiar)
+  filter(Parameter != "speaker_optimality") %>%
+  mutate(Parameter = factor(Parameter)) %>%
+  separate(value, into = c("intercept", "slope"), 
+           sep = ", ") %>%
+  mutate(intercept = as.numeric(str_remove_all(intercept, "[(c]")),
+         slope = as.numeric(str_remove(slope, "[)]"))) %>%
+  rename(item = Parameter) %>%
+  gather(parameter, value, intercept, slope)
+  
+# sem_know <- sem_know_model %>%
+#   select(value) %>%
+#   map_df(bind_rows)%>%
+#   rename(sem_int = `0.sem_int`,
+#          sem_slope = `0.sem_slope`,
+#          familiar = `0.familiar`,
+#          so_int = `0.so_int`,
+#          so_slope = `0.so_slope`)%>% 
+#   gather(parameter, value, -familiar)
 
 sem_know_params <- sem_know %>%
-  group_by(familiar,parameter)%>%
+  group_by(item, parameter)%>%
   summarise(mode = estimate_mode(value),
             uci = hdi_upper(value),
             lci = hdi_lower(value))
@@ -246,7 +263,7 @@ sem_know_params <- sem_know %>%
 ggplot(sem_know, aes(value))+
   geom_density()+
   xlab("Parameter")+
-  facet_grid(parameter ~familiar)+
+  facet_grid(parameter~item, scales = 'free')+
   theme_few()
 ```
 ## Plotting semantic knowledge
@@ -255,21 +272,23 @@ ggplot(sem_know, aes(value))+
 aoa_ratings_all <- read_xlsx(path = "../data/words_aoa_ratings.xlsx", sheet = 1)
 
 aoa_ratings <- aoa_ratings_all %>%
-  filter(Word %in% sem_know_params$familiar )%>%
+  filter(Word %in% sem_know_params$item )%>%
   mutate(mean_aoa = as.numeric(Rating.Mean),
-         familiar = Word)%>%
-  select(familiar,mean_aoa)
+         item = Word)%>%
+  select(item,mean_aoa)
 
 plot_sem_know <- sem_know_params%>%
   select(-uci,-lci)%>%
-  spread(parameter, -familiar)%>%
-  expand(familiar, sem_slope, sem_int,age = me_model_data$age)%>%
-  mutate(sem_know = plogis(sem_int + sem_slope * age))%>%
-  left_join(aoa_ratings)%>%
+  spread(parameter, -item) %>%
+  left_join(expand.grid(
+      age = unique(me_model_data$age),
+      item = me_model_data$familiar), .) %>%
+  mutate(sem_know = plogis(intercept + slope * age)) %>%
+  left_join(aoa_ratings) %>%
   ungroup()%>%
-  mutate(familiar = fct_reorder(factor(familiar), mean_aoa))
+  mutate(item = fct_reorder(factor(item), mean_aoa))
 
-ggplot(plot_sem_know, aes(x = age+2, y= sem_know, col = familiar))+
+ggplot(plot_sem_know, aes(x = age+2, y= sem_know, col = item, group = item))+
   geom_line(size = 1)+
   ylab("Semantic knowledge")+
   xlab("Age")+
