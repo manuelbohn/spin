@@ -155,36 +155,38 @@ webppl(program_code = paste(rsaUtils, rsaModel, baseMeModel,sep='\n'))
 semStr <- '
 var data = dataFromR.data
 
-var familiars = levels(data, "familiar")
-
 var priorProbs = [.5,.5]
+
+var familiars = levels(data, "familiar")
 
 var model  = function(){
 
+  var so_slope = uniformDrift({a: -2, b: 2, width: 0.2})
+  var so_int = uniformDrift({a: -2, b: 2, width: 0.2})
+
   var params = map(function(cndtn){
 
-    // display(data.slice(0, 4))
-    // display(cndtn)
     var conditionData = _.filter(data, {familiar: cndtn})
     
-    var sem_slope = uniformDrift({a: -5, b: 5, width: 0.2})
-    var sem_int = uniformDrift({a: 0, b: 5, width: 0.2})    
-    // display(conditionData)
-    
+    var sem_slope = uniformDrift({a: -2, b: 2, width: 0.2})
+    var sem_int = uniformDrift({a: 0, b: 5, width: 0.2})  
+
     foreach(function(row){
 
       var age = row.age
 
       var sem_knowledge = logistic(sem_int + sem_slope * age)
 
+      var speakerOptimality = so_int  + so_slope * age
+
       var modelPredictions = pragmaticListener({label: "novel_word"}, priorProbs, speakerOptimality,sem_knowledge)
       // display(row.correct)
       observe(modelPredictions, row.correct)
 
     }, conditionData)
-
-    return {int: sem_int, slope: sem_slope, familiar: cndtn}
- 
+    
+    return {sem_int: sem_int, sem_slope: sem_slope, familiar: cndtn, so_int: so_int, so_slope: so_slope}
+    
   }, familiars)
 
 params
@@ -198,6 +200,19 @@ me_model_data <- read_csv("../data/child_basic_me.csv")%>%
            trial != "train2")%>%
   mutate(age = age_num - min(age_num))
 
+# sem_know_model<- webppl(
+#   program_code = paste(rsaUtils, rsaModel, semStr , sep='\n'),
+#   data = list(data = me_model_data),
+#   data_var = "dataFromR",
+#   model_var = "model",
+#   chains = 4,
+#   cores = 4,
+#   inference_opts = list(method = "MCMC", samples = 900, burn = 300, verbose = T)
+# )
+#  
+# saveRDS(sem_know_model, "../saves/sem_know_model.rds")
+
+sem_know_model <- readRDS("../saves/sem_know_model.rds")
 
 sem_know_model<- webppl(
   program_code = paste(rsaUtils, rsaModel, semStr , sep='\n'),
@@ -208,13 +223,16 @@ sem_know_model<- webppl(
   cores = 1,
   inference_opts = list(method = "MCMC", samples = 5, burn = 1, verbose = T)
 )
+
   
 sem_know <- sem_know_model %>%
   select(value) %>%
   map_df(bind_rows)%>%
-  rename(int = `0.int`,
-         slope = `0.slope`,
-         familiar = `0.familiar`)%>% 
+  rename(sem_int = `0.sem_int`,
+         sem_slope = `0.sem_slope`,
+         familiar = `0.familiar`,
+         so_int = `0.so_int`,
+         so_slope = `0.so_slope`)%>% 
   gather(parameter, value, -familiar)
 
 sem_know_params <- sem_know %>%
@@ -245,8 +263,8 @@ aoa_ratings <- aoa_ratings_all %>%
 plot_sem_know <- sem_know_params%>%
   select(-uci,-lci)%>%
   spread(parameter, -familiar)%>%
-  expand(familiar, slope, int,age = me_model_data$age)%>%
-  mutate(sem_know = plogis(int + slope * age))%>%
+  expand(familiar, sem_slope, sem_int,age = me_model_data$age)%>%
+  mutate(sem_know = plogis(sem_int + sem_slope * age))%>%
   left_join(aoa_ratings)%>%
   ungroup()%>%
   mutate(familiar = fct_reorder(factor(familiar), mean_aoa))
@@ -320,7 +338,7 @@ p2 <- read_csv("../data/child_basic_me.csv")%>%
 data_plot <- ggplot(data = p2, aes(x = age_num, y = correct, col = familiar, fill = familiar)) +
   geom_hline(yintercept = 0.5, lty=2)+
   geom_jitter(width = 0, height = 0.05, alpha = .6)+
-  geom_smooth(method = "glm", method.args = list(family = "binomial"), se = F, alpha = .5)+
+  geom_smooth(method = "loess", se = F, alpha = .5)+
   labs(x="Age",y="Mutual Exclusivity effect")+
   #facet_grid(~familiar)+
   ggtitle("Data")+
