@@ -206,20 +206,6 @@ me_model_data <- read_csv("../data/child_basic_me.csv")%>%
            trial != "train2")%>%
   mutate(age = age_num - min(age_num))
 
-# sem_know_model<- webppl(
-#   program_code = paste(rsaUtils, rsaModel, semStr , sep='\n'),
-#   data = list(data = me_model_data),
-#   data_var = "dataFromR",
-#   model_var = "model",
-#   chains = 4,
-#   cores = 4,
-#   inference_opts = list(method = "MCMC", samples = 2000, burn = 1000, verbose = T)
-# )
-# 
-# saveRDS(sem_know_model, "../saves/sem_know_model.rds")
-
-#sem_know_model <- readRDS("../saves/sem_know_model.rds")
-
 sem_know_model<- webppl(
   program_code = paste(rsaUtils, rsaModel, semStr , sep='\n'),
   data = list(data = me_model_data),
@@ -228,7 +214,7 @@ sem_know_model<- webppl(
   chains = 3,
   cores = 3,
   inference_opts = list(method = "incrementalMH", 
-                        samples = 5000, 
+                        samples = 10000, 
                         burn = 2500,
                         verbose = T,
                         verboseLag = 500)
@@ -250,15 +236,6 @@ sem_know <- sem_know_model %>%
   rename(item = Parameter) %>%
   gather(parameter, value, intercept, slope)
   
-# sem_know <- sem_know_model %>%
-#   select(value) %>%
-#   map_df(bind_rows)%>%
-#   rename(sem_int = `0.sem_int`,
-#          sem_slope = `0.sem_slope`,
-#          familiar = `0.familiar`,
-#          so_int = `0.so_int`,
-#          so_slope = `0.so_slope`)%>% 
-#   gather(parameter, value, -familiar)
 
 sem_know_params <- sem_know %>%
   group_by(item, parameter)%>%
