@@ -36,7 +36,9 @@ for (f in files) {
 length(unique(raw_data$subid))
 
 d_raw <-raw_data %>%
-  mutate(test_date = as.Date(test_date))
+  mutate(test_date = as.Date(test_date),
+         subid = ifelse(subid =="190422_6_nov,","190422_6_nov",subid),
+         subage = ifelse(subid =="190422_2_nov","4",subage))
 
 log <- read_excel("../../SPIN-subject_log.xlsx", 1)%>%
   filter(Condition == "nov")%>%
@@ -107,7 +109,8 @@ d <- bind_rows(d_spin, d_mcc)
 ## sanity checks
 d %>%
   group_by(experiment,subage) %>%
-  summarise(n = length(unique(subid)))
+  summarise(n = length(unique(subid)),
+            data_points = n())
 
 ```
 
@@ -162,14 +165,27 @@ model_data <- d%>%
   mutate(age_num = scale(age_num, center = TRUE, scale = TRUE))
 
 # maximal converging model
-bm <- brm(correct ~ age_num * experiment + (1 | subid) + (age_num * experiment | agent), 
+bm_full <- brm(correct ~ age_num * experiment + (1 | subid) + (age_num * experiment | agent), 
           data = model_data, family = bernoulli(),
           control = list(adapt_delta = 0.95),
           sample_prior = F,
           save_all_pars = TRUE,
           iter = 2000)
 
-summary(bm)
+summary(bm_full)
+
+bm_null <- brm(correct ~ age_num + (1 | subid) + (age_num * experiment | agent), 
+          data = model_data, family = bernoulli(),
+          control = list(adapt_delta = 0.99),
+          sample_prior = F,
+          save_all_pars = TRUE,
+          iter = 2000)
+
+summary(bm_null)
+
+
+
+bayes_factor(bm_full, bm_null, log = F, maxiter = 5000)
 
 ```
 

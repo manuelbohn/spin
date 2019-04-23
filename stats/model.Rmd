@@ -168,6 +168,9 @@ var model  = function(){
   var so_int = uniformDrift({a: -2, b: 2, width: 0.2})
   //var speakerOptimality = uniformDrift({a: -5, b: 5, width: 0.2})
 
+  //var sem_slope = uniformDrift({a: -2, b: 2, width: 0.2})
+  //var sem_int = uniformDrift({a: 0, b: 5, width: 0.2})
+
   foreach(function(cndtn){
 
     var conditionData = _.filter(data, {familiar: cndtn})
