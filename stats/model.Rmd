@@ -168,63 +168,81 @@ var model  = function(){
   var so_int = uniformDrift({a: -2, b: 2, width: 0.2})
   //var speakerOptimality = uniformDrift({a: -5, b: 5, width: 0.2})
 
-  //var sem_slope = uniformDrift({a: -2, b: 2, width: 0.2})
-  //var sem_int = uniformDrift({a: 0, b: 5, width: 0.2})
+  var sem_slope_global = uniformDrift({a: -2, b: 2, width: 0.2})
+  var sem_int_global = uniformDrift({a: 0, b: 5, width: 0.2})
 
+  var item_slope_sigma = uniformDrift({a: 0, b: 5, width: 0.2})
+  // conceptually it might not make sense to have two sigmas, but maybe it does
+  // intercept sigma probably will be smaller than slope sigma
+  var item_int_sigma = uniformDrift({a: 0, b: 5, width: 0.2})
+  
   foreach(function(cndtn){
 
     var conditionData = _.filter(data, {familiar: cndtn})
     
-    var sem_slope = uniformDrift({a: -2, b: 2, width: 0.2})
-    var sem_int = uniformDrift({a: 0, b: 5, width: 0.2})
+    var sem_slope_item = gaussianDrift({mu: sem_slope_global, sigma: item_slope_sigma, width: 0.5})
+    var sem_int_item = gaussianDrift({mu: sem_int_global, sigma: item_int_sigma, width: 0.5})
+    
+    // var sem_slope = uniformDrift({a: -2, b: 2, width: 0.2})
+    // var sem_int = uniformDrift({a: 0, b: 5, width: 0.2})
 
     foreach(function(row){
 
       var age = row.age
 
-      var sem_knowledge = logistic(sem_int + sem_slope * age)
+      var sem_knowledge = logistic(sem_int_item + sem_slope_item * age)
 
       var speakerOptimality = so_int  + so_slope * age
 
-      var modelPredictions = pragmaticListener({label: "novel_word"}, priorProbs, speakerOptimality,sem_knowledge)
+      var modelPredictions = pragmaticListener({label: "novel_word"}, 
+            priorProbs, speakerOptimality, sem_knowledge)
       // display(modelPredictions.score(row.correct))
+      
       observe(modelPredictions, row.correct)
+      
+      query.add(["modelPrediction", cndtn], [age, Math.exp(modelPredictions.score(1))])
 
     }, conditionData)
     
-    query.add(cndtn, [sem_int, sem_slope])
+    query.add(["parameter", cndtn], [sem_int_item, sem_slope_item])
 
   }, familiars)
 
-  //query.add("speaker_optimality", [speakerOptimality])
-  query.add("speaker_optimality", [so_int, so_slope])
+  query.add(["parameter", "speaker_optimality"], [so_int, so_slope])
+  query.add(["parameter", "global_sem"], [sem_int_global, sem_slope_global])
+  query.add(["parameter", "global_sem_sigmas"], [item_int_sigma, item_slope_sigma])
+  
   return query 
 }
 '
 ```
 
+
+
+
 ```{r}
-me_model_data <- read_csv("../data/child_basic_me.csv")%>%
-    filter(trial != "train1",
-           trial != "train2")%>%
-  mutate(age = age_num - min(age_num))
+# me_model_data <- read_csv("../data/child_basic_me.csv")%>%
+#     filter(trial != "train1",
+#            trial != "train2")%>%
+#   mutate(age = age_num - min(age_num))
 
 sem_know_model<- webppl(
   program_code = paste(rsaUtils, rsaModel, semStr , sep='\n'),
   data = list(data = me_model_data),
   data_var = "dataFromR",
   model_var = "model",
-  chains = 3,
-  cores = 3,
+  chains = 1,
+  cores = 1,
   inference_opts = list(method = "incrementalMH", 
-                        samples = 10000, 
-                        burn = 2500,
-                        verbose = T,
-                        verboseLag = 500)
+                        samples = 10, 
+                        burn = 5,
+                        verbose = T)#,
+                        #verboseLag = 500)
 )
 
 #saveRDS(sem_know_model, "../saves/sem_know_model.rds")
-sem_know_model <- readRDS("../saves/sem_know_model.rds")
+sem_know_model <- readRDS("../saves/sem_know_model.rds") %>%
+  filter(Chain != 1)
 ```
 
 ```{r}
@@ -259,8 +277,8 @@ speak_opt <- sem_know_model %>%
 ```
 
 ```{r}
-ggplot(sem_know, aes(value))+
-  geom_density()+
+ggplot(sem_know, aes(x = value))+#, fill = factor(Chain)))+
+  geom_density(alpha = 0.3)+
   xlab("Parameter")+
   facet_grid(parameter~item, scales = 'free')+
   theme_few()
@@ -385,6 +403,8 @@ inv_model_plot <- ggplot(inv_predictions, aes(x=age,y = me_effect, col = item))+
   xlim(2,5)+
   guides(alpha = F)+ 
   scale_colour_viridis_d()
+
+inv_model_plot
 ```
 
 
@@ -460,9 +480,79 @@ data_plot <- ggplot(data = p2, aes(x = age_num, y = correct, col = familiar, fil
   guides(alpha = F)+ 
   scale_colour_viridis_d(name = "familiar object")+
   scale_fill_viridis_d(name = "familiar object")
-
+data_plot
 ```
 
 ```{r}
 ggarrange(data_plot,inv_model_plot,model_plot, common.legend = T, legend = "right", nrow = 1, ncol = 3)
+```
+
+#### WORK IN PROGRESS: nesting within participant
+
+to do:
+- bookkeeping: index correct participant/item variables at relevant part of code
+- inference: try HMC, variational
+
+```{r work in progress}
+semStr <- '
+var data = dataFromR.data
+
+var priorProbs = [.5,.5]
+
+var familiars = levels(data, "familiar")
+
+var model  = function(){
+
+  // global parameters
+  var so_slope = uniformDrift({a: -2, b: 2, width: 0.2})
+  var so_int = uniformDrift({a: -2, b: 2, width: 0.2})
+
+  var sem_slope_global = uniformDrift({a: -2, b: 2, width: 0.2})
+  var sem_int_global = uniformDrift({a: 0, b: 5, width: 0.2})
+
+  var item_slope_sigma = uniformDrift({a: 0, b: 5, width: 0.2})
+  var item_int_sigma = uniformDrift({a: 0, b: 5, width: 0.2})
+  
+  var participant_age_adjust = gaussianDrift({mu: 0, sigma: 1, width: 0.2})
+  
+  var sem_slope_item = repeat(familiars.length, function(){
+    gaussianDrift({mu: sem_slope_global, sigma: item_slope_sigma, width: 0.5} )
+  })
+  
+  var sem_int_item = gaussianDrift({mu: sem_int_global, 
+        sigma: item_int_sigma, width: 0.5})
+      
+  foreach(function(cndtn){
+
+    var conditionData = _.filter(data, {familiar: cndtn})
+    
+    foreach(function(row){
+
+      var age = row.age
+
+      var sem_knowledge = logistic(sem_int_item + sem_slope_item * age)
+
+      var speakerOptimality = so_int  + so_slope * age
+
+      var modelPredictions = pragmaticListener({label: "novel_word"}, 
+            priorProbs, speakerOptimality, sem_knowledge)
+      // display(modelPredictions.score(row.correct))
+      
+      observe(modelPredictions, row.correct)
+      
+      query.add(["modelPrediction", cndtn], [age, Math.exp(modelPredictions.score(1))])
+
+    }, conditionData)
+    
+    query.add(["parameter", cndtn], [sem_int_item, sem_slope_item])
+
+  }, familiars)
+
+  query.add(["parameter", "speaker_optimality"], [so_int, so_slope])
+  query.add(["parameter", "global_sem"], [sem_int_global, sem_slope_global])
+  query.add(["parameter", "global_sem_sigmas"], [item_int_sigma, item_slope_sigma])
+  
+  return query 
+}
+'
 ```
