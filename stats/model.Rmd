@@ -190,6 +190,8 @@ var model  = function(){
 
       var age = row.age
 
+      display(age)
+
       var sem_knowledge = logistic(sem_int_item + sem_slope_item * age)
 
       var speakerOptimality = so_int  + so_slope * age
@@ -221,10 +223,10 @@ var model  = function(){
 
 
 ```{r}
-# me_model_data <- read_csv("../data/child_basic_me.csv")%>%
-#     filter(trial != "train1",
-#            trial != "train2")%>%
-#   mutate(age = age_num - min(age_num))
+me_model_data <- read_csv("../data/child_basic_me.csv")%>%
+    filter(trial != "train1",
+           trial != "train2")%>%
+  mutate(age = age_num - min(age_num))
 
 sem_know_model<- webppl(
   program_code = paste(rsaUtils, rsaModel, semStr , sep='\n'),
@@ -234,60 +236,89 @@ sem_know_model<- webppl(
   chains = 1,
   cores = 1,
   inference_opts = list(method = "incrementalMH", 
-                        samples = 10, 
-                        burn = 5,
+                        samples = 1, 
+                        burn = 1,
                         verbose = T)#,
                         #verboseLag = 500)
 )
 
 #saveRDS(sem_know_model, "../saves/sem_know_model.rds")
-sem_know_model <- readRDS("../saves/sem_know_model.rds") %>%
-  filter(Chain != 1)
+#sem_know_model <- readRDS("../saves/sem_know_model.rds")
 ```
 
 ```{r}
 
-sem_know <- sem_know_model %>%
-  filter(Parameter != "speaker_optimality") %>%
-  mutate(Parameter = factor(Parameter)) %>%
-  separate(value, into = c("intercept", "slope"), 
-           sep = ", ") %>%
-  mutate(intercept = as.numeric(str_remove_all(intercept, "[(c]")),
-         slope = as.numeric(str_remove(slope, "[)]"))) %>%
-  rename(item = Parameter) %>%
-  gather(parameter, value, intercept, slope)
+model_pred <- sem_know_model %>%
+  separate(Parameter, into = c("type", "token"))%>%
+  filter(type == "modelPrediction")%>%
+  separate(value, into = c("age", "pred"),sep = ", ")%>%
+  mutate(age = as.numeric(str_remove_all(age, "[(c]")),
+         pred = as.numeric(str_remove(pred, "[)]"))) %>%
+  rename(item = token)
   
+params<- sem_know_model %>%
+  separate(Parameter, into = c("parameter", "type"), sep = ",")%>%
+  filter(parameter == "parameter")%>%
+  separate(value, into = c("slope", "int"),sep = ", ")%>%
+  mutate(slope = as.numeric(str_remove_all(slope, "[(c]")),
+         int = as.numeric(str_remove(int, "[)]")))%>%
+  gather(parameter, value, int, slope)
 
-sem_know_params <- sem_know %>%
+
+sem_know_params <- params %>%
+  filter(type != "speaker_optimality",
+         type != "global_sem",
+         type != "global_sem_sigmas")%>%
+  rename(item = type)%>%
   group_by(item, parameter)%>%
   summarise(mode = estimate_mode(value),
             uci = hdi_upper(value),
             lci = hdi_lower(value))
 
 
-speak_opt <- sem_know_model %>%
-  filter(Parameter == "speaker_optimality") %>%
-  separate(value, into = c("intercept", "slope"), 
-           sep = ", ")%>%
-  mutate(intercept = as.numeric(str_remove_all(intercept, "[(c]")),
-         slope = as.numeric(str_remove(slope, "[)]"))) %>%
-  rename(item = Parameter) %>%
-  gather(parameter, value, intercept, slope)
+global_params <- params %>%
+  filter(type == "speaker_optimality" |
+         type == "global_sem")%>%
+  group_by(type, parameter)%>%
+  summarise(mode = estimate_mode(value),
+            uci = hdi_upper(value),
+            lci = hdi_lower(value))
 
 ```
 
 ```{r}
-ggplot(sem_know, aes(x = value))+#, fill = factor(Chain)))+
+item_params <- params %>%
+  filter(type != "speaker_optimality",
+         type != "global_sem",
+         type != "global_sem_sigmas")
+
+ggplot(item_params, aes(x = value))+#, fill = factor(Chain)))+
   geom_density(alpha = 0.3)+
   xlab("Parameter")+
-  facet_grid(parameter~item, scales = 'free')+
+  facet_grid(parameter~type, scales = 'free')+
   theme_few()
 ```
 
 ```{r}
-ggplot(speak_opt, aes(value))+
-  geom_density()+
+param_params <- params %>%
+  filter(type == "speaker_optimality" |
+         type == "global_sem")
+
+ggplot(param_params, aes(x = value))+#, fill = factor(Chain)))+
+  geom_density(alpha = 0.3)+
   xlab("Parameter")+
+  facet_grid(parameter~type, scales = 'free')+
+  theme_few()
+```
+
+
+```{r}
+sigma_params <- params %>%
+  filter(type == "global_sem_sigmas")
+
+ggplot(sigma_params, aes(x = value))+#, fill = factor(Chain)))+
+  geom_density(alpha = 0.3)+
+  xlab("Sigma")+
   facet_grid(~parameter, scales = 'free')+
   theme_few()
 ```
@@ -393,7 +424,7 @@ inv_predictions <- inv_model_pred %>%
   mutate(item = fct_reorder(factor(item), mean_aoa), 
          age = age + min(me_data$age_num))
 
-inv_model_plot <- ggplot(inv_predictions, aes(x=age,y = me_effect, col = item))+
+inv_model_plot <- ggplot(model_pred, aes(x=age+2,y = pred, col = item))+
   geom_hline(yintercept = 0.5, lty=2)+
   geom_line(size = 1)+
   ggtitle("Inverse Model Predictions")+
