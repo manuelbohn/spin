@@ -243,7 +243,7 @@ sem_know_model<- webppl(
 )
 
 #saveRDS(sem_know_model, "../saves/sem_know_model.rds")
-#sem_know_model <- readRDS("../saves/sem_know_model.rds")
+sem_know_model <- readRDS("../saves/sem_know_model.rds")
 ```
 
 ```{r}
