@@ -321,7 +321,7 @@ ggplot(item_params, aes(x = value))+#, fill = factor(Chain)))+
 
 ```{r}
 
-ggplot(global_params, aes(x = value))+#, fill = factor(Chain)))+
+ggplot(global_params, aes(x = value))#, fill = factor(Chain)))+
   geom_density(alpha = 0.3)+
   xlab("Parameter")+
   facet_grid(parameter~token, scales = 'free')+
