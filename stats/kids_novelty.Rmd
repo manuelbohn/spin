@@ -140,14 +140,14 @@ ggplot() +
 
 ```{r plot by numerical age}
 p5 <- d %>%
-  group_by(experiment,age_num, subid) %>%
+  group_by(age_num, subid) %>%
   summarise(correct = mean(correct)) 
 
-ggplot(data = p5, aes(x = age_num, y = correct, col = experiment)) +
+ggplot(data = p5, aes(x = age_num, y = correct)) +
   geom_smooth(data = d, aes(x = age_num, y = correct),method = "glm", method.args = list(family = "binomial"), se = T, alpha = .3)+
   geom_jitter( alpha = .5, height = 0.04)+
   geom_hline(yintercept = 0.5, lty=2)+
-  labs(x="Age",y="Proportion Expected Choice")+
+  labs(x="Age",y="Proportion novel item chosen")+
   theme_few() +
   ylim(-0.05,1.05)+
   guides(alpha = F)+ 

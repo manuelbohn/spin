@@ -190,7 +190,7 @@ var model  = function(){
 
       var age = row.age
 
-      display(age)
+      //display(age)
 
       var sem_knowledge = logistic(sem_int_item + sem_slope_item * age)
 
@@ -202,17 +202,17 @@ var model  = function(){
       
       observe(modelPredictions, row.correct)
       
-      query.add(["modelPrediction", cndtn], [age, Math.exp(modelPredictions.score(1))])
+      query.add(["modelPrediction", cndtn, age], [age, Math.exp(modelPredictions.score(1))])
 
     }, conditionData)
     
-    query.add(["parameter", cndtn], [sem_int_item, sem_slope_item])
+    query.add(["parameter","items", cndtn], [sem_int_item, sem_slope_item])
 
   }, familiars)
 
-  query.add(["parameter", "speaker_optimality"], [so_int, so_slope])
-  query.add(["parameter", "global_sem"], [sem_int_global, sem_slope_global])
-  query.add(["parameter", "global_sem_sigmas"], [item_int_sigma, item_slope_sigma])
+  query.add(["parameter","parameters","speaker_optimality"], [so_int, so_slope])
+  query.add(["parameter","parameters", "global_sem"], [sem_int_global, sem_slope_global])
+  query.add(["parameter","sigma", "global_sem_sigmas"], [item_int_sigma, item_slope_sigma])
   
   return query 
 }
@@ -233,13 +233,13 @@ sem_know_model<- webppl(
   data = list(data = me_model_data),
   data_var = "dataFromR",
   model_var = "model",
-  chains = 1,
-  cores = 1,
+  chains = 3,
+  cores = 3,
   inference_opts = list(method = "incrementalMH", 
-                        samples = 1, 
-                        burn = 1,
-                        verbose = T)#,
-                        #verboseLag = 500)
+                        samples = 2000, 
+                        burn = 1000,
+                        verbose = T,
+                        verboseLag = 500)
 )
 
 #saveRDS(sem_know_model, "../saves/sem_know_model.rds")
@@ -249,74 +249,88 @@ sem_know_model<- webppl(
 ```{r}
 
 model_pred <- sem_know_model %>%
-  separate(Parameter, into = c("type", "token"))%>%
+  separate(Parameter, into = c("type", "item","x"))%>%
   filter(type == "modelPrediction")%>%
   separate(value, into = c("age", "pred"),sep = ", ")%>%
   mutate(age = as.numeric(str_remove_all(age, "[(c]")),
-         pred = as.numeric(str_remove(pred, "[)]"))) %>%
-  rename(item = token)
+         pred = as.numeric(str_remove(pred, "[)]")))%>%
+  select(-x)
   
-params<- sem_know_model %>%
-  separate(Parameter, into = c("parameter", "type"), sep = ",")%>%
-  filter(parameter == "parameter")%>%
-  separate(value, into = c("slope", "int"),sep = ", ")%>%
-  mutate(slope = as.numeric(str_remove_all(slope, "[(c]")),
-         int = as.numeric(str_remove(int, "[)]")))%>%
+  
+item_params<- sem_know_model %>%
+  separate(Parameter, into = c("parameter", "type","item"), sep = ",")%>%
+  filter(parameter == "parameter", type == "items")%>%
+  separate(value, into = c("int", "slope"),sep = ", ")%>%
+  mutate(int = as.numeric(str_remove_all(int, "[(c]")),
+         slope = as.numeric(str_remove(slope, "[)]")))%>%
   gather(parameter, value, int, slope)
 
 
-sem_know_params <- params %>%
-  filter(type != "speaker_optimality",
-         type != "global_sem",
-         type != "global_sem_sigmas")%>%
-  rename(item = type)%>%
+global_params <- sem_know_model %>%
+  separate(Parameter, into = c("parameter", "type","token"), sep = ",")%>%
+  filter(parameter == "parameter", type == "parameters")%>%
+    separate(value, into = c("int", "slope"),sep = ", ")%>%
+    mutate(int = as.numeric(str_remove_all(int, "[(c]")),
+         slope = as.numeric(str_remove(slope, "[)]")))%>%
+    gather(parameter, value, int, slope)
+
+
+
+global_sigma<- sem_know_model %>%
+  separate(Parameter, into = c("parameter", "type","token"), sep = ",")%>%
+  filter(parameter == "parameter", type == "sigma")%>%
+    separate(value, into = c("sigma_int", "sigma_slope"),sep = ", ")%>%
+    mutate(sigma_int = as.numeric(str_remove_all(sigma_int, "[(c]")),
+         sigma_slope = as.numeric(str_remove(sigma_slope, "[)]")))%>%
+    gather(parameter, value, sigma_int, sigma_slope)
+
+
+
+#### summaries
+
+model_pred_summary <- model_pred %>%
+  group_by(item,age)%>%
+  summarise(mode = estimate_mode(pred),
+            uci = hdi_upper(pred),
+            lci = hdi_lower(pred))
+
+item_params_summary <- item_params %>%
   group_by(item, parameter)%>%
   summarise(mode = estimate_mode(value),
             uci = hdi_upper(value),
             lci = hdi_lower(value))
 
 
-global_params <- params %>%
-  filter(type == "speaker_optimality" |
-         type == "global_sem")%>%
-  group_by(type, parameter)%>%
+global_params_summary <- global_params %>%
+  group_by(token, parameter)%>%
   summarise(mode = estimate_mode(value),
             uci = hdi_upper(value),
             lci = hdi_lower(value))
+  
+  
 
 ```
 
 ```{r}
-item_params <- params %>%
-  filter(type != "speaker_optimality",
-         type != "global_sem",
-         type != "global_sem_sigmas")
-
 ggplot(item_params, aes(x = value))+#, fill = factor(Chain)))+
   geom_density(alpha = 0.3)+
   xlab("Parameter")+
-  facet_grid(parameter~type, scales = 'free')+
+  facet_grid(parameter~item, scales = 'free')+
   theme_few()
 ```
 
 ```{r}
-param_params <- params %>%
-  filter(type == "speaker_optimality" |
-         type == "global_sem")
 
-ggplot(param_params, aes(x = value))+#, fill = factor(Chain)))+
+ggplot(global_params, aes(x = value))+#, fill = factor(Chain)))+
   geom_density(alpha = 0.3)+
   xlab("Parameter")+
-  facet_grid(parameter~type, scales = 'free')+
+  facet_grid(parameter~token, scales = 'free')+
   theme_few()
 ```
 
 
 ```{r}
-sigma_params <- params %>%
-  filter(type == "global_sem_sigmas")
-
-ggplot(sigma_params, aes(x = value))+#, fill = factor(Chain)))+
+ggplot(global_sigma, aes(x = value))+#, fill = factor(Chain)))+
   geom_density(alpha = 0.3)+
   xlab("Sigma")+
   facet_grid(~parameter, scales = 'free')+
@@ -328,18 +342,18 @@ ggplot(sigma_params, aes(x = value))+#, fill = factor(Chain)))+
 aoa_ratings_all <- read_xlsx(path = "../data/words_aoa_ratings.xlsx", sheet = 1)
 
 aoa_ratings <- aoa_ratings_all %>%
-  filter(Word %in% sem_know_params$item )%>%
+  filter(Word %in% item_params_summary$item )%>%
   mutate(mean_aoa = as.numeric(Rating.Mean),
          item = Word)%>%
   select(item,mean_aoa)
 
-plot_sem_know <- sem_know_params%>%
+plot_sem_know <- item_params_summary%>%
   select(-uci,-lci)%>%
   spread(parameter, -item) %>%
   left_join(expand.grid(
       age = unique(me_model_data$age),
       item = me_model_data$familiar), .) %>%
-  mutate(sem_know = plogis(intercept + slope * age)) %>%
+  mutate(sem_know = plogis(int + slope * age)) %>%
   left_join(aoa_ratings) %>%
   ungroup()%>%
   mutate(item = fct_reorder(factor(item), mean_aoa))
@@ -356,29 +370,29 @@ ggplot(plot_sem_know, aes(x = age+2, y= sem_know, col = item, group = item))+
 # inverse predictions
 
 ```{r}
-speak_opt_params <- speak_opt %>%
-  group_by(parameter)%>%
-  summarise(mode = estimate_mode(value),
-            uci = hdi_upper(value),
-            lci = hdi_lower(value))
-
-inv_model_data <- sem_know_model %>%
-  filter(Parameter != "speaker_optimality") %>%
-  mutate(Parameter = factor(Parameter)) %>%
-  separate(value, into = c("intercept", "slope"), 
-           sep = ", ") %>%
-  mutate(intercept = as.numeric(str_remove_all(intercept, "[(c]")),
-         slope = as.numeric(str_remove(slope, "[)]"))) %>%
-  rename(item = Parameter)%>%
-  group_by(item)%>%
-  summarise(sem_int = estimate_mode(intercept),
-            sem_slope = estimate_mode(slope))%>%
-  group_by(item)%>%
-  expand(sem_int,sem_slope,age = me_model_data$age)%>%
-  mutate(so_int = speak_opt_params%>%filter(parameter == "intercept")%>%pull(mode),
-         so_slope = speak_opt_params%>%filter(parameter == "slope")%>%pull(mode))%>%
-  mutate(speaker_optimality = so_int + so_slope * age,
-         semantic_knowledge = plogis(sem_int + sem_slope * age))
+# speak_opt_params <- speak_opt %>%
+#   group_by(parameter)%>%
+#   summarise(mode = estimate_mode(value),
+#             uci = hdi_upper(value),
+#             lci = hdi_lower(value))
+# 
+# inv_model_data <- sem_know_model %>%
+#   filter(Parameter != "speaker_optimality") %>%
+#   mutate(Parameter = factor(Parameter)) %>%
+#   separate(value, into = c("intercept", "slope"), 
+#            sep = ", ") %>%
+#   mutate(intercept = as.numeric(str_remove_all(intercept, "[(c]")),
+#          slope = as.numeric(str_remove(slope, "[)]"))) %>%
+#   rename(item = Parameter)%>%
+#   group_by(item)%>%
+#   summarise(sem_int = estimate_mode(intercept),
+#             sem_slope = estimate_mode(slope))%>%
+#   group_by(item)%>%
+#   expand(sem_int,sem_slope,age = me_model_data$age)%>%
+#   mutate(so_int = speak_opt_params%>%filter(parameter == "intercept")%>%pull(mode),
+#          so_slope = speak_opt_params%>%filter(parameter == "slope")%>%pull(mode))%>%
+#   mutate(speaker_optimality = so_int + so_slope * age,
+#          semantic_knowledge = plogis(sem_int + sem_slope * age))
 
 
 ```
@@ -406,25 +420,32 @@ output
 
 
 ```{r predictions pragmatic model ex 3 adults}
-inv_model_pred<- webppl(
-  program_code = paste(rsaUtils, rsaModel, invPred , sep='\n'),
-  data =list(data = inv_model_data),
-  data_var = "dataFromR"
-)
+# inv_model_pred<- webppl(
+#   program_code = paste(rsaUtils, rsaModel, invPred , sep='\n'),
+#   data =list(data = inv_model_data),
+#   data_var = "dataFromR"
+# )
+# 
+# #saveRDS(inv_model_pred, "../saves/inv_model_pred.rds")
+# #inv_model_pred <- readRDS("../saves/inv_model_pred.rds")
+# 
+# inv_predictions <- inv_model_pred %>%
+#   separate(`0`, into = c("item", "age"), sep="/")%>%
+#   mutate(age = as.numeric(age))%>%
+#   rename( me_effect = `1`)%>%
+#   left_join(aoa_ratings)%>%
+#   ungroup()%>%
+#   mutate(item = fct_reorder(factor(item), mean_aoa), 
+#          age = age + min(me_data$age_num))
+```
 
-#saveRDS(inv_model_pred, "../saves/inv_model_pred.rds")
-#inv_model_pred <- readRDS("../saves/inv_model_pred.rds")
-
-inv_predictions <- inv_model_pred %>%
-  separate(`0`, into = c("item", "age"), sep="/")%>%
-  mutate(age = as.numeric(age))%>%
-  rename( me_effect = `1`)%>%
-  left_join(aoa_ratings)%>%
+```{r}
+plot_model_pred <- model_pred_summary%>%
+  left_join(aoa_ratings) %>%
   ungroup()%>%
-  mutate(item = fct_reorder(factor(item), mean_aoa), 
-         age = age + min(me_data$age_num))
+  mutate(item = fct_reorder(factor(item), mean_aoa))
 
-inv_model_plot <- ggplot(model_pred, aes(x=age+2,y = pred, col = item))+
+ggplot(plot_model_pred, aes(x=age+2,y = mode, col = item))+
   geom_hline(yintercept = 0.5, lty=2)+
   geom_line(size = 1)+
   ggtitle("Inverse Model Predictions")+
@@ -435,7 +456,6 @@ inv_model_plot <- ggplot(model_pred, aes(x=age+2,y = pred, col = item))+
   guides(alpha = F)+ 
   scale_colour_viridis_d()
 
-inv_model_plot
 ```
 
 
