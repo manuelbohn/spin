@@ -1,11 +1,10 @@
 ---
-title: "SPIN Novelty"
-author: "Manuel Bohn"
+title: "SPIN Novelty Data"
 output: html_document
 ---
 
 ```{r setup, include= FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = FALSE, message = F, warning = F)
 ###
 library(tidyverse)
 library(knitr)
@@ -40,9 +39,11 @@ d_raw <-raw_data %>%
          subid = ifelse(subid =="190422_6_nov,","190422_6_nov",subid),
          subage = ifelse(subid =="190422_2_nov","4",subage))
 
+
 log <- read_excel("../../SPIN-subject_log.xlsx", 1)%>%
   filter(Condition == "nov")%>%
   mutate(dob = as.character(dob),
+         dob = ifelse(subid =="190502_9_nov","2016-10-08",dob),
          dob = as.Date(dob))%>%
   select(subid,experimenter,keep_drop,sex,dob)
 
@@ -93,6 +94,7 @@ d_mcc <- left_join(d_raw_mcc,log_mcc, by = "subid")%>%
          leftObject = leftFruit,
          rightObject = rightFruit, 
          pick = str_sub(pick,72,str_length(pick)-4),
+         agent = ifelse(speakerChange == "false", agent,altAgent),
          experiment = "dis_novelty_mcc")%>%
   filter(speakerChange == "false", trial != "train")%>%
   select(-speakerChange,-altAgent,-leftFruit,-rightFruit)
@@ -102,17 +104,35 @@ d_mcc <- left_join(d_raw_mcc,log_mcc, by = "subid")%>%
 
 d <- bind_rows(d_spin, d_mcc)
 
+write_csv(d, "../data/child_novelty.csv")
+
 ```
 
-```{r sanity checks, echo = FALSE,warning = FALSE, message = FALSE}
+Main question: Do SPIN and MCC datasets differ?
+
+# Participants
+
+* dis_novelty_mcc = same speaker condition from MCC data collection
+* n = number of subjects
+* data_points = number of data points across subjects 
+
+```{r sanity checks, echo = FALSE, warning = FALSE, message = FALSE}
+
+d <- read_csv("../data/child_novelty.csv")%>%
+  mutate(subage = factor(subage))
 
 ## sanity checks
 d %>%
   group_by(experiment,subage) %>%
   summarise(n = length(unique(subid)),
-            data_points = n())
+            data_points = n())%>%
+  kable()
 
 ```
+
+# Plots
+
+## Plot by age bin
 
 ```{r}
 p1 <- d %>%
@@ -135,17 +155,16 @@ ggplot() +
 
 ```
 
-
-## Plot with age as continuous variable
+## Plot by age continuous
 
 ```{r plot by numerical age}
 p5 <- d %>%
-  group_by(age_num, subid) %>%
+  group_by(age_num,experiment, subid) %>%
   summarise(correct = mean(correct)) 
 
-ggplot(data = p5, aes(x = age_num, y = correct)) +
+ggplot(data = p5, aes(x = age_num, y = correct, col = experiment)) +
   geom_smooth(data = d, aes(x = age_num, y = correct),method = "glm", method.args = list(family = "binomial"), se = T, alpha = .3)+
-  geom_jitter( alpha = .5, height = 0.04)+
+  geom_jitter( alpha = .5, height = 0.01)+
   geom_hline(yintercept = 0.5, lty=2)+
   labs(x="Age",y="Proportion novel item chosen")+
   theme_few() +
@@ -155,41 +174,104 @@ ggplot(data = p5, aes(x = age_num, y = correct)) +
   scale_colour_solarized()
 ```
 
-## GLMM
+# GLMM
 
-```{r}
-## model
-library(brms)
+## Models
+
+1. bm_full_1: correct ~ age_num * experiment + (1 | subid) + (age_num * experiment | agent)
+
+2. bm_full_2: correct ~ age_num * experiment + (1 | subid) + (age_num | agent)
+
+3. bm_null_1: correct ~ age_num + (1 | subid) + (age_num * experiment | agent)
+
+4. bm_null_2: correct ~ age_num + (1 | subid) + (age_num | agent)
+
+* experiment = SPIN or MCC
+* subid = subject id 
+* agent = animal making the request (item effect)
+* age_num = age (numeric)
+
+```{r, include = F, cache = T}
 
 model_data <- d%>%
   mutate(age_num = scale(age_num, center = TRUE, scale = TRUE))
 
-# maximal converging model
-bm_full <- brm(correct ~ age_num * experiment + (1 | subid) + (age_num * experiment | agent), 
+
+bm_full_1 <- brm(correct ~ age_num * experiment + (1 | subid) + (age_num * experiment | agent), 
           data = model_data, family = bernoulli(),
           control = list(adapt_delta = 0.95),
           sample_prior = F,
           save_all_pars = TRUE,
           iter = 2000)
 
-summary(bm_full)
+bm_full_2 <- brm(correct ~ age_num * experiment + (1 | subid) + (age_num | agent), 
+          data = model_data, family = bernoulli(),
+          control = list(adapt_delta = 0.95),
+          sample_prior = F,
+          save_all_pars = TRUE,
+          iter = 2000)
 
-bm_null <- brm(correct ~ age_num + (1 | subid) + (age_num * experiment | agent), 
+bm_null_1 <- brm(correct ~ age_num + (1 | subid) + (age_num * experiment | agent), 
           data = model_data, family = bernoulli(),
           control = list(adapt_delta = 0.99),
           sample_prior = F,
           save_all_pars = TRUE,
           iter = 2000)
 
-summary(bm_null)
+bm_null_2 <- brm(correct ~ age_num + (1 | subid) + (age_num | agent), 
+          data = model_data, family = bernoulli(),
+          control = list(adapt_delta = 0.99),
+          sample_prior = F,
+          save_all_pars = TRUE,
+          iter = 2000)
 
 
+waic <- brms::waic(bm_full_1, bm_full_2,bm_null_1,bm_null_2, compare = F)
 
-bayes_factor(bm_full, bm_null, log = F, maxiter = 5000)
+weights <- model_weights(bm_full_1, bm_full_2,bm_null_1,bm_null_2, weights = "waic")
 
+bf_full_2_null_1 <- brms::bayes_factor(bm_full_2, bm_null_1, log = F, maxiter = 5000)
+bf_full_2_full_1 <- brms::bayes_factor(bm_full_2, bm_full_1, log = F, maxiter = 5000)
+bf_full_2_null_2 <- brms::bayes_factor(bm_full_2, bm_null_2, log = F, maxiter = 5000)
 ```
 
+## Model comparison
 
+* BF_full_2 = Bayes Factor compared to bm_full_2, the "winning" model in the model comparison.
+
+```{r}
+data_frame(
+  model = c("bm_full_1","bm_full_2","bm_null_1","bm_null_2"),
+  WAIC = c(waic$loo$bm_full_1$estimates[3,1],
+           waic$loo$bm_full_2$estimates[3,1],
+           waic$loo$bm_null_1$estimates[3,1],
+           waic$loo$bm_null_2$estimates[3,1]),
+  SE = c(waic$loo$bm_full_1$estimates[3,2],
+           waic$loo$bm_full_2$estimates[3,2],
+           waic$loo$bm_null_1$estimates[3,2],
+           waic$loo$bm_null_2$estimates[3,2]),
+  waic_weight = c(weights[1],weights[2],weights[3],weights[4]),
+  BF_full_2 = c(round(bf_full_2_full_1$bf,0),"-",round(bf_full_2_null_1$bf,0),round(bf_full_2_null_2$bf,0)))%>%
+  mutate_if(is.numeric, round, 2)%>%
+  kable()
+```
+
+Models with experiment as predictor provide better fit. This suggests that we should not combine the two datasets.
+
+## Summary for "winning" model
+
+```{r}
+fixef(bm_full_2)%>%
+  kable(digits = 2)
+```
+
+Estimate for interaction is relaibly different from 0, suggesting again that data sets are not the same. 
+
+## Estiamte plots for "winning" model 
+
+```{r}
+plot(bm_full_2)
+```
 
 
 

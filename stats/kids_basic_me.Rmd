@@ -66,7 +66,7 @@ d <- left_join(d_raw,log, by = "subid")%>%
   mutate(age_num = lubridate::time_length(difftime(test_date,dob), "years"),
          check_age = ifelse(substr(age_num,1,1) == subage, T, F))
 
-#write_csv(d, "../data/child_basic_me.csv")
+write_csv(d, "../data/child_basic_me.csv")
 ```
 
 ```{r}
@@ -302,7 +302,7 @@ data_frame(
   WAIC = c(child_waic$model$estimates[3,1],child_waic$reduced_model$estimates[3,1]),
   SE = c(child_waic$model$estimates[3,2],child_waic$reduced_model$estimates[3,2]),
   weight = c(child_weights[1],child_weights[2]),
-  BF10 = c(round(bf_full_null$bf,2),"-"))%>%
+  BF10 = c(round(bf_full_null$bf,0),"-"))%>%
   mutate_if(is.numeric, round, 2)
 ```
 
