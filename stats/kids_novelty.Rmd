@@ -174,9 +174,26 @@ ggplot(data = p5, aes(x = age_num, y = correct, col = experiment)) +
   scale_colour_solarized()
 ```
 
-# GLMM
+# SPIN GLMM
 
-## Models
+```{r}
+spin_model_data <- d_spin%>%
+  mutate(age_num = age_num-min(age_num))
+
+spin_bm <- brm(correct ~ age_num + (1 | subid) + (age_num | agent), 
+          data = spin_model_data, family = bernoulli(),
+          control = list(adapt_delta = 0.95),
+          sample_prior = F,
+          save_all_pars = TRUE,
+          iter = 2000)
+
+summary(spin_bm)
+```
+
+
+# Comparison with MCC Data
+
+## Model 
 
 1. bm_full_1: correct ~ age_num * experiment + (1 | subid) + (age_num * experiment | agent)
 
@@ -272,6 +289,7 @@ Estimate for interaction is relaibly different from 0, suggesting again that dat
 ```{r}
 plot(bm_full_2)
 ```
+
 
 
 

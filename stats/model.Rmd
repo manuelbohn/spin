@@ -1,6 +1,5 @@
 ---
 title: "Model"
-author: "M. Bohn"
 output: html_document
 ---
 
@@ -171,7 +170,7 @@ var model  = function(){
 
   var globalLineParameters = {
     intercept: uniformDrift({a: -3, b: 3, width: 1}),
-    slope: uniformDrift({a: -3, b: 3, width: 1})
+    slope: uniformDrift({a: 0, b: 3, width: 1})
   }
 
   var itemVariability = {
@@ -181,7 +180,7 @@ var model  = function(){
 
   // conceptually it might not make sense to have two sigmas, but maybe it does
   // intercept sigma probably will be smaller than slope sigma
-  var item_int_sigma = uniformDrift({a: 0, b: 5, width: 0.2})
+  // var item_int_sigma = uniformDrift({a: 0, b: 3, width: 0.2})
   
   foreach(function(cndtn){
 
@@ -217,7 +216,7 @@ var model  = function(){
       
       observe(modelPredictions, row.correct)
       
-      query.add(["modelPrediction", cndtn, age], [age, Math.exp(modelPredictions.score(1))])
+      // query.add(["modelPrediction", cndtn, age], [age, Math.exp(modelPredictions.score(1))])
 
     }, conditionData)
     
@@ -248,17 +247,23 @@ sem_know_model<- webppl(
   data = list(data = me_model_data),
   data_var = "dataFromR",
   model_var = "model",
-  chains = 3,
-  cores = 3,
+  chains = 4,
+  cores = 4,
   inference_opts = list(method = "incrementalMH", 
                         samples = 2000, 
                         burn = 1000,
                         verbose = T,
-                        verboseLag = 500)
+                        #lag = 1,
+                        verboseLag = 1000)
 )
 
-#saveRDS(sem_know_model, "../saves/sem_know_model.rds")
+saveRDS(sem_know_model, "../saves/sem_know_model.rds")
 sem_know_model <- readRDS("../saves/sem_know_model.rds")
+
+
+sem_know_model <- sem_know_model %>%
+  filter(Chain != 3)
+  
 ```
 
 ```{r}
@@ -327,7 +332,7 @@ global_params_summary <- global_params %>%
 ```
 
 ```{r}
-ggplot(item_params, aes(x = value))+#, fill = factor(Chain)))+
+ggplot(item_params, aes(x = value, fill = factor(Chain)))+
   geom_density(alpha = 0.3)+
   xlab("Parameter")+
   facet_grid(parameter~item, scales = 'free')+
@@ -336,7 +341,7 @@ ggplot(item_params, aes(x = value))+#, fill = factor(Chain)))+
 
 ```{r}
 
-ggplot(global_params, aes(x = value))#, fill = factor(Chain)))+
+ggplot(global_params, aes(x = value, fill = factor(Chain)))+
   geom_density(alpha = 0.3)+
   xlab("Parameter")+
   facet_grid(parameter~token, scales = 'free')+
@@ -345,7 +350,7 @@ ggplot(global_params, aes(x = value))#, fill = factor(Chain)))+
 
 
 ```{r}
-ggplot(global_sigma, aes(x = value))+#, fill = factor(Chain)))+
+ggplot(global_sigma, aes(x = value, fill = factor(Chain)))+
   geom_density(alpha = 0.3)+
   xlab("Sigma")+
   facet_grid(~parameter, scales = 'free')+
@@ -391,24 +396,15 @@ ggplot(plot_sem_know, aes(x = age+2, y= sem_know, col = item, group = item))+
 #             uci = hdi_upper(value),
 #             lci = hdi_lower(value))
 # 
-# inv_model_data <- sem_know_model %>%
-#   filter(Parameter != "speaker_optimality") %>%
-#   mutate(Parameter = factor(Parameter)) %>%
-#   separate(value, into = c("intercept", "slope"), 
-#            sep = ", ") %>%
-#   mutate(intercept = as.numeric(str_remove_all(intercept, "[(c]")),
-#          slope = as.numeric(str_remove(slope, "[)]"))) %>%
-#   rename(item = Parameter)%>%
-#   group_by(item)%>%
-#   summarise(sem_int = estimate_mode(intercept),
-#             sem_slope = estimate_mode(slope))%>%
-#   group_by(item)%>%
-#   expand(sem_int,sem_slope,age = me_model_data$age)%>%
-#   mutate(so_int = speak_opt_params%>%filter(parameter == "intercept")%>%pull(mode),
-#          so_slope = speak_opt_params%>%filter(parameter == "slope")%>%pull(mode))%>%
-#   mutate(speaker_optimality = so_int + so_slope * age,
-#          semantic_knowledge = plogis(sem_int + sem_slope * age))
 
+inv_model_data <- item_params_summary%>%
+  select(-uci,-lci)%>%
+  spread(parameter, mode)%>%
+  expand(item, int,slope,age = unique(me_model_data$age- min(me_model_data$age)))%>%
+  mutate(so_int = global_params_summary%>%filter(token == "speaker_optimality", parameter == "int")%>%pull(mode),
+         so_slope = global_params_summary%>%filter(token == "speaker_optimality", parameter == "slope")%>%pull(mode))%>%
+  mutate(speaker_optimality = so_int + so_slope * age,
+         semantic_knowledge = plogis(int + slope * age))
 
 ```
 
@@ -435,23 +431,23 @@ output
 
 
 ```{r predictions pragmatic model ex 3 adults}
-# inv_model_pred<- webppl(
-#   program_code = paste(rsaUtils, rsaModel, invPred , sep='\n'),
-#   data =list(data = inv_model_data),
-#   data_var = "dataFromR"
-# )
+inv_model_pred<- webppl(
+  program_code = paste(rsaUtils, rsaModel, invPred , sep='\n'),
+  data =list(data = inv_model_data),
+  data_var = "dataFromR"
+)
 # 
 # #saveRDS(inv_model_pred, "../saves/inv_model_pred.rds")
 # #inv_model_pred <- readRDS("../saves/inv_model_pred.rds")
 # 
-# inv_predictions <- inv_model_pred %>%
-#   separate(`0`, into = c("item", "age"), sep="/")%>%
-#   mutate(age = as.numeric(age))%>%
-#   rename( me_effect = `1`)%>%
-#   left_join(aoa_ratings)%>%
-#   ungroup()%>%
-#   mutate(item = fct_reorder(factor(item), mean_aoa), 
-#          age = age + min(me_data$age_num))
+inv_predictions <- inv_model_pred %>%
+  separate(`0`, into = c("item", "age"), sep="/")%>%
+  mutate(age = as.numeric(age))%>%
+  rename( me_effect = `1`)%>%
+  left_join(aoa_ratings)%>%
+  ungroup()%>%
+  mutate(item = fct_reorder(factor(item), mean_aoa),
+         age = age + min(me_data$age_num))
 ```
 
 ```{r}
@@ -460,7 +456,7 @@ plot_model_pred <- model_pred_summary%>%
   ungroup()%>%
   mutate(item = fct_reorder(factor(item), mean_aoa))
 
-ggplot(plot_model_pred, aes(x=age+2,y = mode, col = item))+
+ggplot(inv_predictions, aes(x=age,y = me_effect, col = item))+
   geom_hline(yintercept = 0.5, lty=2)+
   geom_line(size = 1)+
   ggtitle("Inverse Model Predictions")+
@@ -546,6 +542,8 @@ data_plot <- ggplot(data = p2, aes(x = age_num, y = correct, col = familiar, fil
   guides(alpha = F)+ 
   scale_colour_viridis_d(name = "familiar object")+
   scale_fill_viridis_d(name = "familiar object")
+
+
 data_plot
 ```
 
