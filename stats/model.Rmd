@@ -165,7 +165,7 @@ var model  = function(){
 
   var speakerOptimalityParameters = {
     intercept: uniformDrift({a: -2, b: 2, width: 0.5}),
-    slope: uniformDrift({a: -2, b: 2, width: 0.5})
+    slope: uniformDrift({a: 0, b: 2, width: 0.5})
   }
 
   var globalLineParameters = {
@@ -247,17 +247,17 @@ sem_know_model<- webppl(
   data = list(data = me_model_data),
   data_var = "dataFromR",
   model_var = "model",
-  chains = 4,
-  cores = 4,
+  chains = 3,
+  cores = 3,
   inference_opts = list(method = "incrementalMH", 
-                        samples = 2000, 
-                        burn = 1000,
+                        samples = 6000, 
+                        burn = 2000,
                         verbose = T,
-                        #lag = 1,
+                        lag = 1,
                         verboseLag = 1000)
 )
 
-saveRDS(sem_know_model, "../saves/sem_know_model.rds")
+#saveRDS(sem_know_model, "../saves/sem_know_model.rds")
 sem_know_model <- readRDS("../saves/sem_know_model.rds")
 
 
@@ -268,13 +268,13 @@ sem_know_model <- sem_know_model %>%
 
 ```{r}
 
-model_pred <- sem_know_model %>%
-  separate(Parameter, into = c("type", "item","x"))%>%
-  filter(type == "modelPrediction")%>%
-  separate(value, into = c("age", "pred"),sep = ", ")%>%
-  mutate(age = as.numeric(str_remove_all(age, "[(c]")),
-         pred = as.numeric(str_remove(pred, "[)]")))%>%
-  select(-x)
+# model_pred <- sem_know_model %>%
+#   separate(Parameter, into = c("type", "item","x"))%>%
+#   filter(type == "modelPrediction")%>%
+#   separate(value, into = c("age", "pred"),sep = ", ")%>%
+#   mutate(age = as.numeric(str_remove_all(age, "[(c]")),
+#          pred = as.numeric(str_remove(pred, "[)]")))%>%
+#   select(-x)
   
   
 item_params<- sem_know_model %>%
@@ -308,11 +308,11 @@ global_sigma<- sem_know_model %>%
 
 #### summaries
 
-model_pred_summary <- model_pred %>%
-  group_by(item,age)%>%
-  summarise(mode = estimate_mode(pred),
-            uci = hdi_upper(pred),
-            lci = hdi_lower(pred))
+# model_pred_summary <- model_pred %>%
+#   group_by(item,age)%>%
+#   summarise(mode = estimate_mode(pred),
+#             uci = hdi_upper(pred),
+#             lci = hdi_lower(pred))
 
 item_params_summary <- item_params %>%
   group_by(item, parameter)%>%
@@ -451,12 +451,12 @@ inv_predictions <- inv_model_pred %>%
 ```
 
 ```{r}
-plot_model_pred <- model_pred_summary%>%
-  left_join(aoa_ratings) %>%
-  ungroup()%>%
-  mutate(item = fct_reorder(factor(item), mean_aoa))
+# plot_model_pred <- model_pred_summary%>%
+#   left_join(aoa_ratings) %>%
+#   ungroup()%>%
+#   mutate(item = fct_reorder(factor(item), mean_aoa))
 
-ggplot(inv_predictions, aes(x=age,y = me_effect, col = item))+
+model_plot <- ggplot(inv_predictions, aes(x=age,y = me_effect, col = item))+
   geom_hline(yintercept = 0.5, lty=2)+
   geom_line(size = 1)+
   ggtitle("Inverse Model Predictions")+
@@ -467,6 +467,34 @@ ggplot(inv_predictions, aes(x=age,y = me_effect, col = item))+
   guides(alpha = F)+ 
   scale_colour_viridis_d()
 
+```
+
+```{r}
+p2 <- read_csv("../data/child_basic_me.csv")%>%
+  filter(trial != "train1",
+         trial != "train2")%>%
+  mutate(item = familiar)%>%
+    left_join(aoa_ratings)%>%
+  ungroup()%>%
+  mutate(familiar = fct_reorder(factor(item), mean_aoa))
+
+data_plot <- ggplot(data = p2, aes(x = age_num, y = correct, col = familiar, fill = familiar)) +
+  geom_hline(yintercept = 0.5, lty=2)+
+  geom_jitter(width = 0, height = 0.05, alpha = .6)+
+  geom_smooth(method = "loess", se = F, alpha = .5, span = 2)+
+  labs(x="Age",y="Mutual Exclusivity effect")+
+  #facet_grid(~familiar)+
+  ggtitle("Data")+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F)+ 
+  scale_colour_viridis_d(name = "familiar object")+
+  scale_fill_viridis_d(name = "familiar object")
+
+```
+```{r}
+ggarrange(data_plot,model_plot, common.legend = T, legend = "right", nrow = 1, ncol = 2)
 ```
 
 
@@ -521,34 +549,7 @@ model_plot <- ggplot(age_me_effect, aes(x=age,y = me_effect, col = item))+
   scale_colour_viridis_d(name = "familiar object")
 
 
-p2 <- read_csv("../data/child_basic_me.csv")%>%
-  filter(trial != "train1",
-         trial != "train2")%>%
-  mutate(item = familiar)%>%
-    left_join(aoa_ratings)%>%
-  ungroup()%>%
-  mutate(familiar = fct_reorder(factor(item), mean_aoa))
 
-data_plot <- ggplot(data = p2, aes(x = age_num, y = correct, col = familiar, fill = familiar)) +
-  geom_hline(yintercept = 0.5, lty=2)+
-  geom_jitter(width = 0, height = 0.05, alpha = .6)+
-  geom_smooth(method = "loess", se = F, alpha = .5, span = 2)+
-  labs(x="Age",y="Mutual Exclusivity effect")+
-  #facet_grid(~familiar)+
-  ggtitle("Data")+
-  theme_few() +
-  ylim(-0.05,1.05)+
-  xlim(2,5)+
-  guides(alpha = F)+ 
-  scale_colour_viridis_d(name = "familiar object")+
-  scale_fill_viridis_d(name = "familiar object")
-
-
-data_plot
-```
-
-```{r}
-ggarrange(data_plot,inv_model_plot,model_plot, common.legend = T, legend = "right", nrow = 1, ncol = 3)
 ```
 
 #### WORK IN PROGRESS: nesting within participant
