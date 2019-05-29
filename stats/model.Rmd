@@ -247,10 +247,10 @@ sem_know_model<- webppl(
   data = list(data = me_model_data),
   data_var = "dataFromR",
   model_var = "model",
-  chains = 3,
-  cores = 3,
+  chains = 8,
+  cores = 8,
   inference_opts = list(method = "incrementalMH", 
-                        samples = 6000, 
+                        samples = 4000, 
                         burn = 2000,
                         verbose = T,
                         lag = 1,
@@ -259,7 +259,6 @@ sem_know_model<- webppl(
 
 #saveRDS(sem_know_model, "../saves/sem_know_model.rds")
 sem_know_model <- readRDS("../saves/sem_know_model.rds")
-  
 ```
 
 ```{r}
@@ -271,8 +270,8 @@ sem_know_model <- readRDS("../saves/sem_know_model.rds")
 #   mutate(age = as.numeric(str_remove_all(age, "[(c]")),
 #          pred = as.numeric(str_remove(pred, "[)]")))%>%
 #   select(-x)
-  
-  
+
+
 item_params<- sem_know_model %>%
   separate(Parameter, into = c("parameter", "type","item"), sep = ",")%>%
   filter(parameter == "parameter", type == "items")%>%
@@ -549,7 +548,7 @@ glmm_plot <- ggplot(age_me_effect, aes(x=age,y = me_effect, col = item))+
 
 
 ```{r}
-ggarrange(data_plot,model_plot,glmm_plot, common.legend = T, legend = "right", nrow = 1, ncol = 2)
+ggarrange(data_plot,model_plot,glmm_plot, common.legend = T, legend = "right", nrow = 1, ncol = 3)
 ```
 
 ## Model predictions for combination
@@ -560,12 +559,16 @@ ggarrange(data_plot,model_plot,glmm_plot, common.legend = T, legend = "right", n
 novel_data <- read_csv("../data/child_spin_novelty.csv")%>%
   mutate(age_num = age_num-min(age_num))
 
-novel_bm <- brm(correct ~ age_num + (1 | subid) + (age_num | agent), 
-          data = novel_data, family = bernoulli(),
-          control = list(adapt_delta = 0.95),
-          sample_prior = F,
-          save_all_pars = F,
-          iter = 10000)
+# novel_bm <- brm(correct ~ age_num + (1 | subid) + (age_num | agent), 
+#           data = novel_data, family = bernoulli(),
+#           control = list(adapt_delta = 0.95),
+#           sample_prior = F,
+#           save_all_pars = F,
+#           iter = 10000)
+# 
+# saveRDS(novel_bm, "../saves/novelty_model.rds")
+
+novel_bm <- readRDS("../saves/novelty_model.rds")
 
 summary(novel_bm)
 
