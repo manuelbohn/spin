@@ -258,7 +258,11 @@ sem_know_model<- webppl(
 )
 
 #saveRDS(sem_know_model, "../saves/sem_know_model.rds")
+
+# 3 chains, 6000 iterations per chain, 2000 burn in, lag = 1
 sem_know_model <- readRDS("../saves/sem_know_model.rds")
+# 8 chains, 4000 iterations per chain, 2000 burn in, lag = 1
+sem_know_model <- readRDS("../saves/sem_know_model_2.rds")
 ```
 
 ```{r}
