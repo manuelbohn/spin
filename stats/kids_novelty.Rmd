@@ -104,8 +104,8 @@ d_mcc <- left_join(d_raw_mcc,log_mcc, by = "subid")%>%
 
 d <- bind_rows(d_spin, d_mcc)
 
+write_csv(d_spin, "../data/child_spin_novelty.csv")
 write_csv(d, "../data/child_novelty.csv")
-
 ```
 
 Main question: Do SPIN and MCC datasets differ?
@@ -117,6 +117,7 @@ Main question: Do SPIN and MCC datasets differ?
 * data_points = number of data points across subjects 
 
 ```{r sanity checks, echo = FALSE, warning = FALSE, message = FALSE}
+
 
 d <- read_csv("../data/child_novelty.csv")%>%
   mutate(subage = factor(subage))

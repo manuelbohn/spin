@@ -259,10 +259,6 @@ sem_know_model<- webppl(
 
 #saveRDS(sem_know_model, "../saves/sem_know_model.rds")
 sem_know_model <- readRDS("../saves/sem_know_model.rds")
-
-
-sem_know_model <- sem_know_model %>%
-  filter(Chain != 3)
   
 ```
 
@@ -387,7 +383,7 @@ ggplot(plot_sem_know, aes(x = age+2, y= sem_know, col = item, group = item))+
   scale_colour_viridis_d(name = "familiar object")
 ```
 
-# inverse predictions
+# Inverse predictions
 
 ```{r}
 # speak_opt_params <- speak_opt %>%
@@ -497,7 +493,6 @@ data_plot <- ggplot(data = p2, aes(x = age_num, y = correct, col = familiar, fil
 ggarrange(data_plot,model_plot, common.legend = T, legend = "right", nrow = 1, ncol = 2)
 ```
 
-
 ## For comparison: GLMM for ME effect and data
 ```{r}
 me_data <- read_csv("../data/child_basic_me.csv")%>%
@@ -537,7 +532,7 @@ age_me_effect <- as_tibble(ranef$familiar, rownames = "familiar")%>%
   mutate(item = fct_reorder(factor(item), mean_aoa))
 
 
-model_plot <- ggplot(age_me_effect, aes(x=age,y = me_effect, col = item))+
+glmm_plot <- ggplot(age_me_effect, aes(x=age,y = me_effect, col = item))+
   geom_hline(yintercept = 0.5, lty=2)+
   geom_line(size = 1)+
   ggtitle("GLMM")+
@@ -551,6 +546,109 @@ model_plot <- ggplot(age_me_effect, aes(x=age,y = me_effect, col = item))+
 
 
 ```
+
+
+```{r}
+ggarrange(data_plot,model_plot,glmm_plot, common.legend = T, legend = "right", nrow = 1, ncol = 2)
+```
+
+## Model predictions for combination
+
+```{r}
+# novelty data
+
+novel_data <- read_csv("../data/child_spin_novelty.csv")%>%
+  mutate(age_num = age_num-min(age_num))
+
+novel_bm <- brm(correct ~ age_num + (1 | subid) + (age_num | agent), 
+          data = novel_data, family = bernoulli(),
+          control = list(adapt_delta = 0.95),
+          sample_prior = F,
+          save_all_pars = F,
+          iter = 10000)
+
+summary(novel_bm)
+
+novel_params <- as_tibble(fixef(novel_bm), rownames = "term")%>%
+  select(term,Estimate)%>%
+  spread(term, Estimate)
+
+comb_model_data_con <- inv_model_data %>%
+  mutate(nov_int = novel_params$Intercept,
+         nov_slope = novel_params$age_num,
+         prior = plogis(nov_int + age * nov_slope),
+         alignment = "congruent")
+
+  
+comb_model_data_incon <- inv_model_data %>%
+  mutate(nov_int = novel_params$Intercept,
+         nov_slope = novel_params$age_num,
+         prior = 1- plogis(nov_int + age * nov_slope),
+         alignment = "incongruent")
+
+
+comb_model_data <- bind_rows(
+  comb_model_data_con,
+  comb_model_data_incon)
+```
+
+```{r}
+combPred <- '
+var allData = dataFromR.data
+
+var output = map(function(row){
+
+    var prior = [row.prior, 1-row.prior]
+
+    var modelPredictions = pragmaticListener({label: "novel_word"}, prior, row.speaker_optimality,row.semantic_knowledge)
+
+    return extend([row.alignment + "/" +  row.item + "/" + row.age, Math.exp(modelPredictions.score(1))])
+
+}, allData)
+
+output
+
+
+'
+```
+
+
+```{r predictions pragmatic model ex 3 adults}
+comb_model_pred<- webppl(
+  program_code = paste(rsaUtils, rsaModel, combPred , sep='\n'),
+  data =list(data = comb_model_data),
+  data_var = "dataFromR"
+)
+# 
+# #saveRDS(inv_model_pred, "../saves/inv_model_pred.rds")
+# #inv_model_pred <- readRDS("../saves/inv_model_pred.rds")
+# 
+comb_model_predictions <- comb_model_pred %>%
+  separate(`0`, into = c("alignment","item", "age"), sep="/")%>%
+  mutate(age = as.numeric(age))%>%
+  rename( me_effect = `1`)%>%
+  left_join(aoa_ratings)%>%
+  ungroup()%>%
+  mutate(item = fct_reorder(factor(item), mean_aoa),
+         age = age + min(me_data$age_num))
+```
+
+
+
+```{r}
+ggplot(comb_model_predictions, aes(x=age,y = me_effect, col = item))+
+  geom_hline(yintercept = 0.5, lty=2)+
+  geom_line(size = 1)+
+  ggtitle("Combination Model Predictions")+
+  labs(x="Age",y="Proportion correct")+
+  facet_grid(~alignment)+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F)+ 
+  scale_colour_viridis_d()
+```
+
 
 #### WORK IN PROGRESS: nesting within participant
 
