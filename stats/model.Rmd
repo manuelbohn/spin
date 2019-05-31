@@ -389,6 +389,10 @@ ggplot(plot_sem_know, aes(x = age+2, y= sem_know, col = item, group = item))+
 ### Comparing sem knowledge parameters between model runs
 
 ```{r}
+me_model_data <- read_csv("../data/child_basic_me.csv")%>%
+    filter(trial != "train1",
+           trial != "train2")%>%
+  mutate(age = age_num - min(age_num))
 
 # 3 chains, 6000 iterations per chain, 2000 burn in, lag = 1
 sem_know_run_1 <- readRDS("../saves/sem_know_model.rds")%>%
