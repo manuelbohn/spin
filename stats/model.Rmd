@@ -418,7 +418,7 @@ sem_know_run_iteration <- bind_rows(
    sem_know_run_2)
 
 sem_know_run_summary <- sem_know_run_iteration%>%
-  group_by(run,item)%>%
+  group_by(run,Chain,item)%>%
   summarise(overall_int = estimate_mode(int),
             overall_slope = estimate_mode(slope))
 
@@ -432,14 +432,14 @@ run_comp <- sem_know_run %>%
       item = unique(me_model_data$familiar)), .) %>%
   mutate(sem_know_ci = plogis(int + slope * age),
          sem_know = plogis(overall_int + overall_slope * age)) %>%
-  group_by(run,item, age) %>%
+  group_by(run,Chain,item, age) %>%
   summarise(sem_know = estimate_mode(sem_know), 
             sem_know_uci = hdi_upper(sem_know_ci),
             sem_know_lci = hdi_lower(sem_know_ci))
 
-ggplot(run_comp, aes(x = age+2, y= sem_know, fill = run))+
-  geom_line(size = 1, aes(col = run))+
-  geom_ribbon(aes(ymin=sem_know_lci, ymax = sem_know_uci), alpha = .2)+
+ggplot(run_comp, aes(x = age+2, y= sem_know, fill = run, group = paste(run,Chain)))+
+  geom_line(size = .3, aes(col = run))+
+  geom_ribbon(aes(ymin=sem_know_lci, ymax = sem_know_uci), alpha = .1)+
   ylab("Semantic knowledge")+
   xlab("Age")+
   ylim(0,1)+
@@ -447,6 +447,8 @@ ggplot(run_comp, aes(x = age+2, y= sem_know, fill = run))+
   theme_few()+
   scale_colour_solarized()+
   scale_fill_solarized()
+
+ggsave("../graphs/model_by_chain_run.pdf", width = 10, height = 8)
 ```
 
 

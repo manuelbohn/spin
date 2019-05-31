@@ -7,3 +7,4 @@ stats/rsconnect/*
 stats/utils
 stats/kids_novelty_cache
 stats/kids_novelty_files
+/graphs
