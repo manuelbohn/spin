@@ -242,20 +242,20 @@ me_model_data <- read_csv("../data/child_basic_me.csv")%>%
            trial != "train2")%>%
   mutate(age = age_num - min(age_num))
 
-sem_know_model<- webppl(
-  program_code = paste(rsaUtils, rsaModel, semStr , sep='\n'),
-  data = list(data = me_model_data),
-  data_var = "dataFromR",
-  model_var = "model",
-  chains = 8,
-  cores = 8,
-  inference_opts = list(method = "incrementalMH", 
-                        samples = 4000, 
-                        burn = 2000,
-                        verbose = T,
-                        lag = 1,
-                        verboseLag = 1000)
-)
+# sem_know_model<- webppl(
+#   program_code = paste(rsaUtils, rsaModel, semStr , sep='\n'),
+#   data = list(data = me_model_data),
+#   data_var = "dataFromR",
+#   model_var = "model",
+#   chains = 8,
+#   cores = 8,
+#   inference_opts = list(method = "incrementalMH", 
+#                         samples = 4000, 
+#                         burn = 2000,
+#                         verbose = T,
+#                         lag = 1,
+#                         verboseLag = 1000)
+# )
 
 #saveRDS(sem_know_model, "../saves/sem_know_model.rds")
 
@@ -371,7 +371,7 @@ plot_sem_know <- item_params_summary%>%
   spread(parameter, -item) %>%
   left_join(expand.grid(
       age = unique(me_model_data$age),
-      item = me_model_data$familiar), .) %>%
+      item = unique(me_model_data$familiar)), .) %>%
   mutate(sem_know = plogis(int + slope * age)) %>%
   left_join(aoa_ratings) %>%
   ungroup()%>%
@@ -385,6 +385,66 @@ ggplot(plot_sem_know, aes(x = age+2, y= sem_know, col = item, group = item))+
   theme_few()+
   scale_colour_viridis_d(name = "familiar object")
 ```
+
+### Comparing sem knowledge parameters between model runs
+
+```{r}
+
+# 3 chains, 6000 iterations per chain, 2000 burn in, lag = 1
+sem_know_run_1 <- readRDS("../saves/sem_know_model.rds")%>%
+  separate(Parameter, into = c("parameter", "type","item"), sep = ",")%>%
+  filter(parameter == "parameter", type == "items")%>%
+  separate(value, into = c("int", "slope"),sep = ", ")%>%
+  mutate(int = as.numeric(str_remove_all(int, "[(c]")),
+         slope = as.numeric(str_remove(slope, "[)]")))%>%
+  mutate(run = "1")
+
+
+# 8 chains, 4000 iterations per chain, 2000 burn in, lag = 1
+sem_know_run_2 <- readRDS("../saves/sem_know_model_2.rds")%>%
+  separate(Parameter, into = c("parameter", "type","item"), sep = ",")%>%
+  filter(parameter == "parameter", type == "items")%>%
+  separate(value, into = c("int", "slope"),sep = ", ")%>%
+  mutate(int = as.numeric(str_remove_all(int, "[(c]")),
+         slope = as.numeric(str_remove(slope, "[)]")))%>%
+  mutate(run = "2")
+
+sem_know_run_iteration <- bind_rows(
+   sem_know_run_1,
+   sem_know_run_2)
+
+sem_know_run_summary <- sem_know_run_iteration%>%
+  group_by(run,item)%>%
+  summarise(overall_int = estimate_mode(int),
+            overall_slope = estimate_mode(slope))
+
+
+sem_know_run <- sem_know_run_iteration %>%
+  left_join(sem_know_run_summary)
+
+run_comp <- sem_know_run %>%
+  left_join(expand.grid(
+      age = unique(me_model_data$age),
+      item = unique(me_model_data$familiar)), .) %>%
+  mutate(sem_know_ci = plogis(int + slope * age),
+         sem_know = plogis(overall_int + overall_slope * age)) %>%
+  group_by(run,item, age) %>%
+  summarise(sem_know = estimate_mode(sem_know), 
+            sem_know_uci = hdi_upper(sem_know_ci),
+            sem_know_lci = hdi_lower(sem_know_ci))
+
+ggplot(run_comp, aes(x = age+2, y= sem_know, fill = run))+
+  geom_line(size = 1, aes(col = run))+
+  geom_ribbon(aes(ymin=sem_know_lci, ymax = sem_know_uci), alpha = .2)+
+  ylab("Semantic knowledge")+
+  xlab("Age")+
+  ylim(0,1)+
+  facet_wrap(~item)+
+  theme_few()+
+  scale_colour_solarized()+
+  scale_fill_solarized()
+```
+
 
 # Inverse predictions
 
