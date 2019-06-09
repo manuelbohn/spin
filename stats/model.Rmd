@@ -165,12 +165,12 @@ var model  = function(){
 
   var speakerOptimalityParameters = {
     intercept: uniformDrift({a: -2, b: 2, width: 0.5}),
-    slope: uniformDrift({a: 0, b: 2, width: 0.5})
+    slope: uniformDrift({a: 0, b: 1, width: 0.5})
   }
 
   var globalLineParameters = {
-    intercept: uniformDrift({a: -3, b: 3, width: 1}),
-    slope: uniformDrift({a: 0, b: 3, width: 1})
+    intercept: uniformDrift({a: -3, b: 3, width: 0.5}),
+    slope: uniformDrift({a: 0, b: 2, width: 0.5})
   }
 
   var itemVariability = {
@@ -242,20 +242,20 @@ me_model_data <- read_csv("../data/child_basic_me.csv")%>%
            trial != "train2")%>%
   mutate(age = age_num - min(age_num))
 
-# sem_know_model<- webppl(
-#   program_code = paste(rsaUtils, rsaModel, semStr , sep='\n'),
-#   data = list(data = me_model_data),
-#   data_var = "dataFromR",
-#   model_var = "model",
-#   chains = 8,
-#   cores = 8,
-#   inference_opts = list(method = "incrementalMH", 
-#                         samples = 4000, 
-#                         burn = 2000,
-#                         verbose = T,
-#                         lag = 1,
-#                         verboseLag = 1000)
-# )
+sem_know_model<- webppl(
+  program_code = paste(rsaUtils, rsaModel, semStr , sep='\n'),
+  data = list(data = me_model_data),
+  data_var = "dataFromR",
+  model_var = "model",
+  chains = 4,
+  cores = 4,
+  inference_opts = list(method = "incrementalMH",
+                        samples = 6000,
+                        burn = 2000,
+                        verbose = T,
+                        lag = 1,
+                        verboseLag = 1000)
+)
 
 #saveRDS(sem_know_model, "../saves/sem_know_model.rds")
 
@@ -263,6 +263,9 @@ me_model_data <- read_csv("../data/child_basic_me.csv")%>%
 sem_know_model <- readRDS("../saves/sem_know_model.rds")
 # 8 chains, 4000 iterations per chain, 2000 burn in, lag = 1
 sem_know_model <- readRDS("../saves/sem_know_model_2.rds")
+
+sem_know_model <- sem_know_model %>%
+  filter(Chain != "1")
 ```
 
 ```{r}
@@ -386,7 +389,9 @@ ggplot(plot_sem_know, aes(x = age+2, y= sem_know, col = item, group = item))+
   scale_colour_viridis_d(name = "familiar object")
 ```
 
-### Comparing sem knowledge parameters between model runs
+### Comparing parameters between model runs
+
+#### sem knowledge
 
 ```{r}
 me_model_data <- read_csv("../data/child_basic_me.csv")%>%
@@ -443,15 +448,75 @@ ggplot(run_comp, aes(x = age+2, y= sem_know, fill = run, group = paste(run,Chain
   ylab("Semantic knowledge")+
   xlab("Age")+
   ylim(0,1)+
-  facet_wrap(~item)+
+  facet_grid(item~run)+
   theme_few()+
   scale_colour_solarized()+
   scale_fill_solarized()
 
-ggsave("../graphs/model_by_chain_run.pdf", width = 10, height = 8)
+ggsave("../graphs/model_by_chain_run.pdf", width = 3, height = 12, scale = 1.5)
 ```
 
+#### speaker optimality
 
+```{r}
+me_model_data <- read_csv("../data/child_basic_me.csv")%>%
+    filter(trial != "train1",
+           trial != "train2")%>%
+  mutate(age = age_num - min(age_num))
+
+# 3 chains, 6000 iterations per chain, 2000 burn in, lag = 1
+so_run_1 <- readRDS("../saves/sem_know_model.rds")%>%
+  separate(Parameter, into = c("parameter", "type","token"), sep = ",")%>%
+  filter(parameter == "parameter", type == "parameters", token == "speaker_optimality")%>%
+  separate(value, into = c("int", "slope"),sep = ", ")%>%
+  mutate(int = as.numeric(str_remove_all(int, "[(c]")),
+         slope = as.numeric(str_remove(slope, "[)]")))%>%
+  mutate(run = "1")
+
+
+# 8 chains, 4000 iterations per chain, 2000 burn in, lag = 1
+so_run_2 <- readRDS("../saves/sem_know_model_2.rds")%>%
+  separate(Parameter, into = c("parameter", "type","token"), sep = ",")%>%
+  filter(parameter == "parameter", type == "parameters", token == "speaker_optimality")%>%
+  separate(value, into = c("int", "slope"),sep = ", ")%>%
+  mutate(int = as.numeric(str_remove_all(int, "[(c]")),
+         slope = as.numeric(str_remove(slope, "[)]")))%>%
+  mutate(run = "2")
+
+so_run_iteration <- bind_rows(
+   so_run_1,
+   so_run_2)
+
+so_run_summary <- so_run_iteration%>%
+  group_by(run,Chain)%>%
+  summarise(overall_int = estimate_mode(int),
+            overall_slope = estimate_mode(slope))
+
+so_run <- so_run_iteration %>%
+  left_join(so_run_summary)
+
+so_run_comp <-so_run%>%
+  group_by(run,Chain,Iteration)%>%
+  expand(int,slope,overall_int,overall_slope,age = unique(me_model_data$age))%>%
+  mutate(so_ci = int + slope * age,
+         so = overall_int + overall_slope * age) %>%
+  group_by(run,Chain, age) %>%
+  summarise(so = estimate_mode(so), 
+            so_uci = hdi_upper(so_ci),
+            so_lci = hdi_lower(so_ci))
+
+ggplot(so_run_comp, aes(x = age+2, y= so, fill = run, group = paste(run,Chain)))+
+  geom_line(size = .3, aes(col = run))+
+  geom_ribbon(aes(ymin=so_lci, ymax = so_uci), alpha = .1)+
+  ylab("speaker optimality")+
+  xlab("Age")+
+  facet_grid(~run)+
+  theme_few()+
+  scale_colour_solarized()+
+  scale_fill_solarized()
+
+ggsave("../graphs/model_by_chain_run.pdf", width = 3, height = 12, scale = 1.5)
+```
 # Inverse predictions
 
 ```{r}
