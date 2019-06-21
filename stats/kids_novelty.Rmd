@@ -159,12 +159,12 @@ ggplot() +
 ## Plot by age continuous
 
 ```{r plot by numerical age}
-p5 <- d %>%
+p5 <- d_spin %>%
   group_by(age_num,experiment, subid) %>%
   summarise(correct = mean(correct)) 
 
 ggplot(data = p5, aes(x = age_num, y = correct, col = experiment)) +
-  geom_smooth(data = d, aes(x = age_num, y = correct),method = "glm", method.args = list(family = "binomial"), se = T, alpha = .3)+
+  geom_smooth(data = d_spin, aes(x = age_num, y = correct),method = "glm", method.args = list(family = "binomial"), se = T, alpha = .3)+
   geom_jitter( alpha = .5, height = 0.01)+
   geom_hline(yintercept = 0.5, lty=2)+
   labs(x="Age",y="Proportion novel item chosen")+

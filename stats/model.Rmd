@@ -247,10 +247,10 @@ sem_know_model<- webppl(
   data = list(data = me_model_data),
   data_var = "dataFromR",
   model_var = "model",
-  chains = 4,
-  cores = 4,
+  chains = 10,
+  cores = 10,
   inference_opts = list(method = "incrementalMH",
-                        samples = 6000,
+                        samples = 4000,
                         burn = 2000,
                         verbose = T,
                         lag = 1,
@@ -260,12 +260,17 @@ sem_know_model<- webppl(
 #saveRDS(sem_know_model, "../saves/sem_know_model.rds")
 
 # 3 chains, 6000 iterations per chain, 2000 burn in, lag = 1
-sem_know_model <- readRDS("../saves/sem_know_model.rds")
-# 8 chains, 4000 iterations per chain, 2000 burn in, lag = 1
-sem_know_model <- readRDS("../saves/sem_know_model_2.rds")
+sem_know_model <- readRDS("../saves/run_correlations.rds")#%>%
+  # filter(Chain != "15",
+  #        Chain != "1",
+  #        Chain != "30",
+  #        Chain != "6",
+  #        Chain != "5",
+  #        Chain != "7",
+  #        Chain != "3")
 
-sem_know_model <- sem_know_model %>%
-  filter(Chain != "1")
+  
+  
 ```
 
 ```{r}
@@ -399,61 +404,42 @@ me_model_data <- read_csv("../data/child_basic_me.csv")%>%
            trial != "train2")%>%
   mutate(age = age_num - min(age_num))
 
-# 3 chains, 6000 iterations per chain, 2000 burn in, lag = 1
-sem_know_run_1 <- readRDS("../saves/sem_know_model.rds")%>%
-  separate(Parameter, into = c("parameter", "type","item"), sep = ",")%>%
-  filter(parameter == "parameter", type == "items")%>%
-  separate(value, into = c("int", "slope"),sep = ", ")%>%
-  mutate(int = as.numeric(str_remove_all(int, "[(c]")),
-         slope = as.numeric(str_remove(slope, "[)]")))%>%
-  mutate(run = "1")
-
-
-# 8 chains, 4000 iterations per chain, 2000 burn in, lag = 1
-sem_know_run_2 <- readRDS("../saves/sem_know_model_2.rds")%>%
-  separate(Parameter, into = c("parameter", "type","item"), sep = ",")%>%
-  filter(parameter == "parameter", type == "items")%>%
-  separate(value, into = c("int", "slope"),sep = ", ")%>%
-  mutate(int = as.numeric(str_remove_all(int, "[(c]")),
-         slope = as.numeric(str_remove(slope, "[)]")))%>%
-  mutate(run = "2")
-
-sem_know_run_iteration <- bind_rows(
-   sem_know_run_1,
-   sem_know_run_2)
-
-sem_know_run_summary <- sem_know_run_iteration%>%
-  group_by(run,Chain,item)%>%
+sem_know_run_summary <- item_params%>%
+  spread(parameter,value)%>%
+  group_by(Chain,item)%>%
   summarise(overall_int = estimate_mode(int),
             overall_slope = estimate_mode(slope))
 
 
-sem_know_run <- sem_know_run_iteration %>%
+sem_know_run_iteration <- item_params%>%
+  spread(parameter,value)
+
+sem_know_chain <- sem_know_run_iteration %>%
   left_join(sem_know_run_summary)
 
-run_comp <- sem_know_run %>%
+chain_comp <- sem_know_chain %>%
   left_join(expand.grid(
       age = unique(me_model_data$age),
       item = unique(me_model_data$familiar)), .) %>%
   mutate(sem_know_ci = plogis(int + slope * age),
          sem_know = plogis(overall_int + overall_slope * age)) %>%
-  group_by(run,Chain,item, age) %>%
+  group_by(Chain,item, age) %>%
   summarise(sem_know = estimate_mode(sem_know), 
             sem_know_uci = hdi_upper(sem_know_ci),
             sem_know_lci = hdi_lower(sem_know_ci))
 
-ggplot(run_comp, aes(x = age+2, y= sem_know, fill = run, group = paste(run,Chain)))+
-  geom_line(size = .3, aes(col = run))+
-  geom_ribbon(aes(ymin=sem_know_lci, ymax = sem_know_uci), alpha = .1)+
+ggplot(chain_comp, aes(x = age+2, y= sem_know, fill = factor(Chain)))+
+  geom_line(size = .3, aes(col = factor(Chain)))+
+  geom_ribbon(aes(ymin=sem_know_lci, ymax = sem_know_uci), alpha = .05)+
   ylab("Semantic knowledge")+
   xlab("Age")+
   ylim(0,1)+
-  facet_grid(item~run)+
+  facet_wrap(~item, nrow = 3)+
   theme_few()+
-  scale_colour_solarized()+
-  scale_fill_solarized()
+  scale_colour_discrete()+
+  scale_fill_discrete()
 
-ggsave("../graphs/model_by_chain_run.pdf", width = 3, height = 12, scale = 1.5)
+ggsave("../graphs/model_by_chain.pdf", width = 5, height = 4, scale = 1.5)
 ```
 
 #### speaker optimality
@@ -464,31 +450,11 @@ me_model_data <- read_csv("../data/child_basic_me.csv")%>%
            trial != "train2")%>%
   mutate(age = age_num - min(age_num))
 
-# 3 chains, 6000 iterations per chain, 2000 burn in, lag = 1
-so_run_1 <- readRDS("../saves/sem_know_model.rds")%>%
-  separate(Parameter, into = c("parameter", "type","token"), sep = ",")%>%
-  filter(parameter == "parameter", type == "parameters", token == "speaker_optimality")%>%
-  separate(value, into = c("int", "slope"),sep = ", ")%>%
-  mutate(int = as.numeric(str_remove_all(int, "[(c]")),
-         slope = as.numeric(str_remove(slope, "[)]")))%>%
-  mutate(run = "1")
-
-
-# 8 chains, 4000 iterations per chain, 2000 burn in, lag = 1
-so_run_2 <- readRDS("../saves/sem_know_model_2.rds")%>%
-  separate(Parameter, into = c("parameter", "type","token"), sep = ",")%>%
-  filter(parameter == "parameter", type == "parameters", token == "speaker_optimality")%>%
-  separate(value, into = c("int", "slope"),sep = ", ")%>%
-  mutate(int = as.numeric(str_remove_all(int, "[(c]")),
-         slope = as.numeric(str_remove(slope, "[)]")))%>%
-  mutate(run = "2")
-
-so_run_iteration <- bind_rows(
-   so_run_1,
-   so_run_2)
+so_run_iteration <- global_params%>%
+  spread(parameter, value)
 
 so_run_summary <- so_run_iteration%>%
-  group_by(run,Chain)%>%
+  group_by(Chain)%>%
   summarise(overall_int = estimate_mode(int),
             overall_slope = estimate_mode(slope))
 
@@ -496,27 +462,206 @@ so_run <- so_run_iteration %>%
   left_join(so_run_summary)
 
 so_run_comp <-so_run%>%
-  group_by(run,Chain,Iteration)%>%
+  group_by(Chain,Iteration)%>%
   expand(int,slope,overall_int,overall_slope,age = unique(me_model_data$age))%>%
   mutate(so_ci = int + slope * age,
          so = overall_int + overall_slope * age) %>%
-  group_by(run,Chain, age) %>%
+  group_by(Chain, age) %>%
   summarise(so = estimate_mode(so), 
             so_uci = hdi_upper(so_ci),
             so_lci = hdi_lower(so_ci))
 
-ggplot(so_run_comp, aes(x = age+2, y= so, fill = run, group = paste(run,Chain)))+
-  geom_line(size = .3, aes(col = run))+
-  geom_ribbon(aes(ymin=so_lci, ymax = so_uci), alpha = .1)+
+ggplot(so_run_comp, aes(x = age+2, y= so, fill = factor(Chain)))+
+  geom_line(size = .4, aes(col = factor(Chain)))+
+  geom_ribbon(aes(ymin=so_lci, ymax = so_uci), alpha = .05)+
   ylab("speaker optimality")+
   xlab("Age")+
-  facet_grid(~run)+
+  #facet_grid(~run)+
   theme_few()+
-  scale_colour_solarized()+
-  scale_fill_solarized()
+  scale_colour_discrete()+
+  scale_fill_discrete()
 
-ggsave("../graphs/model_by_chain_run.pdf", width = 3, height = 12, scale = 1.5)
+ggsave("../graphs/so_by_chain.pdf", width = 4, height = 3, scale = 1.5)
 ```
+
+
+#### Correlations between parameters for semantic knowledge
+
+```{r}
+# sem_know_model_1<- webppl(
+#   program_code = paste(rsaUtils, rsaModel, semStr , sep='\n'),
+#   data = list(data = me_model_data),
+#   data_var = "dataFromR",
+#   model_var = "model",
+#   chains = 10,
+#   cores = 10,
+#   inference_opts = list(method = "incrementalMH",
+#                         samples = 4000,
+#                         burn = 2000,
+#                         verbose = T,
+#                         lag = 1,
+#                         verboseLag = 1000)
+# )
+# 
+# sem_know_model_2<- webppl(
+#   program_code = paste(rsaUtils, rsaModel, semStr , sep='\n'),
+#   data = list(data = me_model_data),
+#   data_var = "dataFromR",
+#   model_var = "model",
+#   chains = 10,
+#   cores = 10,
+#   inference_opts = list(method = "incrementalMH",
+#                         samples = 4000,
+#                         burn = 2000,
+#                         verbose = T,
+#                         lag = 1,
+#                         verboseLag = 1000)
+# )%>%
+#   mutate(Chain = Chain +10)
+# 
+# sem_know_model_3<- webppl(
+#   program_code = paste(rsaUtils, rsaModel, semStr , sep='\n'),
+#   data = list(data = me_model_data),
+#   data_var = "dataFromR",
+#   model_var = "model",
+#   chains = 10,
+#   cores = 10,
+#   inference_opts = list(method = "incrementalMH",
+#                         samples = 4000,
+#                         burn = 2000,
+#                         verbose = T,
+#                         lag = 1,
+#                         verboseLag = 1000)
+# )%>%
+#   mutate(Chain = Chain +20)
+# 
+# 
+# sem_know_cor_params <- bind_rows(
+#   sem_know_model_1,
+#   sem_know_model_2,
+#   sem_know_model_3
+# )%>%
+#   saveRDS(.,"../saves/run_correlations.rds")
+  
+  
+sem_know_cor_params  <- readRDS("../saves/run_correlations.rds")%>%
+  separate(Parameter, into = c("parameter", "type","item"), sep = ",")%>%
+  filter(parameter == "parameter", type == "items")%>%
+  separate(value, into = c("int", "slope"),sep = ", ")%>%
+  mutate(int = as.numeric(str_remove_all(int, "[(c]")),
+         slope = as.numeric(str_remove(slope, "[)]")))%>%
+  gather(parameter, value, int, slope)
+ # %>%
+#   filter(Chain != "15",
+#          Chain != "1",
+#          Chain != "30",
+#          Chain != "6",
+#          Chain != "5",
+#          Chain != "7",
+#          Chain != "3")
+
+```
+
+
+```{r}
+ggplot(sem_know_cor_params%>%filter(parameter == "int"), aes(x = value))+
+  geom_density(alpha = 0.3)+
+  xlab("Parameter")+
+  facet_grid(Chain~item, scales = 'free')+
+  theme_few()
+
+ggsave("../graphs/item_by_chain.pdf", width = 15, height = 15, scale = 1.5)
+```
+
+```{r}
+item_params_cor <- sem_know_cor_params %>%
+  group_by(Chain,item, parameter)%>%
+  summarise(mode = estimate_mode(value))
+```
+
+```{r}
+library(corrr)
+library(corrplot)
+
+## correaltion at 2
+cor_int_2 <- item_params_cor%>%
+  spread(Chain, mode) %>%
+  filter(parameter == "int")%>%
+  select(-parameter)%>%
+  ungroup()%>%
+  select(-item)%>%
+  correlate(method = "spearman")%>%
+  gather(key, value)%>%
+  filter(key !="rowname")%>%
+  na.omit()%>%
+  mutate(value = as.numeric(value),
+         age = "2")
+
+cor_int_3 <- item_params_cor%>%
+  spread(parameter, mode)%>%
+  mutate(mode = int + slope)%>%
+  select(Chain, item, mode)%>%
+  spread(Chain, mode)%>%
+  ungroup()%>%
+  select(-item)%>%
+  correlate(method = "spearman")%>%
+  gather(key, value)%>%
+  filter(key !="rowname")%>%
+  na.omit()%>%
+  mutate(value = as.numeric(value),
+         age = "3")
+
+cor_int_4 <- item_params_cor%>%
+  spread(parameter, mode)%>%
+  mutate(mode = int + 2*slope)%>%
+  select(Chain, item, mode)%>%
+  spread(Chain, mode)%>%
+  ungroup()%>%
+  select(-item)%>%
+  correlate(method = "spearman")%>%
+  gather(key, value)%>%
+  filter(key !="rowname")%>%
+  na.omit()%>%
+  mutate(value = as.numeric(value),
+         age = "4")
+
+
+cor_int_5 <- item_params_cor%>%
+  spread(parameter, mode)%>%
+  mutate(mode = int + 3*slope)%>%
+  select(Chain, item, mode)%>%
+  spread(Chain, mode)%>%
+  ungroup()%>%
+  select(-item)%>%
+  correlate(method = "spearman")%>%
+  gather(key, value)%>%
+  filter(key !="rowname")%>%
+  na.omit()%>%
+  mutate(value = as.numeric(value),
+         age = "5")
+
+
+cor_hist <- 
+bind_rows(
+  cor_int_2,
+  cor_int_3,
+  cor_int_4,
+  cor_int_5
+)
+
+
+ggplot(cor_hist, aes(x = value, fill =age))+
+  geom_density(alpha = .5)+
+  xlim(-1,1)+
+  xlab("Correlation")+
+  theme_few()
+
+
+ggsave("../graphs/corr_int_by_age.pdf", width = 5, height = 4, scale = 1.5)
+
+```
+
+
 # Inverse predictions
 
 ```{r}
@@ -769,6 +914,8 @@ comb_model_predictions <- comb_model_pred %>%
   ungroup()%>%
   mutate(item = fct_reorder(factor(item), mean_aoa),
          age = age + min(me_data$age_num))
+
+ tail(comb_model_data)
 ```
 
 
