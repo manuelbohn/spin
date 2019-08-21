@@ -31,7 +31,7 @@ hdi_lower<- function(s){
   return(m["var1","lower"])
 }
 
-me_data <- read_csv("../data/child_basic_me.csv")
+me_data <- read_csv("../data/me.csv")
 
 ```
 
@@ -260,14 +260,14 @@ sem_know_model<- webppl(
 #saveRDS(sem_know_model, "../saves/sem_know_model.rds")
 
 # 3 chains, 6000 iterations per chain, 2000 burn in, lag = 1
-sem_know_model <- readRDS("../saves/run_correlations.rds")#%>%
-  # filter(Chain != "15",
-  #        Chain != "1",
-  #        Chain != "30",
-  #        Chain != "6",
-  #        Chain != "5",
-  #        Chain != "7",
-  #        Chain != "3")
+sem_know_model <- readRDS("../saves/run_correlations.rds")%>%
+  filter(Chain != "15",
+         Chain != "1",
+         Chain != "30",
+         Chain != "6",
+         Chain != "5",
+         Chain != "7",
+         Chain != "3")
 
   
   
@@ -445,7 +445,7 @@ ggsave("../graphs/model_by_chain.pdf", width = 5, height = 4, scale = 1.5)
 #### speaker optimality
 
 ```{r}
-me_model_data <- read_csv("../data/child_basic_me.csv")%>%
+me_model_data <- read_csv("../data/me.csv")%>%
     filter(trial != "train1",
            trial != "train2")%>%
   mutate(age = age_num - min(age_num))
@@ -481,7 +481,7 @@ ggplot(so_run_comp, aes(x = age+2, y= so, fill = factor(Chain)))+
   scale_colour_discrete()+
   scale_fill_discrete()
 
-ggsave("../graphs/so_by_chain.pdf", width = 4, height = 3, scale = 1.5)
+#ggsave("../graphs/so_by_chain.pdf", width = 4, height = 3, scale = 1.5)
 ```
 
 
@@ -551,14 +551,16 @@ sem_know_cor_params  <- readRDS("../saves/run_correlations.rds")%>%
   mutate(int = as.numeric(str_remove_all(int, "[(c]")),
          slope = as.numeric(str_remove(slope, "[)]")))%>%
   gather(parameter, value, int, slope)
- # %>%
-#   filter(Chain != "15",
-#          Chain != "1",
-#          Chain != "30",
-#          Chain != "6",
-#          Chain != "5",
-#          Chain != "7",
-#          Chain != "3")
+
+
+sem_know_cor_params <- sem_know_cor_params%>%
+  filter(Chain != "15",
+         Chain != "1",
+         Chain != "30",
+         Chain != "6",
+         Chain != "5",
+         Chain != "7",
+         Chain != "3")
 
 ```
 
@@ -570,7 +572,7 @@ ggplot(sem_know_cor_params%>%filter(parameter == "int"), aes(x = value))+
   facet_grid(Chain~item, scales = 'free')+
   theme_few()
 
-ggsave("../graphs/item_by_chain.pdf", width = 15, height = 15, scale = 1.5)
+#ggsave("../graphs/item_by_chain.pdf", width = 15, height = 15, scale = 1.5)
 ```
 
 ```{r}
@@ -657,7 +659,7 @@ ggplot(cor_hist, aes(x = value, fill =age))+
   theme_few()
 
 
-ggsave("../graphs/corr_int_by_age.pdf", width = 5, height = 4, scale = 1.5)
+#ggsave("../graphs/corr_int_by_age.pdf", width = 5, height = 4, scale = 1.5)
 
 ```
 
@@ -675,7 +677,7 @@ ggsave("../graphs/corr_int_by_age.pdf", width = 5, height = 4, scale = 1.5)
 inv_model_data <- item_params_summary%>%
   select(-uci,-lci)%>%
   spread(parameter, mode)%>%
-  expand(item, int,slope,age = unique(me_model_data$age- min(me_model_data$age)))%>%
+  tidyr::expand(item, int,slope,age = unique(me_model_data$age- min(me_model_data$age)))%>%
   mutate(so_int = global_params_summary%>%filter(token == "speaker_optimality", parameter == "int")%>%pull(mode),
          so_slope = global_params_summary%>%filter(token == "speaker_optimality", parameter == "slope")%>%pull(mode))%>%
   mutate(speaker_optimality = so_int + so_slope * age,
@@ -745,7 +747,7 @@ model_plot <- ggplot(inv_predictions, aes(x=age,y = me_effect, col = item))+
 ```
 
 ```{r}
-p2 <- read_csv("../data/child_basic_me.csv")%>%
+p2 <- read_csv("../data/me.csv")%>%
   filter(trial != "train1",
          trial != "train2")%>%
   mutate(item = familiar)%>%
@@ -836,7 +838,7 @@ ggarrange(data_plot,model_plot,glmm_plot, common.legend = T, legend = "right", n
 ```{r}
 # novelty data
 
-novel_data <- read_csv("../data/child_spin_novelty.csv")%>%
+novel_data <- read_csv("../data/novelty.csv")%>%
   mutate(age_num = age_num-min(age_num))
 
 # novel_bm <- brm(correct ~ age_num + (1 | subid) + (age_num | agent), 
