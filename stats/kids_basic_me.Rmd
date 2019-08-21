@@ -23,50 +23,53 @@ Importing and processing raw data locally (see next chunk for loading processed 
 ```{r import data, include = F}
 ## importing data locally
 
-files <- dir("~/Work/Spin/raw_data/kids/basic_me/")
+# files <- dir("~/Work/Spin/raw_data/kids/basic_me/")
+# 
+# raw_data <- data_frame()
+# for (f in files) {
+#   jf <- paste("~/Work/Spin/raw_data/kids/basic_me/",f,sep="")
+#   jd <- jsonlite::fromJSON(paste(readLines(jf), collapse=""))
+#   date <- str_sub(jf,44,str_length(jf)-11)
+#   id <- as_data_frame(jd$data$data) %>% mutate(test_date = date)
+#   raw_data <- bind_rows(raw_data, id)
+# }
+# 
+# 
+# length(unique(raw_data$subid))
+#  
+# d_raw <-raw_data %>%
+#   mutate(subid = ifelse(subid == "190314_3", "190314_3_me",subid),
+#          subid = ifelse(subid == "190221_6_me", "190321_6_me",subid),
+#          subid = ifelse(subid == "192203_4_me", "190322_4_me",subid),
+#          subage = ifelse(subid == "190313_5_me", "3",subage),
+#          test_date = as.Date(test_date))
+# 
+# 
+# log <- read_excel("../../SPIN-subject_log.xlsx", 1)%>%
+#   filter(Condition == "me")%>%
+#   mutate(dob = as.character(dob),
+#          dob = ifelse(subid == "190313_7_me", "2015-11-15",dob),
+#          dob = ifelse(subid == "190313_11_me", "2016-04-18",dob),
+#          dob = ifelse(subid == "190320_8_me", "2014-04-28",dob),
+#          dob = as.Date(dob))%>%
+#   select(subid,experimenter,keep_drop,sex,dob)
+# 
+#  
+# d_raw%>%
+#   group_by(subid)%>%
+#   summarise(n())%>%
+#   filter(!(subid %in% unique(log$subid)))
+# 
+#  
+# d <- left_join(d_raw,log, by = "subid")%>%
+#   filter(keep_drop == "keep")%>%
+#   mutate(age_num = lubridate::time_length(difftime(test_date,dob), "years"),
+#          check_age = ifelse(substr(age_num,1,1) == subage, T, F))
+# 
+# write_csv(d, "../data/me.csv")
 
-raw_data <- data_frame()
-for (f in files) {
-  jf <- paste("~/Work/Spin/raw_data/kids/basic_me/",f,sep="")
-  jd <- jsonlite::fromJSON(paste(readLines(jf), collapse=""))
-  date <- str_sub(jf,44,str_length(jf)-11)
-  id <- as_data_frame(jd$data$data) %>% mutate(test_date = date)
-  raw_data <- bind_rows(raw_data, id)
-}
-
-
-length(unique(raw_data$subid))
- 
-d_raw <-raw_data %>%
-  mutate(subid = ifelse(subid == "190314_3", "190314_3_me",subid),
-         subid = ifelse(subid == "190221_6_me", "190321_6_me",subid),
-         subid = ifelse(subid == "192203_4_me", "190322_4_me",subid),
-         subage = ifelse(subid == "190313_5_me", "3",subage),
-         test_date = as.Date(test_date))
-
-
-log <- read_excel("../../SPIN-subject_log.xlsx", 1)%>%
-  filter(Condition == "me")%>%
-  mutate(dob = as.character(dob),
-         dob = ifelse(subid == "190313_7_me", "2015-11-15",dob),
-         dob = ifelse(subid == "190313_11_me", "2016-04-18",dob),
-         dob = ifelse(subid == "190320_8_me", "2014-04-28",dob),
-         dob = as.Date(dob))%>%
-  select(subid,experimenter,keep_drop,sex,dob)
-
- 
-d_raw%>%
-  group_by(subid)%>%
-  summarise(n())%>%
-  filter(!(subid %in% unique(log$subid)))
-
- 
-d <- left_join(d_raw,log, by = "subid")%>%
-  filter(keep_drop == "keep")%>%
-  mutate(age_num = lubridate::time_length(difftime(test_date,dob), "years"),
-         check_age = ifelse(substr(age_num,1,1) == subage, T, F))
-
-write_csv(d, "../data/child_basic_me.csv")
+d <- read_csv("../data/me.csv")%>%
+  mutate(subage = factor(subage))
 ```
 
 ```{r}
@@ -159,16 +162,18 @@ p2 <- d %>%
 ggplot(data = p2, aes(x = age_num, y = correct, col = familiar, fill = familiar)) +
   geom_hline(yintercept = 0.5, lty=2)+
   geom_jitter(width = 0, height = 0.05, alpha = .6)+
-  geom_smooth(method = "glm", method.args = list(family = "binomial"), se = T, alpha = .5)+
+  geom_smooth(method = "glm", method.args = list(family = "binomial"), se = F, alpha = .5)+
   labs(x="Age",y="Mutual Exclusivity effect")+
-  facet_grid(~familiar)+
-  ggtitle("Data")+
+  #facet_grid(~familiar)+
+  #ggtitle("Data")+
   theme_few() +
   ylim(-0.05,1.05)+
   xlim(2,5)+
   guides(alpha = F)+ 
   scale_colour_viridis_d(name = "familiar object")+
   scale_fill_viridis_d(name = "familiar object")
+
+ggsave("../graphs/me_by_item.png", width = 6, height = 3, scale = 1.2)
 ```
 
 ```{r plot by numerical age, echo = F}

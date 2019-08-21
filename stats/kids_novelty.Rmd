@@ -20,92 +20,97 @@ library(rwebppl)
 
 # import spin data
 
-files <- dir("~/Work/Spin/raw_data/kids/novelty/")
+# files <- dir("~/Work/Spin/raw_data/kids/novelty/")
+# 
+# raw_data <- data_frame()
+# for (f in files) {
+#   jf <- paste("~/Work/Spin/raw_data/kids/novelty/",f,sep="")
+#   jd <- jsonlite::fromJSON(paste(readLines(jf), collapse=""))
+#   date <- str_sub(jf,46,str_length(jf)-11)
+#   id <- as_data_frame(jd$data$data) %>% mutate(test_date = date)
+#   raw_data <- bind_rows(raw_data, id)
+# }
+# 
+# 
+# length(unique(raw_data$subid))
+# 
+# d_raw <-raw_data %>%
+#   mutate(test_date = as.Date(test_date),
+#          subid = ifelse(subid =="190422_6_nov,","190422_6_nov",subid),
+#          subage = ifelse(subid =="190422_2_nov","4",subage))
+# 
+# 
+# log <- read_excel("../../SPIN-subject_log.xlsx", 1)%>%
+#   filter(Condition == "nov")%>%
+#   mutate(dob = as.character(dob),
+#          dob = ifelse(subid =="190502_9_nov","2016-10-08",dob),
+#          dob = as.Date(dob))%>%
+#   select(subid,experimenter,keep_drop,sex,dob)
+# 
+# d_raw%>%
+#   group_by(subid)%>%
+#   summarise(n())%>%
+#   filter(!(subid %in% unique(log$subid)))
+# 
+#  
+# d_spin <- left_join(d_raw,log, by = "subid")%>%
+#   filter(keep_drop == "keep",
+#          trial != "train1", trial != "train2")%>%
+#   mutate(age_num = lubridate::time_length(difftime(test_date,dob), "years"),
+#          check_age = ifelse(substr(age_num,1,1) == subage, T, F),
+#          experiment = condition)%>%
+#   select(-pick_src)
+# 
+# 
+# ## import mcc data
+# 
+# files <- dir("~/Work/MCC/git-mcc/kids_novel_data/round2/")
+# 
+# raw_data_mcc <- data_frame()
+# for (f in files) {
+#   jf <- paste("~/Work/MCC/git-mcc/kids_novel_data/round2/",f,sep="")
+#   jd <- jsonlite::fromJSON(paste(readLines(jf), collapse=""))
+#   date <- str_sub(jf,51,str_length(jf)-11)
+#   id <- as_data_frame(jd$data$data) %>% mutate(test_date = date)
+#   raw_data_mcc <- bind_rows(raw_data_mcc, id)
+# }
+# 
+# d_raw_mcc <-raw_data_mcc %>%
+#   mutate(subage = ifelse(subid =="180810_14_nov","2",subage),
+#          test_date = as.Date(test_date))
+# 
+# 
+# log_mcc <- read_excel("~/Work/MCC/git-mcc/MCC-subject_log.xlsx", 1)%>%
+#   filter(Condition == "nov")%>%
+#   mutate(dob = as.numeric(dob),
+#          dob = as.Date(dob,origin = "1899-12-30"))%>%
+#   select(subid,experimenter,keep_drop,sex,dob)
+# 
+# 
+# d_mcc <- left_join(d_raw_mcc,log_mcc, by = "subid")%>%
+#   filter(keep_drop == "keep")%>%
+#   mutate(age_num = lubridate::time_length(difftime(test_date,dob), "years"),
+#          check_age = ifelse(substr(age_num,1,1) == subage, T, F),
+#          leftObject = leftFruit,
+#          rightObject = rightFruit, 
+#          pick = str_sub(pick,72,str_length(pick)-4),
+#          agent = ifelse(speakerChange == "false", agent,altAgent),
+#          experiment = "dis_novelty_mcc")%>%
+#   filter(speakerChange == "false", trial != "train")%>%
+#   select(-speakerChange,-altAgent,-leftFruit,-rightFruit)
+# 
+# 
+# # join datasets
+# 
+# d <- bind_rows(d_spin, d_mcc)
+# 
+# write_csv(d_spin, "../data/novelty.csv")
+# #write_csv(d, "../data/child_novelty.csv")
 
-raw_data <- data_frame()
-for (f in files) {
-  jf <- paste("~/Work/Spin/raw_data/kids/novelty/",f,sep="")
-  jd <- jsonlite::fromJSON(paste(readLines(jf), collapse=""))
-  date <- str_sub(jf,46,str_length(jf)-11)
-  id <- as_data_frame(jd$data$data) %>% mutate(test_date = date)
-  raw_data <- bind_rows(raw_data, id)
-}
+d <- read_csv("../data/novelty.csv")%>%
+  mutate(subage = factor(subage))
 
 
-length(unique(raw_data$subid))
-
-d_raw <-raw_data %>%
-  mutate(test_date = as.Date(test_date),
-         subid = ifelse(subid =="190422_6_nov,","190422_6_nov",subid),
-         subage = ifelse(subid =="190422_2_nov","4",subage))
-
-
-log <- read_excel("../../SPIN-subject_log.xlsx", 1)%>%
-  filter(Condition == "nov")%>%
-  mutate(dob = as.character(dob),
-         dob = ifelse(subid =="190502_9_nov","2016-10-08",dob),
-         dob = as.Date(dob))%>%
-  select(subid,experimenter,keep_drop,sex,dob)
-
-d_raw%>%
-  group_by(subid)%>%
-  summarise(n())%>%
-  filter(!(subid %in% unique(log$subid)))
-
- 
-d_spin <- left_join(d_raw,log, by = "subid")%>%
-  filter(keep_drop == "keep",
-         trial != "train1", trial != "train2")%>%
-  mutate(age_num = lubridate::time_length(difftime(test_date,dob), "years"),
-         check_age = ifelse(substr(age_num,1,1) == subage, T, F),
-         experiment = condition)%>%
-  select(-pick_src)
-
-
-## import mcc data
-
-files <- dir("~/Work/MCC/git-mcc/kids_novel_data/round2/")
-
-raw_data_mcc <- data_frame()
-for (f in files) {
-  jf <- paste("~/Work/MCC/git-mcc/kids_novel_data/round2/",f,sep="")
-  jd <- jsonlite::fromJSON(paste(readLines(jf), collapse=""))
-  date <- str_sub(jf,51,str_length(jf)-11)
-  id <- as_data_frame(jd$data$data) %>% mutate(test_date = date)
-  raw_data_mcc <- bind_rows(raw_data_mcc, id)
-}
-
-d_raw_mcc <-raw_data_mcc %>%
-  mutate(subage = ifelse(subid =="180810_14_nov","2",subage),
-         test_date = as.Date(test_date))
-
-
-log_mcc <- read_excel("~/Work/MCC/git-mcc/MCC-subject_log.xlsx", 1)%>%
-  filter(Condition == "nov")%>%
-  mutate(dob = as.numeric(dob),
-         dob = as.Date(dob,origin = "1899-12-30"))%>%
-  select(subid,experimenter,keep_drop,sex,dob)
-
-
-d_mcc <- left_join(d_raw_mcc,log_mcc, by = "subid")%>%
-  filter(keep_drop == "keep")%>%
-  mutate(age_num = lubridate::time_length(difftime(test_date,dob), "years"),
-         check_age = ifelse(substr(age_num,1,1) == subage, T, F),
-         leftObject = leftFruit,
-         rightObject = rightFruit, 
-         pick = str_sub(pick,72,str_length(pick)-4),
-         agent = ifelse(speakerChange == "false", agent,altAgent),
-         experiment = "dis_novelty_mcc")%>%
-  filter(speakerChange == "false", trial != "train")%>%
-  select(-speakerChange,-altAgent,-leftFruit,-rightFruit)
-
-
-# join datasets
-
-d <- bind_rows(d_spin, d_mcc)
-
-write_csv(d_spin, "../data/child_spin_novelty.csv")
-write_csv(d, "../data/child_novelty.csv")
 ```
 
 Main question: Do SPIN and MCC datasets differ?
@@ -119,8 +124,7 @@ Main question: Do SPIN and MCC datasets differ?
 ```{r sanity checks, echo = FALSE, warning = FALSE, message = FALSE}
 
 
-d <- read_csv("../data/child_novelty.csv")%>%
-  mutate(subage = factor(subage))
+
 
 ## sanity checks
 d %>%
@@ -170,9 +174,12 @@ ggplot(data = p5, aes(x = age_num, y = correct, col = experiment)) +
   labs(x="Age",y="Proportion novel item chosen")+
   theme_few() +
   ylim(-0.05,1.05)+
-  guides(alpha = F)+ 
+  guides(alpha = F, col = F)+ 
   #theme(axis.text.x=element_blank(),axis.ticks.x=element_blank())+
   scale_colour_solarized()
+
+
+ggsave("../graphs/novelty.png", width = 5, height = 3, scale = 1.2)
 ```
 
 # SPIN GLMM

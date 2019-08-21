@@ -12,21 +12,142 @@ library(langcog)
 library(ggthemes)
 library(jsonlite)
 library(readxl)
+library(brms)
 
 ## importing data
-files <- dir("~/Work/Spin/raw_data/kids/combination/")
+# files <- dir("~/Work/Spin/raw_data/kids/combination/")
+# 
+# raw_data <- data_frame()
+# for (f in files) {
+#   jf <- paste("~/Work/Spin/raw_data/kids/combination/",f,sep="")
+#   jd <- jsonlite::fromJSON(paste(readLines(jf), collapse=""))
+#   date <- str_sub(jf,56,str_length(jf)-11)
+#   id <- as_data_frame(jd$data$data) %>% mutate(test_date = date)
+#   raw_data <- bind_rows(raw_data, id)
+# }
+# 
+# d_raw <- raw_data %>%
+#   mutate(discourseNovel = str_sub(discourseNovel,11),
+#          mutExNovel = str_sub(mutExNovel, 10),
+#          subid = ifelse(subid == "190726_6_come", "190726_6_com", subid))
+# 
+# d_raw %>%
+#   filter(subid == "190727_1_com")
+# 
+# 
+# log <- read_excel("../../SPIN-subject_log.xlsx", 1)%>%
+#   filter(Condition == "com")%>%
+#   mutate(dob = as.character(dob),
+# #         dob = ifelse(subid == "190313_7_me", "2015-11-15",dob),
+#          dob = as.Date(dob))%>%
+#   select(subid,experimenter,keep_drop,sex,dob)
+# 
+#  
+# d_raw%>%
+#   group_by(subid)%>%
+#   summarise(n())%>%
+#   filter(!(subid %in% unique(log$subid)))
+# 
+#  
+# d <- left_join(d_raw,log, by = "subid")%>%
+#   filter(keep_drop == "keep")%>%
+#   mutate(age_num = lubridate::time_length(difftime(test_date,dob), "years"),
+#          check_age = ifelse(substr(age_num,1,1) == subage, T, F))
+# 
+# 
+# write_csv(d, "../data/combination.csv")
 
-raw_data <- data_frame()
-for (f in files) {
-  jf <- paste("~/Work/Spin/raw_data/kids/combination/",f,sep="")
-  jd <- jsonlite::fromJSON(paste(readLines(jf), collapse=""))
-  date <- str_sub(jf,56,str_length(jf)-11)
-  id <- as_data_frame(jd$data$data) %>% mutate(test_date = date)
-  raw_data <- bind_rows(raw_data, id)
-}
-
-raw_data %>%
-  mutate(discourseNovel = str_sub(discourseNovel,11),
-         mutExNovel = str_sub(mutExNovel, 10))
+d <- read_csv("../data/combination.csv")%>%
+  mutate(subage = factor(subage))
 
 ```
+
+```{r}
+aoa_ratings_all <- read_xlsx(path = "../data/words_aoa_ratings.xlsx", sheet = 1)
+
+aoa_ratings <- aoa_ratings_all %>%
+  filter(Word %in% d$familiarObject )%>%
+  mutate(mean_aoa = as.numeric(Rating.Mean),
+         familiarObject = Word)%>%
+  select(familiarObject,mean_aoa)
+```
+
+
+
+```{r}
+d %>%
+  filter(condition != "train")%>%
+  group_by(condition,subage) %>%
+  summarise(n = length(unique(subid)),
+            data_points = n())
+```
+
+```{r plot by numerical age, echo = F}
+p2 <- d %>%
+  filter(condition != "train")%>%
+    left_join(aoa_ratings)%>%
+  ungroup()%>%
+  mutate(familiarObject = fct_reorder(factor(familiarObject), mean_aoa))
+
+ggplot(data = p2, aes(x = age_num, y = correct, col = familiarObject, fill = familiarObject)) +
+  geom_hline(yintercept = 0.5, lty=2)+
+  geom_jitter(width = 0, height = 0.05, alpha = .6)+
+  geom_smooth(method = "loess", se = F, alpha = .5, span = 2)+
+  labs(x="Age",y="Mutual Exclusivity effect")+
+  #facet_grid(condition~familiarObject)+
+  facet_grid(~condition)+
+  #ggtitle("Data")+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F)+ 
+  scale_colour_viridis_d(name = "familiar object")+
+  scale_fill_viridis_d(name = "familiar object")
+```
+
+```{r plot by age, echo= FALSE}
+p1 <- d %>%
+  filter(condition != "train")%>%
+  group_by(subage, familiarObject,condition) %>%
+  multi_boot_standard(col = "correct")%>%
+  left_join(aoa_ratings)%>%
+  ungroup()%>%
+  mutate(familiarObject = fct_reorder(factor(familiarObject), mean_aoa))
+
+
+ggplot(data = p1, aes(x = familiarObject, y = mean, group=1, col = subage)) +
+  geom_hline(yintercept = 0.5, lty=2)+
+  geom_pointrange(aes(ymin = ci_lower, ymax = ci_upper),size = .8)+
+  stat_summary(aes(group = subage, col = subage),fun.y=mean, geom="line")+
+  labs(x="",y="Proportion Correct")+
+  facet_grid(condition~.)+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  guides(alpha = F)+
+  theme(axis.text.x = element_text(angle = 60, hjust = 1))+
+  scale_colour_solarized()
+```
+
+
+
+```{r}
+d_model <- d %>%
+  filter(condition != "train")%>%
+  left_join(aoa_ratings)%>%
+  mutate(age_num = age_num - mean(age_num),
+         aoa = mean_aoa- mean(mean_aoa))
+
+model <- brm(correct ~ familiarObject * age_num * condition,
+                    data = d_model, family = bernoulli(),
+          control = list(adapt_delta = 0.95),
+          sample_prior = F,
+          save_all_pars = TRUE,
+          iter = 5000)
+
+summary(model)
+
+plot(model)
+
+
+```
+
