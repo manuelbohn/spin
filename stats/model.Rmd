@@ -46,15 +46,19 @@ var labels = ["novel_word","familiar_word"]
 
 
 var lexicon1 = function(utterance, obj, sem_knowledge){
-utterance.label == "novel_word" ? obj.shape == "novel_object" :
-utterance.label == "familiar_word" ? flip(sem_knowledge) ? obj.shape == "familiar_object" :  obj.shape == "novel_object" : 
-true
+  utterance.label == "novel_word" ? obj.shape == "novel_object" :
+  utterance.label == "familiar_word" ? flip(sem_knowledge) ? 
+    obj.shape == "familiar_object" :  
+  flip() ? obj.shape == "familiar_object" : obj.shape == "novel_object" : 
+  true
 }
 
 var lexicon2 = function(utterance, obj, sem_knowledge){
-utterance.label == "novel_word" ? obj.shape == "familiar_object" :
-utterance.label == "familiar_word" ? flip(sem_knowledge) ? obj.shape == "familiar_object" :  obj.shape == "novel_object" : 
-true
+  utterance.label == "novel_word" ? obj.shape == "familiar_object" :
+  utterance.label == "familiar_word" ? flip(sem_knowledge) ? 
+    obj.shape == "familiar_object" : 
+  flip() ? obj.shape == "familiar_object" : obj.shape == "novel_object" : 
+  true
 }
 
 var lexiconObjects = {
@@ -99,7 +103,7 @@ var literalListener = cache(function(utterance, priorProbs, sem_knowledge){
   Infer({method: "enumerate", model: function(){
     var lexiconName = sample(LexiconPrior); 
     var lexicon = lexiconObject[lexiconName];
-    var obj = sample( Categorical({vs: all_objects, ps: priorProbs}));
+    var obj = sample( Categorical({vs: all_objects, ps: [.5,.5]}));
     if ("label" in utterance) {
       var truthValue = lexicon(utterance, obj, sem_knowledge);
       condition(truthValue)
@@ -164,8 +168,8 @@ var familiars = levels(data, "familiar")
 var model  = function(){
 
   var speakerOptimalityParameters = {
-    intercept: uniformDrift({a: -2, b: 2, width: 0.5}),
-    slope: uniformDrift({a: 0, b: 1, width: 0.5})
+    intercept: uniformDrift({a: -3, b: 3, width: 0.5}),
+    slope: uniformDrift({a: 0, b: 3, width: 0.5})
   }
 
   var globalLineParameters = {
@@ -237,39 +241,33 @@ var model  = function(){
 
 
 ```{r}
-me_model_data <- read_csv("../data/child_basic_me.csv")%>%
+me_model_data <- read_csv("../data/me.csv")%>%
     filter(trial != "train1",
            trial != "train2")%>%
   mutate(age = age_num - min(age_num))
 
-sem_know_model<- webppl(
-  program_code = paste(rsaUtils, rsaModel, semStr , sep='\n'),
-  data = list(data = me_model_data),
-  data_var = "dataFromR",
-  model_var = "model",
-  chains = 10,
-  cores = 10,
-  inference_opts = list(method = "incrementalMH",
-                        samples = 4000,
-                        burn = 2000,
-                        verbose = T,
-                        lag = 1,
-                        verboseLag = 1000)
-)
+# sem_know_model<- webppl(
+#   program_code = paste(rsaUtils, rsaModel, semStr , sep='\n'),
+#   data = list(data = me_model_data),
+#   data_var = "dataFromR",
+#   model_var = "model",
+#   chains = 10,
+#   cores = 10,
+#   inference_opts = list(method = "incrementalMH",
+#                         samples = 4000,
+#                         burn = 2000,
+#                         verbose = T,
+#                         lag = 1,
+#                         verboseLag = 500)
+# )
 
-#saveRDS(sem_know_model, "../saves/sem_know_model.rds")
 
-# 3 chains, 6000 iterations per chain, 2000 burn in, lag = 1
-sem_know_model <- readRDS("../saves/run_correlations.rds")%>%
-  filter(Chain != "15",
-         Chain != "1",
-         Chain != "30",
-         Chain != "6",
-         Chain != "5",
-         Chain != "7",
-         Chain != "3")
 
-  
+# load this for model parameters
+sem_know_model <- readRDS("../saves/sem_know_new_model.rds")#%>%
+
+# load this for model parameters with wider prior on so_slope
+#saveRDS(sem_know_model, "../saves/sem_know_new_model_2.rds")
   
 ```
 
@@ -347,6 +345,12 @@ ggplot(item_params, aes(x = value, fill = factor(Chain)))+
 ```
 
 ```{r}
+#ggsave("../graphs/item_params_by_chain.pdf", width = 8, height = 3, scale = 1.5)
+```
+
+
+
+```{r}
 
 ggplot(global_params, aes(x = value, fill = factor(Chain)))+
   geom_density(alpha = 0.3)+
@@ -399,89 +403,89 @@ ggplot(plot_sem_know, aes(x = age+2, y= sem_know, col = item, group = item))+
 #### sem knowledge
 
 ```{r}
-me_model_data <- read_csv("../data/child_basic_me.csv")%>%
-    filter(trial != "train1",
-           trial != "train2")%>%
-  mutate(age = age_num - min(age_num))
+# me_model_data <- read_csv("../data/me.csv")%>%
+#     filter(trial != "train1",
+#            trial != "train2")%>%
+#   mutate(age = age_num - min(age_num))
+# 
+# sem_know_run_summary <- item_params%>%
+#   spread(parameter,value)%>%
+#   group_by(Chain,item)%>%
+#   summarise(overall_int = estimate_mode(int),
+#             overall_slope = estimate_mode(slope))
+# 
+# 
+# sem_know_run_iteration <- item_params%>%
+#   spread(parameter,value)
+# 
+# sem_know_chain <- sem_know_run_iteration %>%
+#   left_join(sem_know_run_summary)
+# 
+# chain_comp <- sem_know_chain %>%
+#   left_join(expand.grid(
+#       age = unique(me_model_data$age),
+#       item = unique(me_model_data$familiar)), .) %>%
+#   mutate(sem_know_ci = plogis(int + slope * age),
+#          sem_know = plogis(overall_int + overall_slope * age)) %>%
+#   group_by(Chain,item, age) %>%
+#   summarise(sem_know = estimate_mode(sem_know), 
+#             sem_know_uci = hdi_upper(sem_know_ci),
+#             sem_know_lci = hdi_lower(sem_know_ci))
+# 
+# ggplot(chain_comp, aes(x = age+2, y= sem_know, fill = factor(Chain)))+
+#   geom_line(size = .3, aes(col = factor(Chain)))+
+#   geom_ribbon(aes(ymin=sem_know_lci, ymax = sem_know_uci), alpha = .05)+
+#   ylab("Semantic knowledge")+
+#   xlab("Age")+
+#   ylim(0,1)+
+#   facet_wrap(~item, nrow = 3)+
+#   theme_few()+
+#   scale_colour_discrete()+
+#   scale_fill_discrete()
 
-sem_know_run_summary <- item_params%>%
-  spread(parameter,value)%>%
-  group_by(Chain,item)%>%
-  summarise(overall_int = estimate_mode(int),
-            overall_slope = estimate_mode(slope))
-
-
-sem_know_run_iteration <- item_params%>%
-  spread(parameter,value)
-
-sem_know_chain <- sem_know_run_iteration %>%
-  left_join(sem_know_run_summary)
-
-chain_comp <- sem_know_chain %>%
-  left_join(expand.grid(
-      age = unique(me_model_data$age),
-      item = unique(me_model_data$familiar)), .) %>%
-  mutate(sem_know_ci = plogis(int + slope * age),
-         sem_know = plogis(overall_int + overall_slope * age)) %>%
-  group_by(Chain,item, age) %>%
-  summarise(sem_know = estimate_mode(sem_know), 
-            sem_know_uci = hdi_upper(sem_know_ci),
-            sem_know_lci = hdi_lower(sem_know_ci))
-
-ggplot(chain_comp, aes(x = age+2, y= sem_know, fill = factor(Chain)))+
-  geom_line(size = .3, aes(col = factor(Chain)))+
-  geom_ribbon(aes(ymin=sem_know_lci, ymax = sem_know_uci), alpha = .05)+
-  ylab("Semantic knowledge")+
-  xlab("Age")+
-  ylim(0,1)+
-  facet_wrap(~item, nrow = 3)+
-  theme_few()+
-  scale_colour_discrete()+
-  scale_fill_discrete()
-
-ggsave("../graphs/model_by_chain.pdf", width = 5, height = 4, scale = 1.5)
+#ggsave("../graphs/model_by_chain.pdf", width = 5, height = 4, scale = 1.5)
 ```
 
 #### speaker optimality
 
 ```{r}
-me_model_data <- read_csv("../data/me.csv")%>%
-    filter(trial != "train1",
-           trial != "train2")%>%
-  mutate(age = age_num - min(age_num))
-
-so_run_iteration <- global_params%>%
-  spread(parameter, value)
-
-so_run_summary <- so_run_iteration%>%
-  group_by(Chain)%>%
-  summarise(overall_int = estimate_mode(int),
-            overall_slope = estimate_mode(slope))
-
-so_run <- so_run_iteration %>%
-  left_join(so_run_summary)
-
-so_run_comp <-so_run%>%
-  group_by(Chain,Iteration)%>%
-  expand(int,slope,overall_int,overall_slope,age = unique(me_model_data$age))%>%
-  mutate(so_ci = int + slope * age,
-         so = overall_int + overall_slope * age) %>%
-  group_by(Chain, age) %>%
-  summarise(so = estimate_mode(so), 
-            so_uci = hdi_upper(so_ci),
-            so_lci = hdi_lower(so_ci))
-
-ggplot(so_run_comp, aes(x = age+2, y= so, fill = factor(Chain)))+
-  geom_line(size = .4, aes(col = factor(Chain)))+
-  geom_ribbon(aes(ymin=so_lci, ymax = so_uci), alpha = .05)+
-  ylab("speaker optimality")+
-  xlab("Age")+
-  #facet_grid(~run)+
-  theme_few()+
-  scale_colour_discrete()+
-  scale_fill_discrete()
-
-#ggsave("../graphs/so_by_chain.pdf", width = 4, height = 3, scale = 1.5)
+# me_model_data <- read_csv("../data/me.csv")%>%
+#     filter(trial != "train1",
+#            trial != "train2")%>%
+#   mutate(age = age_num - min(age_num))
+# 
+# so_run_iteration <- global_params%>%
+#   spread(parameter, value)
+# 
+# so_run_summary <- so_run_iteration%>%
+#   group_by(Chain)%>%
+#   summarise(overall_int = estimate_mode(int),
+#             overall_slope = estimate_mode(slope))
+# 
+# so_run <- so_run_iteration %>%
+#   left_join(so_run_summary)
+# 
+# so_run_comp <-so_run%>%
+#   group_by(Chain,Iteration)%>%
+#   tidyr::expand(int,slope,overall_int,overall_slope,age = unique(me_model_data$age))%>%
+#   mutate(so_ci = int + slope * age,
+#          so = overall_int + overall_slope * age) %>%
+#   group_by(Chain, age) %>%
+#   summarise(so = estimate_mode(so), 
+#             so_uci = hdi_upper(so_ci),
+#             so_lci = hdi_lower(so_ci))
+# 
+# ggplot(so_run_comp, aes(x = age+2, y= so, fill = factor(Chain)))+
+#   geom_line(size = .4, aes(col = factor(Chain)))+
+#   geom_ribbon(aes(ymin=so_lci, ymax = so_uci), alpha = .05)+
+#   ylab("speaker optimality")+
+#   xlab("Age")+
+#   #facet_grid(~run)+
+#   theme_few()+
+#   scale_colour_discrete()+
+#   scale_fill_discrete()
+# 
+# ggsave("../graphs/so_by_chain.pdf", width = 4, height = 3, scale = 1.5)
 ```
 
 
@@ -544,29 +548,29 @@ ggplot(so_run_comp, aes(x = age+2, y= so, fill = factor(Chain)))+
 #   saveRDS(.,"../saves/run_correlations.rds")
   
   
-sem_know_cor_params  <- readRDS("../saves/run_correlations.rds")%>%
-  separate(Parameter, into = c("parameter", "type","item"), sep = ",")%>%
-  filter(parameter == "parameter", type == "items")%>%
-  separate(value, into = c("int", "slope"),sep = ", ")%>%
-  mutate(int = as.numeric(str_remove_all(int, "[(c]")),
-         slope = as.numeric(str_remove(slope, "[)]")))%>%
-  gather(parameter, value, int, slope)
-
-
-sem_know_cor_params <- sem_know_cor_params%>%
-  filter(Chain != "15",
-         Chain != "1",
-         Chain != "30",
-         Chain != "6",
-         Chain != "5",
-         Chain != "7",
-         Chain != "3")
+# sem_know_cor_params  <- readRDS("../saves/run_correlations.rds")%>%
+#   separate(Parameter, into = c("parameter", "type","item"), sep = ",")%>%
+#   filter(parameter == "parameter", type == "items")%>%
+#   separate(value, into = c("int", "slope"),sep = ", ")%>%
+#   mutate(int = as.numeric(str_remove_all(int, "[(c]")),
+#          slope = as.numeric(str_remove(slope, "[)]")))%>%
+#   gather(parameter, value, int, slope)
+# 
+# 
+# sem_know_cor_params <- sem_know_cor_params%>%
+#   filter(Chain != "15",
+#          Chain != "1",
+#          Chain != "30",
+#          Chain != "6",
+#          Chain != "5",
+#          Chain != "7",
+#          Chain != "3")
 
 ```
 
 
 ```{r}
-ggplot(sem_know_cor_params%>%filter(parameter == "int"), aes(x = value))+
+ggplot(item_params%>%filter(parameter == "int"), aes(x = value))+
   geom_density(alpha = 0.3)+
   xlab("Parameter")+
   facet_grid(Chain~item, scales = 'free')+
@@ -576,7 +580,7 @@ ggplot(sem_know_cor_params%>%filter(parameter == "int"), aes(x = value))+
 ```
 
 ```{r}
-item_params_cor <- sem_know_cor_params %>%
+item_params_cor <- item_params %>%
   group_by(Chain,item, parameter)%>%
   summarise(mode = estimate_mode(value))
 ```
@@ -776,7 +780,7 @@ ggarrange(data_plot,model_plot, common.legend = T, legend = "right", nrow = 1, n
 
 ## For comparison: GLMM for ME effect and data
 ```{r}
-me_data <- read_csv("../data/child_basic_me.csv")%>%
+me_data <- read_csv("../data/me.csv")%>%
     filter(trial != "train1",
            trial != "train2")%>%
   mutate(z_age = age_num - mean(age_num))
@@ -799,11 +803,11 @@ fixef <- as_tibble(fixef(me_model), rownames = "term")
 
 ranef <-  ranef(me_model)
 
-age_me_effect <- as_tibble(ranef$familiar, rownames = "familiar")%>%
+age_me_effect <- as_data_frame(ranef$familiar, rownames = "familiar")%>%
   mutate(grand_intercept = fixef%>%filter(term=="Intercept")%>%pull(Estimate),
          grand_slope = fixef%>%filter(term=="z_age")%>%pull(Estimate))%>%
   group_by(familiar) %>%
-  expand(Estimate.Intercept,Estimate.z_age,grand_intercept,grand_slope,z_age = me_data$age_num - mean(me_data$age_num), mean_age = mean(me_data$age_num))%>%
+  tidyr::expand(Estimate.Intercept,Estimate.z_age,grand_intercept,grand_slope,z_age = me_data$age_num - mean(me_data$age_num), mean_age = mean(me_data$age_num))%>%
   mutate(me_effect = plogis(grand_intercept + Estimate.Intercept+(Estimate.z_age+grand_slope)*z_age), 
          age = z_age+mean_age,
          item = familiar)%>%
@@ -915,15 +919,15 @@ comb_model_predictions <- comb_model_pred %>%
   left_join(aoa_ratings)%>%
   ungroup()%>%
   mutate(item = fct_reorder(factor(item), mean_aoa),
-         age = age + min(me_data$age_num))
+         age = age + min(me_data$age_num),
+         source = "Model")
 
  tail(comb_model_data)
 ```
 
 
-
 ```{r}
-ggplot(comb_model_predictions, aes(x=age,y = me_effect, col = item))+
+p_comb_model <- ggplot(comb_model_predictions, aes(x=age,y = me_effect, col = item))+
   geom_hline(yintercept = 0.5, lty=2)+
   geom_line(size = 1)+
   ggtitle("Combination Model Predictions")+
@@ -934,6 +938,114 @@ ggplot(comb_model_predictions, aes(x=age,y = me_effect, col = item))+
   xlim(2,5)+
   guides(alpha = F)+ 
   scale_colour_viridis_d()
+```
+
+```{r}
+
+data_comb <- read_csv("../data/combination.csv") %>%
+  filter(condition != "train")%>%
+  mutate(alignment = condition,
+         item = familiarObject)%>%
+  left_join(aoa_ratings)%>%
+  ungroup()%>%
+  mutate(item = fct_reorder(factor(familiarObject), mean_aoa), 
+         source = "Data")
+
+p_comb_data <- ggplot(data = data_comb, aes(x = age_num, y = correct, col = item, fill = item)) +
+  geom_hline(yintercept = 0.5, lty=2)+
+  geom_jitter(width = 0, height = 0.05, alpha = .6)+
+  #geom_smooth(method = "glm", method.args = list(family = "binomial"), se = F, alpha = .5)+
+  geom_smooth(method = "loess", se = F, alpha = .5, span = 2)+
+  labs(x="Age",y="Mutual Exclusivity effect")+
+  facet_grid(~alignment)+
+  ggtitle("Combination Data")+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F)+ 
+  scale_colour_viridis_d()+
+  scale_fill_viridis_d()
+```
+
+```{r}
+ggarrange(p_comb_model,p_comb_data, common.legend = T, legend = "right", nrow = 2, ncol = 1)
+```
+
+```{r}
+#ggsave("../graphs/combination_model_data.pdf", width = 7, height = 7, scale = 1)
+```
+
+```{r}
+ggplot(data = data_comb, aes(x = age_num, y = correct, col = source, fill = source)) +
+  geom_hline(yintercept = 0.5, lty=2)+
+  #geom_jitter(width = 0, height = 0.05, alpha = .6)+
+  #geom_smooth(method = "glm", method.args = list(family = "binomial"), se = F, alpha = .5)+
+  geom_smooth(method = "loess", se = T, alpha = .5, span = 2)+
+  geom_line(data = comb_model_predictions, aes(x=age,y = me_effect, col = source), size = 1)+
+  labs(x="Age",y="Mutual Exclusivity effect")+
+  #facet_grid(condition~familiarObject)+
+  facet_grid(alignment~item)+
+  #ggtitle("Combination Data")+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F)+ 
+  scale_colour_ptol(name = NULL)+
+  scale_fill_ptol(name = NULL)
+```
+
+
+```{r}
+#ggsave("../graphs/combination_model_data_by_item.pdf", width = 8, height = 2, scale = 1.5)
+```
+
+```{r}
+binnned_data <- data_comb%>%
+  group_by(subage, alignment, item)%>%
+  summarize(k = sum(correct), n = n())%>%
+  ungroup() %>%
+  mutate(a = 1 + k,
+         b = 1 + n - k,
+         data_mean = (a-1)/(a+b-2),
+         data_ci_lower  = qbeta(.025, a, b),
+         data_ci_upper = qbeta(.975, a, b),
+         subage = factor(subage))%>%
+  select(-a,-b,-n,-k)
+
+
+binned_model <- comb_model_predictions %>%
+  mutate(subage = cut(age, 
+                      breaks = c(2,3,4,5),
+                      labels = c(2,3,4)))%>%
+  group_by(subage, alignment, item)%>%
+  summarise(model_mean = estimate_mode(me_effect),
+            model_ci_lower = hdi_lower(me_effect),
+            model_ci_upper = hdi_upper(me_effect))
+
+
+cor_plot <- left_join(
+  binnned_data,
+  binned_model)
+
+
+ggplot(data = cor_plot,aes(x = model_mean, y = data_mean, col = item)) +
+  geom_abline(intercept = 0, slope = 1, lty = 2, alpha = 1, size = .5)+
+  geom_errorbar(aes(ymin = data_ci_lower, ymax = data_ci_upper),width = 0,size = .7)+
+  geom_errorbarh(aes(xmin = model_ci_lower, xmax = model_ci_upper), height = 0,size = .7)+
+  geom_point(size = 2,  stroke = 1)+
+  coord_fixed()+
+ stat_cor(method = "pearson", label.x = 0.01, label.y = 0.99, aes(x = model_mean, y = data_mean), inherit.aes = F, size = 3)+
+  xlim(0,1)+ylim(0,1)+
+  xlab("Model")+
+  ylab("Data")+
+  #ggtitle("3-year-olds")+
+  facet_grid(~subage)+
+  theme_few() + 
+  scale_colour_viridis_d(name ="Item")
+```
+
+```{r}
+#ggsave("../graphs/combination_correlation.pdf", width = 8, height = 4, scale = 1.2)
 ```
 
 
