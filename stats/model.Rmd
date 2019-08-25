@@ -169,7 +169,7 @@ var model  = function(){
 
   var speakerOptimalityParameters = {
     intercept: uniformDrift({a: -3, b: 3, width: 0.5}),
-    slope: uniformDrift({a: 0, b: 3, width: 0.5})
+    slope: uniformDrift({a: 0, b: 2, width: 0.5})
   }
 
   var globalLineParameters = {
@@ -264,10 +264,15 @@ me_model_data <- read_csv("../data/me.csv")%>%
 
 
 # load this for model parameters
-sem_know_model <- readRDS("../saves/sem_know_new_model.rds")#%>%
+sem_know_model <- readRDS("../saves/sem_know_new_model.rds")
 
-# load this for model parameters with wider prior on so_slope
-#saveRDS(sem_know_model, "../saves/sem_know_new_model_2.rds")
+# load this for model parameters with wider prior on so_slope (0:3)
+#sem_know_model <- readRDS("../saves/sem_know_new_model_2.rds")
+
+# load this for model parameters with even wider prior on so_slope (0:4)
+#sem_know_model <- readRDS("../saves/sem_know_new_model_3.rds")
+
+#saveRDS(sem_know_model, "../saves/sem_know_new_model_3.rds")
   
 ```
 
