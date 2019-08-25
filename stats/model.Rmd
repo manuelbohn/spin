@@ -266,11 +266,11 @@ me_model_data <- read_csv("../data/me.csv")%>%
 # load this for model parameters
 sem_know_model <- readRDS("../saves/sem_know_new_model.rds")
 
-# load this for model parameters with wider prior on so_slope (0:3)
-#sem_know_model <- readRDS("../saves/sem_know_new_model_2.rds")
-
-# load this for model parameters with even wider prior on so_slope (0:4)
-#sem_know_model <- readRDS("../saves/sem_know_new_model_3.rds")
+# # load this for model parameters with wider prior on so_slope (0:3)
+# sem_know_model <- readRDS("../saves/sem_know_new_model_2.rds")
+# 
+# # load this for model parameters with even wider prior on so_slope (0:4)
+# sem_know_model <- readRDS("../saves/sem_know_new_model_3.rds")
 
 #saveRDS(sem_know_model, "../saves/sem_know_new_model_3.rds")
   
@@ -861,7 +861,7 @@ novel_data <- read_csv("../data/novelty.csv")%>%
 
 novel_bm <- readRDS("../saves/novelty_model.rds")
 
-summary(novel_bm)
+#summary(novel_bm)
 
 novel_params <- as_tibble(fixef(novel_bm), rownames = "term")%>%
   select(term,Estimate)%>%
@@ -913,10 +913,8 @@ comb_model_pred<- webppl(
   data =list(data = comb_model_data),
   data_var = "dataFromR"
 )
-# 
-# #saveRDS(inv_model_pred, "../saves/inv_model_pred.rds")
-# #inv_model_pred <- readRDS("../saves/inv_model_pred.rds")
-# 
+
+
 comb_model_predictions <- comb_model_pred %>%
   separate(`0`, into = c("alignment","item", "age"), sep="/")%>%
   mutate(age = as.numeric(age))%>%
@@ -927,7 +925,6 @@ comb_model_predictions <- comb_model_pred %>%
          age = age + min(me_data$age_num),
          source = "Model")
 
- tail(comb_model_data)
 ```
 
 
@@ -981,15 +978,15 @@ ggarrange(p_comb_model,p_comb_data, common.legend = T, legend = "right", nrow = 
 ```
 
 ```{r}
-ggplot(data = data_comb, aes(x = age_num, y = correct, col = source, fill = source)) +
+ggplot(data = data_comb, aes(x = age_num, y = correct, col = source, fill = source, lty = alignment)) +
   geom_hline(yintercept = 0.5, lty=2)+
   #geom_jitter(width = 0, height = 0.05, alpha = .6)+
   #geom_smooth(method = "glm", method.args = list(family = "binomial"), se = F, alpha = .5)+
-  geom_smooth(method = "loess", se = T, alpha = .5, span = 2)+
-  geom_line(data = comb_model_predictions, aes(x=age,y = me_effect, col = source), size = 1)+
+  geom_smooth(method = "loess", se = F, alpha = .5, span = 2)+
+  geom_line(data = comb_model_predictions, aes(x=age,y = me_effect, col = source, lty = alignment), size = 1)+
   labs(x="Age",y="Mutual Exclusivity effect")+
   #facet_grid(condition~familiarObject)+
-  facet_grid(alignment~item)+
+  facet_grid(~item)+
   #ggtitle("Combination Data")+
   theme_few() +
   ylim(-0.05,1.05)+
@@ -1001,7 +998,7 @@ ggplot(data = data_comb, aes(x = age_num, y = correct, col = source, fill = sour
 
 
 ```{r}
-#ggsave("../graphs/combination_model_data_by_item.pdf", width = 8, height = 2, scale = 1.5)
+ggsave("../graphs/combination_model_data_by_item.pdf", width = 8, height = 3, scale = 1.5)
 ```
 
 ```{r}
