@@ -246,33 +246,43 @@ me_model_data <- read_csv("../data/me.csv")%>%
            trial != "train2")%>%
   mutate(age = age_num - min(age_num))
 
-# sem_know_model<- webppl(
-#   program_code = paste(rsaUtils, rsaModel, semStr , sep='\n'),
-#   data = list(data = me_model_data),
-#   data_var = "dataFromR",
-#   model_var = "model",
-#   chains = 10,
-#   cores = 10,
-#   inference_opts = list(method = "incrementalMH",
-#                         samples = 4000,
-#                         burn = 2000,
-#                         verbose = T,
-#                         lag = 1,
-#                         verboseLag = 500)
-# )
+sem_know_model<- webppl(
+  program_code = paste(rsaUtils, rsaModel, semStr , sep='\n'),
+  data = list(data = me_model_data),
+  data_var = "dataFromR",
+  model_var = "model",
+  chains = 10,
+  cores = 10,
+  inference_opts = list(method = "incrementalMH",
+                        samples = 4000,
+                        burn = 2000,
+                        verbose = T,
+                        lag = 1,
+                        verboseLag = 500)
+)
 
 
 
-# load this for model parameters
-sem_know_model <- readRDS("../saves/sem_know_new_model.rds")
+# load this for model parameters with so_slope (0:2)
+#sem_know_model <- readRDS("../saves/sem_know_new_model.rds")
 
 # # load this for model parameters with wider prior on so_slope (0:3)
 # sem_know_model <- readRDS("../saves/sem_know_new_model_2.rds")
-# 
+
+# # load this for model parameters with wider prior on so_slope (0:3) (second run)
+# sem_know_model <- readRDS("../saves/sem_know_new_model_2_2.rds")%>%
+#   filter(Chain != 2)
+
 # # load this for model parameters with even wider prior on so_slope (0:4)
 # sem_know_model <- readRDS("../saves/sem_know_new_model_3.rds")
 
-#saveRDS(sem_know_model, "../saves/sem_know_new_model_3.rds")
+# # load this for model parameters with wider prior on so_slope (0:4), so_int, as well as on global paramters of semantic knowledge
+sem_know_model <- readRDS("../saves/sem_know_new_model_4.rds")%>%
+  filter(Chain !=9)
+
+ 
+ 
+#saveRDS(sem_know_model, "../saves/sem_know_new_model_4.rds")
   
 ```
 
