@@ -74,7 +74,7 @@ d <- read_csv("../data/me.csv")%>%
 
 ```{r}
 # import data
-d <- read_csv("../data/child_basic_me.csv")%>%
+d <- read_csv("../data/me.csv")%>%
   mutate(subage = factor(subage))
 
 aoa_ratings_all <- read_xlsx(path = "../data/words_aoa_ratings.xlsx", sheet = 1)
@@ -254,7 +254,7 @@ model_plot <- ggplot(ranef_plot, aes(x=age,y = y, col = familiar))+
   geom_hline(yintercept = 0.5, lty=2)+
   geom_line(size = 1)+
   ggtitle("Model")+
-  labs(x="Age",y="Proportion correct")+
+  labs(x="Age",y="Mutual Exclusivity effect")+
   theme_few() +
   ylim(-0.05,1.05)+
   xlim(2,5)+

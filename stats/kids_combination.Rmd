@@ -80,6 +80,8 @@ d %>%
   group_by(condition,subage) %>%
   summarise(n = length(unique(subid)),
             data_points = n())
+
+#length(unique(d$subid))
 ```
 
 ```{r plot by numerical age, echo = F}
@@ -138,16 +140,14 @@ d_model <- d %>%
   mutate(age_num = age_num - mean(age_num),
          aoa = mean_aoa- mean(mean_aoa))
 
-model <- brm(correct ~ familiarObject * age_num * condition,
+model <- brm(correct ~ familiarObject * age_num * condition + (condition|subid),
                     data = d_model, family = bernoulli(),
-          control = list(adapt_delta = 0.95),
+          control = list(adapt_delta = 0.99),
           sample_prior = F,
           save_all_pars = TRUE,
-          iter = 5000)
+          iter = 8000)
 
 summary(model)
-
-plot(model)
 
 
 ```
