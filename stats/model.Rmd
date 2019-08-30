@@ -169,7 +169,7 @@ var model  = function(){
 
   var speakerOptimalityParameters = {
     intercept: uniformDrift({a: -3, b: 3, width: 0.5}),
-    slope: uniformDrift({a: 0, b: 2, width: 0.5})
+    slope: uniformDrift({a: 0, b: 4, width: 0.5})
   }
 
   var globalLineParameters = {
@@ -178,7 +178,7 @@ var model  = function(){
   }
 
   var itemVariability = {
-    intercept: uniformDrift({a: 0, b: 1, width: 0.2}),
+    intercept: uniformDrift({a: 0, b: 2, width: 0.2}),
     slope: uniformDrift({a: 0, b: 1, width: 0.2})
   }
 
@@ -196,11 +196,11 @@ var model  = function(){
           sigma: itemVariability.intercept, 
           width: 0.5
         }),
-        slope: Math.pow(gaussianDrift({
+        slope: gaussianDrift({
           mu: globalLineParameters.slope, 
           sigma: itemVariability.slope, 
           width: 0.5
-        }), 2)
+        })
       }    
 
     foreach(function(row){
@@ -237,9 +237,6 @@ var model  = function(){
 '
 ```
 
-
-
-
 ```{r}
 me_model_data <- read_csv("../data/me.csv")%>%
     filter(trial != "train1",
@@ -251,39 +248,40 @@ sem_know_model<- webppl(
   data = list(data = me_model_data),
   data_var = "dataFromR",
   model_var = "model",
-  chains = 10,
-  cores = 10,
+  chains = 4,
+  cores = 4,
   inference_opts = list(method = "incrementalMH",
                         samples = 4000,
                         burn = 2000,
                         verbose = T,
                         lag = 1,
-                        verboseLag = 500)
+                        verboseLag = 1000)
 )
 
 
+```
 
+# Model runs
+
+```{r}
 # load this for model parameters with so_slope (0:2)
-sem_know_model <- readRDS("../saves/sem_know_new_model.rds")
+#sem_know_model <- readRDS("../saves/sem_know_new_model.rds")
 
-# # load this for model parameters with wider prior on so_slope (0:3)
-# sem_know_model <- readRDS("../saves/sem_know_new_model_2.rds")
+# load this for model parameters with wider so_slope (0:4) and wider sigma on sem_int
+#sem_know_model <- readRDS("../saves/sem_know_model_wide_sig.rds")
 
-# # load this for model parameters with wider prior on so_slope (0:3) (second run)
-# sem_know_model <- readRDS("../saves/sem_know_new_model_2_2.rds")%>%
-#   filter(Chain != 2)
+# load this for model parameters with wider so_slope (0:4) and wider sigma on sem_int and forced positive slope for semantic knowledge
+#sem_know_model <- readRDS("../saves/sem_know_model_pos_slope.rds")
 
-# # load this for model parameters with even wider prior on so_slope (0:4)
-# sem_know_model <- readRDS("../saves/sem_know_new_model_3.rds")
-
-# # load this for model parameters with wider prior on so_slope (0:4), so_int, as well as on global paramters of semantic knowledge
-sem_know_model <- readRDS("../saves/sem_know_new_model_4.rds")%>%
-  filter(Chain !=9)
-
+# load this for model parameters with wider so_slope (0:4) and wider sigma on sem_int and with random intercepts for subjects
+#sem_know_model <- readRDS("../saves/sem_know_model_wide_sig_ind.rds")
  
- 
-#saveRDS(sem_know_model, "../saves/sem_know_new_model_4.rds")
-  
+# load this for model parameters with wider so_slope (0:4) and wider sigma on sem_int, forced positive slope for semantic knowledge and with random intercepts for subjects
+sem_know_model <- readRDS("../saves/sem_know_model_wide_sig_pos_slope_ind.rds")
+
+
+#saveRDS(sem_know_model, "../saves/sem_know_model_wide_sig_ind.rds")
+
 ```
 
 ```{r}
@@ -318,13 +316,27 @@ global_params <- sem_know_model %>%
 
 global_sigma<- sem_know_model %>%
   separate(Parameter, into = c("parameter", "type","token"), sep = ",")%>%
-  filter(parameter == "parameter", type == "sigma")%>%
+  filter(parameter == "parameter", type == "sigma", token != "global_subject_sigmas")%>%
     separate(value, into = c("sigma_int", "sigma_slope"),sep = ", ")%>%
     mutate(sigma_int = as.numeric(str_remove_all(sigma_int, "[(c]")),
          sigma_slope = as.numeric(str_remove(sigma_slope, "[)]")))%>%
     gather(parameter, value, sigma_int, sigma_slope)
 
 
+subj_sigma<- sem_know_model %>%
+  separate(Parameter, into = c("parameter", "type","token"), sep = ",")%>%
+  filter(parameter == "parameter", token == "global_subject_sigmas")%>%
+  separate(value, into = c("na", "sigma"),sep = ", ")%>%
+  select(-na)%>%
+  mutate(sigma = as.numeric(str_remove(sigma, "[)]")))
+
+
+subject_params<- sem_know_model %>%
+  separate(Parameter, into = c("parameter", "type","id"), sep = ",")%>%
+  filter(parameter == "parameter", type == "subj_intercept")%>%
+  separate(value, into = c("na", "int"),sep = ", ")%>%
+  select(-na)%>%
+  mutate(int = as.numeric(str_remove(int, "[)]")))
 
 #### summaries
 
@@ -347,16 +359,16 @@ global_params_summary <- global_params %>%
             uci = hdi_upper(value),
             lci = hdi_lower(value))
   
-  
-
 ```
 
 ```{r}
-ggplot(item_params, aes(x = value, fill = factor(Chain)))+
+plot_item_params <- ggplot(item_params, aes(x = value, fill = factor(Chain)))+
   geom_density(alpha = 0.3)+
   xlab("Parameter")+
   facet_grid(parameter~item, scales = 'free')+
   theme_few()
+
+plot_item_params
 ```
 
 ```{r}
@@ -367,21 +379,65 @@ ggplot(item_params, aes(x = value, fill = factor(Chain)))+
 
 ```{r}
 
-ggplot(global_params, aes(x = value, fill = factor(Chain)))+
+plot_global_params <- ggplot(global_params, aes(x = value, fill = factor(Chain)))+
   geom_density(alpha = 0.3)+
   xlab("Parameter")+
   facet_grid(parameter~token, scales = 'free')+
   theme_few()
+
+plot_global_params
 ```
-
-
 ```{r}
-ggplot(global_sigma, aes(x = value, fill = factor(Chain)))+
+plot_global_sigma <- ggplot(global_sigma, aes(x = value, fill = factor(Chain)))+
   geom_density(alpha = 0.3)+
   xlab("Sigma")+
   facet_grid(~parameter, scales = 'free')+
   theme_few()
+
+plot_global_sigma
 ```
+
+
+```{r}
+plotg_subj_sigma <- ggplot(subj_sigma, aes(x = sigma, fill = factor(Chain)))+
+  geom_density(alpha = 0.3)+
+  xlab("Subject Sigma")+
+  theme_few()
+
+plotg_subj_sigma
+```
+
+
+```{r}
+
+select_id <- me_model_data %>%
+  filter(age < 1.3,
+         age >1)%>%
+  group_by(age,subid)%>%
+  summarise(mean = mean(correct))%>%
+  mutate(id = subid)
+
+
+subject_params <- subject_params %>%
+  left_join(select_id)%>%
+  filter(mean != "NA")%>%
+  ungroup()
+
+
+ggplot(subject_params, aes(x = int, fill = factor(Chain)))+
+  geom_density(alpha = 0.3)+
+  geom_vline(aes(xintercept = age), size = 1.5)+
+  #geom_vline(aes(xintercept = mean), size = 1.5, col = "red")+
+  facet_grid(id+ round(mean,2)~.)+
+  xlab("Subject Intercept")+
+  theme_few()
+
+
+
+ggsave("../graphs/subj_intercept.pdf", width = 5, height = 8, scale = 1.5)
+
+```
+
 
 ## Plotting semantic knowledge
 ```{r}
@@ -1010,7 +1066,7 @@ ggplot(data = data_comb, aes(x = age_num, y = correct, col = source, fill = sour
 ```{r}
 ggsave("../graphs/combination_model_data_by_item.pdf", width = 8, height = 3, scale = 1.5)
 ```
-
+# Correlate model predictions and data 
 ```{r}
 binnned_data <- data_comb%>%
   group_by(subage, alignment, item)%>%
@@ -1040,7 +1096,7 @@ cor_plot <- left_join(
   binned_model)
 
 
-ggplot(data = cor_plot,aes(x = model_mean, y = data_mean, col = item)) +
+cor_plot_age <- ggplot(data = cor_plot,aes(x = model_mean, y = data_mean, col = item)) +
   geom_abline(intercept = 0, slope = 1, lty = 2, alpha = 1, size = .5)+
   geom_errorbar(aes(ymin = data_ci_lower, ymax = data_ci_upper),width = 0,size = .7)+
   geom_errorbarh(aes(xmin = model_ci_lower, xmax = model_ci_upper), height = 0,size = .7)+
@@ -1050,7 +1106,6 @@ ggplot(data = cor_plot,aes(x = model_mean, y = data_mean, col = item)) +
   xlim(0,1)+ylim(0,1)+
   xlab("Model")+
   ylab("Data")+
-  #ggtitle("3-year-olds")+
   facet_grid(~subage)+
   theme_few() + 
   scale_colour_viridis_d(name ="Item")
@@ -1059,6 +1114,20 @@ ggplot(data = cor_plot,aes(x = model_mean, y = data_mean, col = item)) +
 ```{r}
 #ggsave("../graphs/combination_correlation.pdf", width = 8, height = 4, scale = 1.2)
 ```
+
+
+```{r}
+ggarrange(
+plot_item_params,plotg_subj_sigma,
+plot_global_params,plot_subject_params,
+cor_plot_age, plot_global_sigma,
+ncol = 2, nrow = 3, common.legend = T, widths = c(1.7,1))
+
+ggsave("../graphs/overview_wide_slope_wide_sigma_pos_slope_ind.png", width = 12, height = 10, scale = 1.2)
+
+
+```
+
 
 
 #### WORK IN PROGRESS: nesting within participant
@@ -1122,7 +1191,7 @@ var model  = function(){
 
   var speakerOptimalityParameters = {
     intercept: uniformDrift({a: -3, b: 3, width: 0.5}),
-    slope: uniformDrift({a: 0, b: 2, width: 0.5})
+    slope: uniformDrift({a: 0, b: 4, width: 0.5})
   }
 
   var globalLineParameters = {
@@ -1131,7 +1200,7 @@ var model  = function(){
   }
 
   var itemVariability = {
-    intercept: uniformDrift({a: 0, b: 1, width: 0.2}),
+    intercept: uniformDrift({a: 0, b: 2, width: 0.2}),
     slope: uniformDrift({a: 0, b: 1, width: 0.2})
   }
 
@@ -1223,15 +1292,18 @@ sem_know_model<- webppl(
   data = list(data = me_model_data),
   data_var = "dataFromR",
   model_var = "model",
-  chains = 1,
-  cores = 1,
+  chains = 8,
+  cores = 8,
   inference_opts = list(method = "incrementalMH",
-                        samples = 5,
-                        burn = 1,
+                        samples = 4000,
+                        burn = 2000,
                         verbose = T,
                         lag = 1,
-                        verboseLag = 1)
+                        verboseLag = 1000)
 )
+
+
+saveRDS(sem_know_model, "../saves/sem_know_model_wide_sig_pos_slope_ind.rds")
 
 
 ```

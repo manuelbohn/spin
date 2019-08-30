@@ -80,7 +80,7 @@ d <- read_csv("../data/me.csv")%>%
 aoa_ratings_all <- read_xlsx(path = "../data/words_aoa_ratings.xlsx", sheet = 1)
 
 aoa_ratings <- aoa_ratings_all %>%
-  filter(Word %in% d_raw$familiar )%>%
+  filter(Word %in% d$familiar )%>%
   mutate(mean_aoa = as.numeric(Rating.Mean),
          familiar = Word)%>%
   select(familiar,mean_aoa)
@@ -162,7 +162,8 @@ p2 <- d %>%
 ggplot(data = p2, aes(x = age_num, y = correct, col = familiar, fill = familiar)) +
   geom_hline(yintercept = 0.5, lty=2)+
   geom_jitter(width = 0, height = 0.05, alpha = .6)+
-  geom_smooth(method = "glm", method.args = list(family = "binomial"), se = F, alpha = .5)+
+  #geom_smooth(method = "glm", method.args = list(family = "binomial"), se = F, alpha = .5)+
+  geom_smooth(method = "loess", se = F, alpha = .5)+
   labs(x="Age",y="Mutual Exclusivity effect")+
   #facet_grid(~familiar)+
   #ggtitle("Data")+
