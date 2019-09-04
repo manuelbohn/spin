@@ -284,6 +284,8 @@ sem_know_model <- readRDS("../saves/sem_know_model_wide_sig_pos_slope_ind.rds")
 
 ```
 
+# Summarizing parameters
+
 ```{r}
 
 # model_pred <- sem_know_model %>%
@@ -338,6 +340,20 @@ subject_params<- sem_know_model %>%
   select(-na)%>%
   mutate(int = as.numeric(str_remove(int, "[)]")))
 
+
+model_pred<- sem_know_model %>%
+  separate(Parameter, into = c("parameter", "item","age"), sep = ",")%>%
+  filter(parameter == "prediction")%>%
+  separate(value, into = c("alignment", "me_effect"),sep = ", ")%>%
+  mutate(age = as.numeric(age),
+         me_effect =str_remove(me_effect,"[)]"),
+         me_effect =str_remove(me_effect,'"'),
+         me_effect =as.numeric(str_remove(me_effect,'"')),
+         alignment = str_remove(alignment,'c[(]'),
+         alignment =str_remove(alignment,'"'),
+         alignment =str_remove(alignment,'"'))
+
+
 #### summaries
 
 # model_pred_summary <- model_pred %>%
@@ -387,6 +403,7 @@ plot_global_params <- ggplot(global_params, aes(x = value, fill = factor(Chain))
 
 plot_global_params
 ```
+
 ```{r}
 plot_global_sigma <- ggplot(global_sigma, aes(x = value, fill = factor(Chain)))+
   geom_density(alpha = 0.3)+
@@ -1132,52 +1149,6 @@ ggsave("../graphs/overview_wide_slope_wide_sigma_pos_slope_ind.png", width = 12,
 
 #### WORK IN PROGRESS: nesting within participant
 
-to do:
-- bookkeeping: index correct participant/item variables at relevant part of code
-- inference: try HMC, variational
-
-
-subj | item | response
-1    |  A  |   1
-1    |  B  |   1
-2    |  A  |   1
-2    |  B  |   0
-
-
-```{js}
-
-var sampleItemParameters = function() { 
-  return {
-      intercept: gaussianDrift({
-        mu: globalLineParameters.intercept, 
-        sigma: itemVariability.intercept, 
-        width: 0.5
-      }),
-      slope: Math.pow(gaussianDrift({
-        mu: globalLineParameters.slope, 
-        sigma: itemVariability.slope, 
-        width: 0.5
-      }), 2)
-    }   
-}
-
-// want something that favors smaller values
-var subject_sigma = uniform(0, 1) 
-
-var sampleLinguisticCompetence = function(age){
-  return gaussianDrift({ mu: age, sigma: subject_sigma, width: 0.5 })
-}
-
-
-// [ carrot, duck, bread, ...]  (slope and intercept)
-var all_item_parameters = repeat(n_items, sampleItemParameters)
-// [s1, s2, s3, ...] (intercept)
-var all_subject_parameters = map(sampleLinguisticCompetence, subjects)
-
-var sem_knowledge = logistic(item.intercept +  item.slope * linguistic_competence)
-```
-
-
 ```{r work in progress}
 sem_subj_str <- '
 var data = dataFromR.data
@@ -1241,7 +1212,8 @@ var model  = function(){
      // display("age = " + subj_age + " ... intercept = " + subj_linguistic_competence)
   
       // question: should we use age here instead of the random intercept? or a different random intercept?
-      var speakerOptimality = speakerOptimalityParameters.intercept  + speakerOptimalityParameters.slope * age
+    
+  var speakerOptimality = speakerOptimalityParameters.intercept  + speakerOptimalityParameters.slope * subj_age
       
       // each row is a different item
       foreach(function(row){
@@ -1276,6 +1248,9 @@ var model  = function(){
         var speakerOptimality = speakerOptimalityParameters.intercept  + speakerOptimalityParameters.slope * row.age
 
         var modelPredictions = pragmaticListener({label: "novel_word"}, prior, speakerOptimality, sem_knowledge)
+
+display(row.alignment)
+
         query.add(["prediction", item, row.age], [row.alignment, Math.exp(modelPredictions.score(1))])
 
       }, familiars)
@@ -1333,44 +1308,48 @@ sem_know_model<- webppl(
   chains = 1,
   cores = 1,
   inference_opts = list(method = "incrementalMH",
-                        samples = 1,
+                        samples = 10,
                         burn = 1,
                         verbose = T,
                         lag = 1,
-                        verboseLag = 10)
+                        verboseLag = 1000)
 )
 
+# run variants
+# start with variant 3
+# 3 cores, 3 chains 
+# see how long it takes and then run over night 
 
-# saveRDS(sem_know_model, "../saves/sem_know_model_wide_sig_pos_slope_ind.rds")
+
+
+# saveRDS(sem_know_model, "../saves/sem_know_model_save pred.rds")
 
 
 ```
 
+#### plotting predictions
+
 ```{r}
-# novelty data
+comb_model_pred_agg <- model_pred%>%
+  group_by(alignment,item,age)%>%
+  summarise(mean = estimate_mode(me_effect),
+            uci = hdi_upper(me_effect),
+            lci = hdi_lower(me_effect))%>%
+  left_join(aoa_ratings) %>%
+  ungroup()%>%
+  mutate(item = fct_reorder(factor(item), mean_aoa),
+         age = age + min(me_data$age_num))
 
-novel_data <- read_csv("../data/novelty.csv")%>%
-  mutate(age_num = age_num-min(age_num))
+ggplot(comb_model_pred_agg, aes(x=age,y = mean, col = item))+
+  geom_hline(yintercept = 0.5, lty=2)+
+  geom_line(size = 1)+
+  ggtitle("Combination Model Predictions")+
+  labs(x="Age",y="Proportion correct")+
+  facet_grid(~alignment)+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F)+ 
+  scale_colour_viridis_d()
 
-# novel_bm <- brm(correct ~ age_num + (1 | subid) + (age_num | agent), 
-#           data = novel_data, family = bernoulli(),
-#           control = list(adapt_delta = 0.95),
-#           sample_prior = F,
-#           save_all_pars = F,
-#           iter = 10000)
-# 
-# saveRDS(novel_bm, "../saves/novelty_model.rds")
-
-
-  
-comb_model_data_incon <- inv_model_data %>%
-  mutate(nov_int = novel_params$Intercept,
-         nov_slope = novel_params$age_num,
-         prior = 1- plogis(nov_int + age * nov_slope),
-         alignment = "incongruent")
-
-
-comb_model_data <- bind_rows(
-  comb_model_data_con,
-  comb_model_data_incon)
 ```
