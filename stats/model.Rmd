@@ -1237,9 +1237,11 @@ var model  = function(){
       var subjectData = _.filter(data, {subid: subid})
       var subj_age = subjectData[0].age
       var subj_linguistic_competence = sampleLinguisticCompetence(subj_age)
+      
+     // display("age = " + subj_age + " ... intercept = " + subj_linguistic_competence)
   
       // question: should we use age here instead of the random intercept? or a different random intercept?
-      var speakerOptimality = speakerOptimalityParameters.intercept  + speakerOptimalityParameters.slope * subj_linguistic_competence
+      var speakerOptimality = speakerOptimalityParameters.intercept  + speakerOptimalityParameters.slope * age
       
       // each row is a different item
       foreach(function(row){
@@ -1265,6 +1267,20 @@ var model  = function(){
       
   }, subjects)
   
+  foreach(function(row){
+      var prior = [row.prior, 1-row.prior]
+      foreach(function(item){
+        var itemLineParameters = all_item_parameters[item]
+        var sem_knowledge = logistic(itemLineParameters.intercept + 
+            itemLineParameters.slope * row.age)
+        var speakerOptimality = speakerOptimalityParameters.intercept  + speakerOptimalityParameters.slope * row.age
+
+        var modelPredictions = pragmaticListener({label: "novel_word"}, prior, speakerOptimality, sem_knowledge)
+        query.add(["prediction", item, row.age], [row.alignment, Math.exp(modelPredictions.score(1))])
+
+      }, familiars)
+   }, dataFromR.comb_data)
+
   foreach(function(item){
     var itemLineParameters = all_item_parameters[item]
     query.add(["parameter","items", item], [itemLineParameters.intercept, itemLineParameters.slope])
@@ -1282,30 +1298,79 @@ var model  = function(){
 
 
 ```{r}
+
+novel_bm <- readRDS("../saves/novelty_model.rds")
+
+#summary(novel_bm)
+
+novel_params <- as_tibble(fixef(novel_bm), rownames = "term")%>%
+  select(term,Estimate)%>%
+  spread(term, Estimate) 
+
 me_model_data <- read_csv("../data/me.csv")%>%
     filter(trial != "train1",
            trial != "train2")%>%
-  mutate(age = age_num - min(age_num))
+  mutate(age = age_num - min(age_num),
+         nov_int = novel_params$Intercept,
+         nov_slope = novel_params$age_num,
+         prior = plogis(nov_int + age * nov_slope))
+
+comb_model_data <- bind_rows(
+  me_model_data %>%
+    distinct(age, prior) %>%
+    mutate(alignment = "congruent"),
+  me_model_data %>%
+    distinct(age, prior) %>%
+    mutate(prior = 1 - prior, 
+         alignment = "incongruent")
+)
 
 sem_know_model<- webppl(
   program_code = paste(rsaUtils, rsaModel, sem_subj_str , sep='\n'),
-  data = list(data = me_model_data),
+  data = list(data = me_model_data, comb_data = comb_model_data),
   data_var = "dataFromR",
   model_var = "model",
-  chains = 8,
-  cores = 8,
+  chains = 1,
+  cores = 1,
   inference_opts = list(method = "incrementalMH",
-                        samples = 4000,
-                        burn = 2000,
+                        samples = 1,
+                        burn = 1,
                         verbose = T,
                         lag = 1,
-                        verboseLag = 1000)
+                        verboseLag = 10)
 )
 
 
-saveRDS(sem_know_model, "../saves/sem_know_model_wide_sig_pos_slope_ind.rds")
+# saveRDS(sem_know_model, "../saves/sem_know_model_wide_sig_pos_slope_ind.rds")
 
 
 ```
 
+```{r}
+# novelty data
 
+novel_data <- read_csv("../data/novelty.csv")%>%
+  mutate(age_num = age_num-min(age_num))
+
+# novel_bm <- brm(correct ~ age_num + (1 | subid) + (age_num | agent), 
+#           data = novel_data, family = bernoulli(),
+#           control = list(adapt_delta = 0.95),
+#           sample_prior = F,
+#           save_all_pars = F,
+#           iter = 10000)
+# 
+# saveRDS(novel_bm, "../saves/novelty_model.rds")
+
+
+  
+comb_model_data_incon <- inv_model_data %>%
+  mutate(nov_int = novel_params$Intercept,
+         nov_slope = novel_params$age_num,
+         prior = 1- plogis(nov_int + age * nov_slope),
+         alignment = "incongruent")
+
+
+comb_model_data <- bind_rows(
+  comb_model_data_con,
+  comb_model_data_incon)
+```
