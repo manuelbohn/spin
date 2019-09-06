@@ -1,3 +1,0 @@
-var model = function() {
-  return binomial(0.4, 2);
-};

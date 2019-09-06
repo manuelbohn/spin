@@ -1,3 +1,0 @@
-var model = function() {
-  sample(Gamma({shape: 12, scale: 1 / 8}));
-};

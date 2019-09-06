@@ -1,3 +1,0 @@
-var model = function() {
-  sample(Beta({a: 6, b: 2}));
-};

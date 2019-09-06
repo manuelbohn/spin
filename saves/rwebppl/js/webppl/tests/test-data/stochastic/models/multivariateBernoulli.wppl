@@ -1,4 +1,0 @@
-var model = function() {
-  var x = multivariateBernoulli(Vector([.5, .1]));
-  return T.sumreduce(x);
-};

@@ -1,7 +1,0 @@
-var model = function() {
-  var a = flip();
-  if (a) {
-    factor(-Infinity);
-  }
-  return a;
-};

@@ -1,8 +1,0 @@
-{
-  "hist": {
-    "{\"x\":true,\"y\":true}": 0.25,
-    "{\"x\":true,\"y\":false}": 0.25,
-    "{\"x\":false,\"y\":true}": 0.25,
-    "{\"x\":false,\"y\":false}": 0.25
-  }
-}

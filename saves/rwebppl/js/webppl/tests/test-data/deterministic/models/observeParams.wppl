@@ -1,6 +1,0 @@
-forwardGuide(function() {
-  return observe(
-      Discrete({ ps: [1] }),
-      undefined,
-      { guide: function() { return Delta({ v: 'ok' }); }});
-});

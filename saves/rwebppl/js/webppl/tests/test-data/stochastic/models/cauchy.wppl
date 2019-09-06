@@ -1,4 +1,0 @@
-var model = function() {
-  var x = cauchy(2, 1.5);
-  return 1 < x && x <= 3;
-};

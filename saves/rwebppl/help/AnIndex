@@ -1,8 +1,0 @@
-get_samples	get_samples
-get_webppl_version	get_webppl_version
-install_webppl	install_webppl
-install_webppl_package	install_webppl_package
-kill_webppl	kill_webppl
-run_webppl	run_webppl
-uninstall_webppl_package	uninstall_webppl_package
-webppl	webppl
