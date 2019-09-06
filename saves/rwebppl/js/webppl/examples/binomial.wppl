@@ -1,0 +1,8 @@
+var binomial = function() {
+  var a = flip();
+  var b = flip();
+  var c = flip();
+  return a + b + c;
+};
+
+Infer({model: binomial});

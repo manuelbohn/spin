@@ -1,0 +1,3 @@
+var dist1 = Categorical({ps: [0.4, 0.6], vs: [-Infinity, 'B']});
+var dist2 = deserializeDist(serializeDist(dist1));
+serializeDist(dist1) === serializeDist(dist2);

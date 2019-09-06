@@ -264,23 +264,13 @@ sem_know_model<- webppl(
 # Model runs
 
 ```{r}
-# load this for model parameters with so_slope (0:2)
-#sem_know_model <- readRDS("../saves/sem_know_new_model.rds")
 
-# load this for model parameters with wider so_slope (0:4) and wider sigma on sem_int
-#sem_know_model <- readRDS("../saves/sem_know_model_wide_sig.rds")
 
-# load this for model parameters with wider so_slope (0:4) and wider sigma on sem_int and forced positive slope for semantic knowledge
-#sem_know_model <- readRDS("../saves/sem_know_model_pos_slope.rds")
-
-# load this for model parameters with wider so_slope (0:4) and wider sigma on sem_int and with random intercepts for subjects
-#sem_know_model <- readRDS("../saves/sem_know_model_wide_sig_ind.rds")
- 
-# load this for model parameters with wider so_slope (0:4) and wider sigma on sem_int, forced positive slope for semantic knowledge and with random intercepts for subjects
-sem_know_model <- readRDS("../saves/sem_know_model_wide_sig_pos_slope_ind.rds")
+sem_know_model <- readRDS("../saves/sem_know_model_variant3_50k.rds")
 
 
 #saveRDS(sem_know_model, "../saves/sem_know_model_wide_sig_ind.rds")
+
 
 ```
 
@@ -342,16 +332,14 @@ subject_params<- sem_know_model %>%
 
 
 model_pred<- sem_know_model %>%
-  separate(Parameter, into = c("parameter", "item","age"), sep = ",")%>%
+  separate(Parameter, into = c("parameter", "item","age","alignment"), sep = ",")%>%
   filter(parameter == "prediction")%>%
-  separate(value, into = c("alignment", "me_effect"),sep = ", ")%>%
+  separate(value, into = c("na", "me_effect"),sep = ",")%>%
+  select(-na)%>%
   mutate(age = as.numeric(age),
-         me_effect =str_remove(me_effect,"[)]"),
-         me_effect =str_remove(me_effect,'"'),
-         me_effect =as.numeric(str_remove(me_effect,'"')),
-         alignment = str_remove(alignment,'c[(]'),
-         alignment =str_remove(alignment,'"'),
-         alignment =str_remove(alignment,'"'))
+         me_effect =as.numeric(str_remove(me_effect,"[)]")))
+
+
 
 
 #### summaries
@@ -376,6 +364,7 @@ global_params_summary <- global_params %>%
             lci = hdi_lower(value))
   
 ```
+# Plotting model parameters
 
 ```{r}
 plot_item_params <- ggplot(item_params, aes(x = value, fill = factor(Chain)))+
@@ -451,7 +440,7 @@ ggplot(subject_params, aes(x = int, fill = factor(Chain)))+
 
 
 
-ggsave("../graphs/subj_intercept.pdf", width = 5, height = 8, scale = 1.5)
+#ggsave("../graphs/subj_intercept.pdf", width = 5, height = 8, scale = 1.5)
 
 ```
 
@@ -836,6 +825,8 @@ model_plot <- ggplot(inv_predictions, aes(x=age,y = me_effect, col = item))+
   guides(alpha = F)+ 
   scale_colour_viridis_d()
 
+
+model_plot
 ```
 
 ```{r}
@@ -862,6 +853,7 @@ data_plot <- ggplot(data = p2, aes(x = age_num, y = correct, col = familiar, fil
   scale_fill_viridis_d(name = "familiar object")
 
 ```
+
 ```{r}
 ggarrange(data_plot,model_plot, common.legend = T, legend = "right", nrow = 1, ncol = 2)
 ```
@@ -1023,10 +1015,11 @@ p_comb_model <- ggplot(comb_model_predictions, aes(x=age,y = me_effect, col = it
   xlim(2,5)+
   guides(alpha = F)+ 
   scale_colour_viridis_d()
+
+p_comb_model
 ```
 
 ```{r}
-
 data_comb <- read_csv("../data/combination.csv") %>%
   filter(condition != "train")%>%
   mutate(alignment = condition,
@@ -1061,7 +1054,7 @@ ggarrange(p_comb_model,p_comb_data, common.legend = T, legend = "right", nrow = 
 ```
 
 ```{r}
-ggplot(data = data_comb, aes(x = age_num, y = correct, col = source, fill = source, lty = alignment)) +
+p_data_model <- ggplot(data = data_comb, aes(x = age_num, y = correct, col = source, fill = source, lty = alignment)) +
   geom_hline(yintercept = 0.5, lty=2)+
   #geom_jitter(width = 0, height = 0.05, alpha = .6)+
   #geom_smooth(method = "glm", method.args = list(family = "binomial"), se = F, alpha = .5)+
@@ -1077,6 +1070,8 @@ ggplot(data = data_comb, aes(x = age_num, y = correct, col = source, fill = sour
   guides(alpha = F)+ 
   scale_colour_ptol(name = NULL)+
   scale_fill_ptol(name = NULL)
+
+p_data_model
 ```
 
 
@@ -1113,7 +1108,7 @@ cor_plot <- left_join(
   binned_model)
 
 
-cor_plot_age <- ggplot(data = cor_plot,aes(x = model_mean, y = data_mean, col = item)) +
+ggplot(data = cor_plot,aes(x = model_mean, y = data_mean, col = item)) +
   geom_abline(intercept = 0, slope = 1, lty = 2, alpha = 1, size = .5)+
   geom_errorbar(aes(ymin = data_ci_lower, ymax = data_ci_upper),width = 0,size = .7)+
   geom_errorbarh(aes(xmin = model_ci_lower, xmax = model_ci_upper), height = 0,size = .7)+
@@ -1135,13 +1130,12 @@ cor_plot_age <- ggplot(data = cor_plot,aes(x = model_mean, y = data_mean, col = 
 
 ```{r}
 ggarrange(
-plot_item_params,plotg_subj_sigma,
-plot_global_params,plot_subject_params,
-cor_plot_age, plot_global_sigma,
-ncol = 2, nrow = 3, common.legend = T, widths = c(1.7,1))
+plot_item_params,
+plot_global_params,
+p_data_model, plot_global_sigma,
+ncol = 2, nrow = 2, common.legend = F, widths = c(3,1))
 
-ggsave("../graphs/overview_wide_slope_wide_sigma_pos_slope_ind.png", width = 12, height = 10, scale = 1.2)
-
+ggsave("../graphs/overview_variant_3_50k.png", width = 12, height = 4, scale = 1.2)
 
 ```
 
@@ -1186,11 +1180,11 @@ var model  = function(){
           sigma: itemVariability.intercept, 
           width: 0.5
         }),
-        slope: Math.pow(gaussianDrift({
+        slope: gaussianDrift({
           mu: globalLineParameters.slope, 
           sigma: itemVariability.slope, 
           width: 0.5
-        }), 2)
+        })
       }]
   }
 
@@ -1235,7 +1229,7 @@ var model  = function(){
       }, subjectData)
     
     // comment out to save memory
-    query.add(["parameter","subj_intercept", subid], [subjectData[0].age, subj_linguistic_competence])
+  //  query.add(["parameter","subj_intercept", subid], [subjectData[0].age, subj_linguistic_competence])
       
   }, subjects)
   
@@ -1249,9 +1243,7 @@ var model  = function(){
 
         var modelPredictions = pragmaticListener({label: "novel_word"}, prior, speakerOptimality, sem_knowledge)
 
-display(row.alignment)
-
-        query.add(["prediction", item, row.age], [row.alignment, Math.exp(modelPredictions.score(1))])
+      //  query.add(["prediction", item, row.age, row.alignment], ["NA", Math.exp(modelPredictions.score(1))])
 
       }, familiars)
    }, dataFromR.comb_data)
@@ -1293,11 +1285,12 @@ me_model_data <- read_csv("../data/me.csv")%>%
 comb_model_data <- bind_rows(
   me_model_data %>%
     distinct(age, prior) %>%
-    mutate(alignment = "congruent"),
-  me_model_data %>%
-    distinct(age, prior) %>%
     mutate(prior = 1 - prior, 
-         alignment = "incongruent")
+         alignment = "incongruent"),
+  
+   me_model_data %>%
+    distinct(age, prior) %>%
+    mutate(alignment = "congruent")
 )
 
 sem_know_model<- webppl(
@@ -1305,14 +1298,14 @@ sem_know_model<- webppl(
   data = list(data = me_model_data, comb_data = comb_model_data),
   data_var = "dataFromR",
   model_var = "model",
-  chains = 1,
-  cores = 1,
+  chains = 3,
+  cores = 3,
   inference_opts = list(method = "incrementalMH",
-                        samples = 10,
-                        burn = 1,
+                        samples = 50000,
+                        burn = 25000,
                         verbose = T,
                         lag = 1,
-                        verboseLag = 1000)
+                        verboseLag = 100)
 )
 
 # run variants
@@ -1322,8 +1315,16 @@ sem_know_model<- webppl(
 
 
 
-# saveRDS(sem_know_model, "../saves/sem_know_model_save pred.rds")
+saveRDS(sem_know_model, "../saves/sem_know_model_variant3_50k.rds")
 
+
+model_pred<- sem_know_model %>%
+  separate(Parameter, into = c("parameter", "item","age","alignment"), sep = ",")%>%
+  filter(parameter == "prediction")%>%
+  separate(value, into = c("na", "me_effect"),sep = ",")%>%
+  select(-na)%>%
+  mutate(age = as.numeric(age),
+         me_effect =as.numeric(str_remove(me_effect,"[)]")))
 
 ```
 
@@ -1331,25 +1332,28 @@ sem_know_model<- webppl(
 
 ```{r}
 comb_model_pred_agg <- model_pred%>%
-  group_by(alignment,item,age)%>%
+  group_by(Chain, alignment,item,age)%>%
   summarise(mean = estimate_mode(me_effect),
             uci = hdi_upper(me_effect),
             lci = hdi_lower(me_effect))%>%
   left_join(aoa_ratings) %>%
   ungroup()%>%
   mutate(item = fct_reorder(factor(item), mean_aoa),
-         age = age + min(me_data$age_num))
+         age = age + min(me_data$age_num),
+         Chain = factor(Chain))
 
-ggplot(comb_model_pred_agg, aes(x=age,y = mean, col = item))+
+ggplot(comb_model_pred_agg, aes(x=age,y = mean, col = item, fill = item))+
+  geom_ribbon(aes(ymin = lci, ymax = uci), alpha = .5, colour = NA)+
   geom_hline(yintercept = 0.5, lty=2)+
   geom_line(size = 1)+
   ggtitle("Combination Model Predictions")+
   labs(x="Age",y="Proportion correct")+
-  facet_grid(~alignment)+
+  facet_grid(Chain~alignment)+
   theme_few() +
   ylim(-0.05,1.05)+
   xlim(2,5)+
   guides(alpha = F)+ 
-  scale_colour_viridis_d()
+  scale_colour_viridis_d()+
+  scale_fill_viridis_d()
 
 ```
