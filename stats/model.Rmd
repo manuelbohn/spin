@@ -201,6 +201,11 @@ var model  = function(){
           sigma: itemVariability.slope, 
           width: 0.5
         })
+  //     slope: Math.pow(gaussianDrift({
+  //       mu: globalLineParameters.slope, 
+  //      sigma: itemVariability.slope, 
+  //       width: 0.5
+  //    }), 2)
       }    
 
     foreach(function(row){
@@ -248,11 +253,11 @@ sem_know_model<- webppl(
   data = list(data = me_model_data),
   data_var = "dataFromR",
   model_var = "model",
-  chains = 4,
-  cores = 4,
+  chains = 3,
+  cores = 3,
   inference_opts = list(method = "incrementalMH",
-                        samples = 4000,
-                        burn = 2000,
+                        samples = 50000,
+                        burn = 25000,
                         verbose = T,
                         lag = 1,
                         verboseLag = 1000)
@@ -266,7 +271,7 @@ sem_know_model<- webppl(
 ```{r}
 
 
-sem_know_model <- readRDS("../saves/sem_know_model_variant3_50k.rds")
+sem_know_model <- readRDS("../saves/sem_know_model_variant2_50k.rds")
 
 
 #saveRDS(sem_know_model, "../saves/sem_know_model_wide_sig_ind.rds")
@@ -1058,11 +1063,11 @@ p_data_model <- ggplot(data = data_comb, aes(x = age_num, y = correct, col = sou
   geom_hline(yintercept = 0.5, lty=2)+
   #geom_jitter(width = 0, height = 0.05, alpha = .6)+
   #geom_smooth(method = "glm", method.args = list(family = "binomial"), se = F, alpha = .5)+
-  geom_smooth(method = "loess", se = F, alpha = .5, span = 2)+
+  geom_smooth(method = "loess", se = F, alpha = .2, span = 2)+
   geom_line(data = comb_model_predictions, aes(x=age,y = me_effect, col = source, lty = alignment), size = 1)+
   labs(x="Age",y="Mutual Exclusivity effect")+
   #facet_grid(condition~familiarObject)+
-  facet_grid(~item)+
+  facet_wrap(~item, nrow = 2)+
   #ggtitle("Combination Data")+
   theme_few() +
   ylim(-0.05,1.05)+
@@ -1135,7 +1140,7 @@ plot_global_params,
 p_data_model, plot_global_sigma,
 ncol = 2, nrow = 2, common.legend = F, widths = c(3,1))
 
-ggsave("../graphs/overview_variant_3_50k.png", width = 12, height = 4, scale = 1.2)
+ggsave("../graphs/overview_variant_3_100k.png", width = 12, height = 4, scale = 1.2)
 
 ```
 
@@ -1243,7 +1248,7 @@ var model  = function(){
 
         var modelPredictions = pragmaticListener({label: "novel_word"}, prior, speakerOptimality, sem_knowledge)
 
-      //  query.add(["prediction", item, row.age, row.alignment], ["NA", Math.exp(modelPredictions.score(1))])
+    //  query.add(["prediction", item, row.age, row.alignment], ["NA", Math.exp(modelPredictions.score(1))])
 
       }, familiars)
    }, dataFromR.comb_data)
@@ -1301,11 +1306,11 @@ sem_know_model<- webppl(
   chains = 3,
   cores = 3,
   inference_opts = list(method = "incrementalMH",
-                        samples = 50000,
-                        burn = 25000,
+                        samples = 100000,
+                        burn = 50000,
                         verbose = T,
                         lag = 1,
-                        verboseLag = 100)
+                        verboseLag = 5000)
 )
 
 # run variants
@@ -1315,7 +1320,7 @@ sem_know_model<- webppl(
 
 
 
-saveRDS(sem_know_model, "../saves/sem_know_model_variant3_50k.rds")
+saveRDS(sem_know_model, "../saves/sem_know_model_variant3_100k.rds")
 
 
 model_pred<- sem_know_model %>%
