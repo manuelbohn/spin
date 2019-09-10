@@ -196,16 +196,16 @@ var model  = function(){
           sigma: itemVariability.intercept, 
           width: 0.5
         }),
-        slope: gaussianDrift({
-          mu: globalLineParameters.slope, 
-          sigma: itemVariability.slope, 
-          width: 0.5
-        })
-  //     slope: Math.pow(gaussianDrift({
-  //       mu: globalLineParameters.slope, 
-  //      sigma: itemVariability.slope, 
-  //       width: 0.5
-  //    }), 2)
+     //   slope: gaussianDrift({
+     //     mu: globalLineParameters.slope, 
+      //    sigma: itemVariability.slope, 
+      //    width: 0.5
+     //   })
+      slope: Math.pow(gaussianDrift({
+         mu: globalLineParameters.slope, 
+        sigma: itemVariability.slope, 
+         width: 0.5
+      }), 2)
       }    
 
     foreach(function(row){
@@ -264,6 +264,8 @@ sem_know_model<- webppl(
 )
 
 
+
+#saveRDS(sem_know_model, "../saves/sem_know_model_variant2_100k.rds")
 ```
 
 # Model runs
@@ -1067,7 +1069,7 @@ p_data_model <- ggplot(data = data_comb, aes(x = age_num, y = correct, col = sou
   geom_line(data = comb_model_predictions, aes(x=age,y = me_effect, col = source, lty = alignment), size = 1)+
   labs(x="Age",y="Mutual Exclusivity effect")+
   #facet_grid(condition~familiarObject)+
-  facet_wrap(~item, nrow = 2)+
+  facet_grid(~item)+
   #ggtitle("Combination Data")+
   theme_few() +
   ylim(-0.05,1.05)+
@@ -1320,7 +1322,7 @@ sem_know_model<- webppl(
 
 
 
-saveRDS(sem_know_model, "../saves/sem_know_model_variant1_100k.rds")
+#saveRDS(sem_know_model, "../saves/sem_know_model_variant2_100k.rds")
 
 
 model_pred<- sem_know_model %>%
