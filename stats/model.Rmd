@@ -256,11 +256,11 @@ sem_know_model<- webppl(
   chains = 3,
   cores = 3,
   inference_opts = list(method = "incrementalMH",
-                        samples = 50000,
-                        burn = 25000,
+                        samples = 100000,
+                        burn = 50000,
                         verbose = T,
                         lag = 1,
-                        verboseLag = 1000)
+                        verboseLag = 5000)
 )
 
 
@@ -271,7 +271,7 @@ sem_know_model<- webppl(
 ```{r}
 
 
-sem_know_model <- readRDS("../saves/sem_know_model_variant2_50k.rds")
+sem_know_model <- readRDS("../saves/sem_know_model_variant3_100k.rds")
 
 
 #saveRDS(sem_know_model, "../saves/sem_know_model_wide_sig_ind.rds")
@@ -1320,7 +1320,7 @@ sem_know_model<- webppl(
 
 
 
-saveRDS(sem_know_model, "../saves/sem_know_model_variant3_100k.rds")
+saveRDS(sem_know_model, "../saves/sem_know_model_variant1_100k.rds")
 
 
 model_pred<- sem_know_model %>%
