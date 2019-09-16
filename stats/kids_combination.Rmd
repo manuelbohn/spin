@@ -14,48 +14,59 @@ library(jsonlite)
 library(readxl)
 library(brms)
 
-## importing data
-# files <- dir("~/Work/Spin/raw_data/kids/combination/")
-# 
-# raw_data <- data_frame()
-# for (f in files) {
-#   jf <- paste("~/Work/Spin/raw_data/kids/combination/",f,sep="")
-#   jd <- jsonlite::fromJSON(paste(readLines(jf), collapse=""))
-#   date <- str_sub(jf,56,str_length(jf)-11)
-#   id <- as_data_frame(jd$data$data) %>% mutate(test_date = date)
-#   raw_data <- bind_rows(raw_data, id)
-# }
-# 
-# d_raw <- raw_data %>%
-#   mutate(discourseNovel = str_sub(discourseNovel,11),
-#          mutExNovel = str_sub(mutExNovel, 10),
-#          subid = ifelse(subid == "190726_6_come", "190726_6_com", subid))
-# 
-# d_raw %>%
-#   filter(subid == "190727_1_com")
-# 
-# 
-# log <- read_excel("../../SPIN-subject_log.xlsx", 1)%>%
-#   filter(Condition == "com")%>%
-#   mutate(dob = as.character(dob),
-# #         dob = ifelse(subid == "190313_7_me", "2015-11-15",dob),
-#          dob = as.Date(dob))%>%
-#   select(subid,experimenter,keep_drop,sex,dob)
-# 
-#  
-# d_raw%>%
-#   group_by(subid)%>%
-#   summarise(n())%>%
-#   filter(!(subid %in% unique(log$subid)))
-# 
-#  
-# d <- left_join(d_raw,log, by = "subid")%>%
-#   filter(keep_drop == "keep")%>%
-#   mutate(age_num = lubridate::time_length(difftime(test_date,dob), "years"),
-#          check_age = ifelse(substr(age_num,1,1) == subage, T, F))
-# 
-# 
-# write_csv(d, "../data/combination.csv")
+# importing data
+files <- dir("~/Work/Spin/raw_data/kids/combination/")
+
+raw_data <- data_frame()
+for (f in files) {
+  jf <- paste("~/Work/Spin/raw_data/kids/combination/",f,sep="")
+  jd <- jsonlite::fromJSON(paste(readLines(jf), collapse=""))
+  date <- str_sub(jf,56,str_length(jf)-11)
+  id <- as_data_frame(jd$data$data) %>% mutate(test_date = date)
+  raw_data <- bind_rows(raw_data, id)
+}
+
+d_raw <- raw_data %>%
+  mutate(discourseNovel = str_sub(discourseNovel,11),
+         mutExNovel = str_sub(mutExNovel, 10),
+         subid = ifelse(subid == "190726_6_come", "190726_6_com", subid))
+
+d_raw %>%
+  filter(subid == "190727_1_com")
+
+
+log <- read_excel("../../SPIN-subject_log.xlsx", 1)%>%
+  filter(Condition == "com")%>%
+  mutate(dob = as.character(dob),
+         dob = ifelse(subid == "190620_7_com", "2016-06-20",dob),
+         dob = ifelse(subid == "190620_8_com", "2014-10-04",dob),
+         dob = ifelse(subid == "190620_14_com", "2016-12-16",dob),
+         dob = ifelse(subid == "190711_4_com", "2017-12-11",dob),
+         dob = ifelse(subid == "190516_03_com", "2016-05-16",dob),
+         dob = ifelse(subid == "190711_4_com", "2016-12-11",dob),
+         
+         dob = as.Date(dob))%>%
+  select(subid,experimenter,keep_drop,sex,dob)
+
+
+d_raw%>%
+  group_by(subid)%>%
+  summarise(n())%>%
+  filter(!(subid %in% unique(log$subid)))
+
+
+d <- left_join(d_raw,log, by = "subid")%>%
+  filter(keep_drop == "keep")%>%
+  mutate(age_num = lubridate::time_length(difftime(test_date,dob), "years"),
+         check_age = ifelse(substr(age_num,1,1) == subage, T, F))
+
+
+d%>%
+  filter(check_age == F)%>%
+  select(subid, subage,test_date,dob,age_num,check_age)
+
+
+write_csv(d, "../data/combination.csv")
 
 d <- read_csv("../data/combination.csv")%>%
   mutate(subage = factor(subage))

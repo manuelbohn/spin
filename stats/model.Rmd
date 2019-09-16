@@ -14,6 +14,7 @@ library(ggthemes)
 library(readxl)
 library(ggpubr)
 library(stringr)
+library(matrixStats)
 
 estimate_mode <- function(s) {
   d <- density(s)
@@ -1148,7 +1149,33 @@ ggsave("../graphs/overview_variant_3_100k.png", width = 12, height = 4, scale = 
 
 
 
-#### WORK IN PROGRESS: nesting within participant
+# Nesting within participant
+
+```{r}
+novel_bm <- readRDS("../saves/novelty_model.rds")
+
+#summary(novel_bm)
+
+novel_params <- as_tibble(fixef(novel_bm), rownames = "term")%>%
+  select(term,Estimate)%>%
+  spread(term, Estimate)
+
+
+
+data_comb_log <- read_csv("../data/combination.csv") %>%
+  filter(condition != "train")%>%
+  mutate(alignment = condition,
+         item = familiarObject, 
+         age = age_num - (min(age_num))) %>%
+  mutate(nov_int = novel_params$Intercept,
+         nov_slope = novel_params$age_num,
+         prior = ifelse(alignment == "congruent", plogis(nov_int + nov_slope* age),1-plogis(nov_int + age * nov_slope)))
+
+data_comb_log
+
+```
+
+## Pragmatics model
 
 ```{r work in progress}
 sem_subj_str <- '
@@ -1240,20 +1267,23 @@ var model  = function(){
       
   }, subjects)
   
-  foreach(function(row){
+var all_log_likes = map(function(row) { 
       var prior = [row.prior, 1-row.prior]
-      foreach(function(item){
-        var itemLineParameters = all_item_parameters[item]
+        var itemLineParameters = all_item_parameters[row.item]
         var sem_knowledge = logistic(itemLineParameters.intercept + 
             itemLineParameters.slope * row.age)
         var speakerOptimality = speakerOptimalityParameters.intercept  + speakerOptimalityParameters.slope * row.age
 
         var modelPredictions = pragmaticListener({label: "novel_word"}, prior, speakerOptimality, sem_knowledge)
 
-    //  query.add(["prediction", item, row.age, row.alignment], ["NA", Math.exp(modelPredictions.score(1))])
+        return modelPredictions.score(row.correct)
 
-      }, familiars)
+    //  query.add(["prediction", item, row.age, row.alignment], ["NA", Math.exp(modelPredictions.score(1))])
+  // return loglike
    }, dataFromR.comb_data)
+
+  var log_likelihood = sum(all_log_likes)
+  query.add(["log_like", "NA", "NA"], ["NA", log_likelihood])
 
   foreach(function(item){
     var itemLineParameters = all_item_parameters[item]
@@ -1273,36 +1303,9 @@ var model  = function(){
 
 ```{r}
 
-novel_bm <- readRDS("../saves/novelty_model.rds")
-
-#summary(novel_bm)
-
-novel_params <- as_tibble(fixef(novel_bm), rownames = "term")%>%
-  select(term,Estimate)%>%
-  spread(term, Estimate) 
-
-me_model_data <- read_csv("../data/me.csv")%>%
-    filter(trial != "train1",
-           trial != "train2")%>%
-  mutate(age = age_num - min(age_num),
-         nov_int = novel_params$Intercept,
-         nov_slope = novel_params$age_num,
-         prior = plogis(nov_int + age * nov_slope))
-
-comb_model_data <- bind_rows(
-  me_model_data %>%
-    distinct(age, prior) %>%
-    mutate(prior = 1 - prior, 
-         alignment = "incongruent"),
-  
-   me_model_data %>%
-    distinct(age, prior) %>%
-    mutate(alignment = "congruent")
-)
-
 sem_know_model<- webppl(
   program_code = paste(rsaUtils, rsaModel, sem_subj_str , sep='\n'),
-  data = list(data = me_model_data, comb_data = comb_model_data),
+  data = list(data = me_model_data, comb_data = data_comb_log),
   data_var = "dataFromR",
   model_var = "model",
   chains = 3,
@@ -1312,17 +1315,11 @@ sem_know_model<- webppl(
                         burn = 50000,
                         verbose = T,
                         lag = 1,
-                        verboseLag = 5000)
+                        verboseLag = 1000)
 )
 
-# run variants
-# start with variant 3
-# 3 cores, 3 chains 
-# see how long it takes and then run over night 
 
-
-
-#saveRDS(sem_know_model, "../saves/sem_know_model_variant2_100k.rds")
+#saveRDS(sem_know_model, "../saves/sem_know_model_variant3_100k_log_like.rds")
 
 
 model_pred<- sem_know_model %>%
@@ -1333,7 +1330,193 @@ model_pred<- sem_know_model %>%
   mutate(age = as.numeric(age),
          me_effect =as.numeric(str_remove(me_effect,"[)]")))
 
+
+
+log_like<- sem_know_model %>%
+  separate(Parameter, into = c("parameter", "item","age","alignment"), sep = ",")%>%
+  filter(parameter == "log_like")%>%
+  separate(value, into = c("na", "log_like"),sep = ",")%>%
+  select(-na, -item, -age, -alignment)%>%
+  mutate(log_like =as.numeric(str_remove(log_like,"[)]")))%>%
+  group_by(Chain)%>%
+  summarize(logP = logSumExp(log_like))
+  
+
 ```
+
+## Flat prior model
+
+```{r work in progress}
+flat_prior <- '
+var data = dataFromR.data
+
+var priorProbs = [.5,.5]
+
+var familiars = levels(data, "familiar")
+var subjects = levels(data, "subid")
+
+var model  = function(){
+
+  var speakerOptimalityParameters = {
+    intercept: uniformDrift({a: -3, b: 3, width: 0.5}),
+    slope: uniformDrift({a: 0, b: 4, width: 0.5})
+  }
+
+  var globalLineParameters = {
+    intercept: uniformDrift({a: -3, b: 3, width: 0.5}),
+    slope: uniformDrift({a: 0, b: 2, width: 0.5})
+  }
+
+  var itemVariability = {
+    intercept: uniformDrift({a: 0, b: 2, width: 0.2}),
+    slope: uniformDrift({a: 0, b: 1, width: 0.2})
+  }
+
+  // conceptually it might not make sense to have two sigmas, but maybe it does
+  // intercept sigma probably will be smaller than slope sigma
+  // var item_int_sigma = uniformDrift({a: 0, b: 3, width: 0.2})
+  
+  var sampleItemParameters = function(itemName) { 
+    return [itemName, {
+        intercept: gaussianDrift({
+          mu: globalLineParameters.intercept, 
+          sigma: itemVariability.intercept, 
+          width: 0.5
+        }),
+        slope: gaussianDrift({
+          mu: globalLineParameters.slope, 
+          sigma: itemVariability.slope, 
+          width: 0.5
+        })
+      }]
+  }
+
+  // {papaya: {int, slope}, bread: {int, slope}, ... }
+  var all_item_parameters = _.fromPairs(map(sampleItemParameters, familiars))
+  
+  // want something that favors smaller values
+  var subject_sigma = uniformDrift({a: 0, b:1, width: 0.1}) 
+  
+  var sampleLinguisticCompetence = function(age){
+    return gaussianDrift({ mu: age, sigma: subject_sigma, width: 0.1 })
+  }
+
+  foreach(function(subid){
+      var subjectData = _.filter(data, {subid: subid})
+      var subj_age = subjectData[0].age
+      var subj_linguistic_competence = sampleLinguisticCompetence(subj_age)
+      
+     // display("age = " + subj_age + " ... intercept = " + subj_linguistic_competence)
+  
+      // question: should we use age here instead of the random intercept? or a different random intercept?
+    
+  var speakerOptimality = speakerOptimalityParameters.intercept  + speakerOptimalityParameters.slope * subj_age
+      
+      // each row is a different item
+      foreach(function(row){
+
+        var itemLineParameters = all_item_parameters[row.familiar]
+        
+        var sem_knowledge = logistic(itemLineParameters.intercept + 
+            itemLineParameters.slope * subj_linguistic_competence)
+  
+        var modelPredictions = pragmaticListener({label: "novel_word"}, 
+              priorProbs, speakerOptimality, sem_knowledge)
+        // display(modelPredictions.score(row.correct))
+        
+        observe(modelPredictions, row.correct)
+        
+        // if you want to save predictions, make sure to record subid because these predictions are for this particular subid
+        // query.add(["modelPrediction", cndtn, age], [age, Math.exp(modelPredictions.score(1))])
+
+      }, subjectData)
+    
+    // comment out to save memory
+  //  query.add(["parameter","subj_intercept", subid], [subjectData[0].age, subj_linguistic_competence])
+      
+  }, subjects)
+  
+var all_log_likes = map(function(row) { 
+      var prior = [row.prior, 1-row.prior]
+        var itemLineParameters = all_item_parameters[row.item]
+        var sem_knowledge = logistic(itemLineParameters.intercept + 
+            itemLineParameters.slope * row.age)
+        var speakerOptimality = speakerOptimalityParameters.intercept  + speakerOptimalityParameters.slope * row.age
+
+        var modelPredictions = pragmaticListener({label: "novel_word"}, [.5,.5], speakerOptimality, sem_knowledge)
+
+
+    //    display(modelPredictions.score(row.correct))
+
+        return modelPredictions.score(row.correct)
+
+    //  query.add(["prediction", item, row.age, row.alignment], ["NA", Math.exp(modelPredictions.score(1))])
+  // return loglike
+   }, dataFromR.comb_data)
+
+  var log_likelihood = sum(all_log_likes)
+  query.add(["log_like", "NA", "NA"], ["NA", log_likelihood])
+
+  foreach(function(item){
+    var itemLineParameters = all_item_parameters[item]
+    query.add(["parameter","items", item], [itemLineParameters.intercept, itemLineParameters.slope])
+  }, familiars)
+
+  query.add(["parameter","parameters","speaker_optimality"], [speakerOptimalityParameters.intercept, speakerOptimalityParameters.slope])
+  query.add(["parameter","parameters", "global_sem"], [globalLineParameters.intercept, globalLineParameters.slope])
+  query.add(["parameter","sigma", "global_sem_sigmas"], [itemVariability.intercept, itemVariability.slope])
+  query.add(["parameter","sigma", "global_subject_sigmas"], ["NA", subject_sigma])
+ 
+  return query 
+}
+'
+```
+
+
+```{r}
+
+sem_know_model_flat_prior<- webppl(
+  program_code = paste(rsaUtils, rsaModel, flat_prior , sep='\n'),
+  data = list(data = me_model_data, comb_data = data_comb_log),
+  data_var = "dataFromR",
+  model_var = "model",
+  chains = 3,
+  cores = 3,
+  inference_opts = list(method = "incrementalMH",
+                        samples = 100000,
+                        burn = 50000,
+                        verbose = T,
+                        lag = 1,
+                        verboseLag = 1000)
+)
+
+
+saveRDS(sem_know_model_flat_prior, "../saves/sem_know_model_variant3_100k_flat_prior_log_like.rds")
+
+
+model_pred<- sem_know_model_flat_prior %>%
+  separate(Parameter, into = c("parameter", "item","age","alignment"), sep = ",")%>%
+  filter(parameter == "prediction")%>%
+  separate(value, into = c("na", "me_effect"),sep = ",")%>%
+  select(-na)%>%
+  mutate(age = as.numeric(age),
+         me_effect =as.numeric(str_remove(me_effect,"[)]")))
+
+
+
+log_like_flat_prior<- sem_know_model_flat_prior %>%
+  separate(Parameter, into = c("parameter", "item","age","alignment"), sep = ",")%>%
+  filter(parameter == "log_like")%>%
+  separate(value, into = c("na", "log_like"),sep = ",")%>%
+  select(-na, -item, -age, -alignment)%>%
+  mutate(log_like =as.numeric(str_remove(log_like,"[)]")))%>%
+  group_by(Chain)%>%
+  summarize(logP = logSumExp(log_like))
+  
+
+```
+
+
 
 #### plotting predictions
 
@@ -1351,11 +1534,12 @@ comb_model_pred_agg <- model_pred%>%
 
 ggplot(comb_model_pred_agg, aes(x=age,y = mean, col = item, fill = item))+
   geom_ribbon(aes(ymin = lci, ymax = uci), alpha = .5, colour = NA)+
+  geom_smooth(data = data_comb, aes(x = age_num, y = correct, col), col = "black", fill = "grey",  method = "loess", se = F, alpha = .2, span = 2)+
   geom_hline(yintercept = 0.5, lty=2)+
   geom_line(size = 1)+
   ggtitle("Combination Model Predictions")+
   labs(x="Age",y="Proportion correct")+
-  facet_grid(Chain~alignment)+
+  facet_grid(Chain ~item)+
   theme_few() +
   ylim(-0.05,1.05)+
   xlim(2,5)+
@@ -1364,3 +1548,9 @@ ggplot(comb_model_pred_agg, aes(x=age,y = mean, col = item, fill = item))+
   scale_fill_viridis_d()
 
 ```
+
+```{r}
+ggsave("../graphs/model_pred_data.pdf", width = 20, height = 8, scale = 1.2)
+```
+
+
