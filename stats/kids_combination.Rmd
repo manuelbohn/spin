@@ -160,6 +160,52 @@ model <- brm(correct ~ familiarObject * age_num * condition + (condition|subid),
 
 summary(model)
 
+```
 
+
+
+```{r}
+fixef <- as_tibble(readRDS("../saves/fixef_brm_model_item_random_only.rds"), rownames = "term")
+
+ranef <-  readRDS("../saves/ranef_brm_model_item_random_only.rds")
+
+model_plot <- bind_rows(
+  as_tibble(ranef$familiar, rownames = "familiar")%>%
+  mutate(condition = "congruent",
+         condition_code = 0),
+  as_tibble(ranef$familiar, rownames = "familiar")%>%
+  mutate(condition = "incongruent",
+         condition_code = 1))%>%
+  mutate(grand_intercept = fixef%>%filter(term=="Intercept")%>%pull(Estimate),
+         grand_age = fixef%>%filter(term=="age_num")%>%pull(Estimate),
+         grand_cond = fixef%>%filter(term=="conditionincongruent")%>%pull(Estimate),
+         grand_intact = fixef%>%filter(term=="age_num:conditionincongruent")%>%pull(Estimate))%>%
+  group_by(familiar, condition, condition_code) %>%
+  expand(Estimate.Intercept,Estimate.conditionincongruent,Estimate.age_num,`Estimate.age_num:conditionincongruent`,grand_intercept,grand_age,grand_cond,grand_intact,age = d$age_num - mean(d$age_num))%>%
+  mutate(y = plogis(grand_intercept + 
+                      Estimate.Intercept +
+                      grand_cond * condition_code +
+                      Estimate.conditionincongruent * condition_code +
+                      grand_age * age +
+                      Estimate.age_num * age +
+                      grand_intact * (condition_code * age) +
+                      `Estimate.age_num:conditionincongruent` * (condition_code * age)),
+         age = age+mean(d$age_num))%>%
+  left_join(aoa_ratings%>%mutate(familiar = familiarObject))%>%
+  ungroup()%>%
+  mutate(item = fct_reorder(factor(familiar), mean_aoa))
+
+
+ggplot(model_plot, aes(x=age,y = y, col = familiar))+
+  geom_hline(yintercept = 0.5, lty=2)+
+  geom_line(size = 1)+
+  ggtitle("Model")+
+  labs(x="Age",y="Mutual Exclusivity effect")+
+  facet_grid(~condition)+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F)+ 
+  scale_colour_viridis_d(name = "familiar object")
 ```
 

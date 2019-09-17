@@ -274,7 +274,7 @@ sem_know_model<- webppl(
 ```{r}
 
 
-sem_know_model <- readRDS("../saves/sem_know_model_variant3_100k.rds")
+sem_know_model <- readRDS("../saves/sem_know_model_variant3_100k_log_like.rds")
 
 
 #saveRDS(sem_know_model, "../saves/sem_know_model_wide_sig_ind.rds")
@@ -1152,6 +1152,12 @@ ggsave("../graphs/overview_variant_3_100k.png", width = 12, height = 4, scale = 
 # Nesting within participant
 
 ```{r}
+me_model_data <- read_csv("../data/me.csv")%>%
+    filter(trial != "train1",
+           trial != "train2")%>%
+  mutate(age = age_num - min(age_num))
+
+
 novel_bm <- readRDS("../saves/novelty_model.rds")
 
 #summary(novel_bm)
@@ -1267,23 +1273,46 @@ var model  = function(){
       
   }, subjects)
   
-var all_log_likes = map(function(row) { 
+var all_log_likes_prag = map(function(row) { 
       var prior = [row.prior, 1-row.prior]
         var itemLineParameters = all_item_parameters[row.item]
         var sem_knowledge = logistic(itemLineParameters.intercept + 
             itemLineParameters.slope * row.age)
-        var speakerOptimality = speakerOptimalityParameters.intercept  + speakerOptimalityParameters.slope * row.age
+   
+     var speakerOptimality = speakerOptimalityParameters.intercept  + speakerOptimalityParameters.slope * row.age
 
-        var modelPredictions = pragmaticListener({label: "novel_word"}, prior, speakerOptimality, sem_knowledge)
+        var pragModelPredictions = pragmaticListener({label: "novel_word"}, prior, speakerOptimality, sem_knowledge)
 
-        return modelPredictions.score(row.correct)
+        return pragModelPredictions.score(row.correct)
 
     //  query.add(["prediction", item, row.age, row.alignment], ["NA", Math.exp(modelPredictions.score(1))])
   // return loglike
    }, dataFromR.comb_data)
 
-  var log_likelihood = sum(all_log_likes)
-  query.add(["log_like", "NA", "NA"], ["NA", log_likelihood])
+
+  var log_likelihood_prag = sum(all_log_likes_prag)
+  query.add(["log_like", "pragmatics", "NA"], ["NA", log_likelihood_prag])
+
+
+var all_log_likes_flat = map(function(row) { 
+      var prior = [row.prior, 1-row.prior]
+        var itemLineParameters = all_item_parameters[row.item]
+        var sem_knowledge = logistic(itemLineParameters.intercept + 
+            itemLineParameters.slope * row.age)
+   
+     var speakerOptimality = speakerOptimalityParameters.intercept  + speakerOptimalityParameters.slope * row.age
+
+        var flatModelPredictions = pragmaticListener({label: "novel_word"}, [.5, .5], speakerOptimality, sem_knowledge)
+
+        return flatModelPredictions.score(row.correct)
+
+    //  query.add(["prediction", item, row.age, row.alignment], ["NA", Math.exp(modelPredictions.score(1))])
+  // return loglike
+   }, dataFromR.comb_data)
+
+
+  var log_likelihood_flat = sum(all_log_likes_flat)
+  query.add(["log_like", "flat_prior", "NA"], ["NA", log_likelihood_flat])
 
   foreach(function(item){
     var itemLineParameters = all_item_parameters[item]
@@ -1311,8 +1340,8 @@ sem_know_model<- webppl(
   chains = 3,
   cores = 3,
   inference_opts = list(method = "incrementalMH",
-                        samples = 100000,
-                        burn = 50000,
+                        samples = 100,
+                        burn = 100,
                         verbose = T,
                         lag = 1,
                         verboseLag = 1000)
@@ -1333,12 +1362,12 @@ model_pred<- sem_know_model %>%
 
 
 log_like<- sem_know_model %>%
-  separate(Parameter, into = c("parameter", "item","age","alignment"), sep = ",")%>%
+  separate(Parameter, into = c("parameter", "model","age","alignment"), sep = ",")%>%
   filter(parameter == "log_like")%>%
   separate(value, into = c("na", "log_like"),sep = ",")%>%
-  select(-na, -item, -age, -alignment)%>%
+  select(-na, -age, -alignment)%>%
   mutate(log_like =as.numeric(str_remove(log_like,"[)]")))%>%
-  group_by(Chain)%>%
+  group_by(model,Chain)%>%
   summarize(logP = logSumExp(log_like))
   
 
