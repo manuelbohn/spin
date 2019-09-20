@@ -80,6 +80,14 @@ var utterancePrior = function(){ return uniformDraw([ {label: "novel_word"}, {la
 
 var LexiconPrior = Categorical({vs: ["novel_word = novel_object","novel_word = familiar_object" ], ps: [1, 1]})
 
+var addNoise = function(dist, noiseParam){
+   Infer({model: function(){ 
+      return flip(noiseParam) ? uniformDraw([0, 1]) : sample(dist)
+    }
+   })
+}
+
+
 var foreach = function(fn, lst) {
     var foreach_ = function(i) {
         if (i < lst.length) {
@@ -282,6 +290,8 @@ var model  = function(){
       
   }, subjects)
 
+
+var noise = uniformDrift({a: 0, b:1, width: 0.1})
  
 var all_log_likes = map(function(row) { 
   var prior = [row.prior, 1-row.prior]
@@ -299,33 +309,69 @@ var all_log_likes = map(function(row) {
                                                prior, speakerOptimality, 
                                                sem_knowledge)
 
+  var noisyPragModelPredictions = addNoise(pragModelPredictions, noise)
+
   var globalPragModelPredictions = pragmaticListener({label: "novel_word"}, 
                                                prior, speakerOptimality, 
                                                global_sem_knowledge)
 
-  var flatModelPredictions = pragmaticListener({label: "novel_word"}, 
+   var noisyGlobalPragModelPredictions = addNoise(globalPragModelPredictions, noise)
+  
+
+   var flatModelPredictions = pragmaticListener({label: "novel_word"}, 
                                                [.5, .5], speakerOptimality, 
                                                sem_knowledge)
 
+   var noisyFlatModelPredictions = addNoise(flatModelPredictions, noise)
+
+  
+  var priorOnlyModelPredictions = Infer({method: "enumerate", model: function(){
+      var obj = sample( Categorical({vs: all_objects, ps: prior}));
+      return obj.shape == "novel_object" ? 1 : 0
+       }})
+   
+  var noisyPriorOnlyModelPredictions = addNoise(priorOnlyModelPredictions, noise) 
+
   return {
     prag: pragModelPredictions.score(row.correct),
+    noisePrag: noisyPragModelPredictions.score(row.correct),
+    
     globalPrag: globalPragModelPredictions.score(row.correct),
+    noiseGlobalPrag: noisyGlobalPragModelPredictions.score(row.correct),
+    
     flat: flatModelPredictions.score(row.correct),
-    priorOnly: Math.log(row.correct == 1 ? row.prior : 1 - row.prior)
+    noiseFlat: noisyFlatModelPredictions.score(row.correct),
+    
+    priorOnly: priorOnlyModelPredictions.score(row.correct),
+    noisePriorOnly: noisyPriorOnlyModelPredictions.score(row.correct)
   }
 
 }, dataFromR.comb_data)
 
 
 var log_likelihood_prag = sum(_.map(all_log_likes, "prag"))
-var log_likelihood_prag_global = sum(_.map(all_log_likes, "globalPrag"))
-var log_likelihood_flat = sum(_.map(all_log_likes, "flat"))
-var log_likelihood_prior_only = sum(_.map(all_log_likes, "priorOnly"))
+var log_likelihood_prag_noise = sum(_.map(all_log_likes, "noisePrag"))
 
-query.add(["log_like", "pragmatics", "NA"], ["NA", log_likelihood_prag])
-query.add(["log_like", "pragmatics_global", "NA"], ["NA", log_likelihood_prag_global])
-query.add(["log_like", "flat_prior", "NA"], ["NA", log_likelihood_flat])
-query.add(["log_like", "prior_only", "NA"], ["NA", log_likelihood_prior_only])
+var log_likelihood_prag_global = sum(_.map(all_log_likes, "globalPrag"))
+var log_likelihood_prag_global_noise = sum(_.map(all_log_likes, "noiseGlobalPrag"))
+
+var log_likelihood_flat = sum(_.map(all_log_likes, "flat"))
+var log_likelihood_flat_noise = sum(_.map(all_log_likes, "noiseFlat"))
+
+var log_likelihood_prior_only = sum(_.map(all_log_likes, "priorOnly"))
+var log_likelihood_prior_only_noise = sum(_.map(all_log_likes, "noisePriorOnly"))
+
+query.add(["log_like", "pragmatics", "parameter_free"], ["NA", log_likelihood_prag])
+query.add(["log_like", "pragmatics", "noise"], ["NA", log_likelihood_prag_noise])
+
+query.add(["log_like", "pragmatics_global", "parameter_free"], ["NA", log_likelihood_prag_global])
+query.add(["log_like", "pragmatics_global", "noise"], ["NA", log_likelihood_prag_global_noise])
+
+query.add(["log_like", "flat_prior", "parameter_free"], ["NA", log_likelihood_flat])
+query.add(["log_like", "flat_prior", "noise"], ["NA", log_likelihood_flat_noise])
+
+query.add(["log_like", "prior_only", "parameter_free"], ["NA", log_likelihood_prior_only])
+query.add(["log_like", "prior_only", "noise"], ["NA", log_likelihood_prior_only_noise])
 
 
   foreach(function(item){
@@ -355,8 +401,8 @@ sem_know_model<- webppl(
   chains = 3,
   cores = 3,
   inference_opts = list(method = "incrementalMH",
-                        samples = 100000,
-                        burn = 50000,
+                        samples = 25000,
+                        burn = 20000,
                         verbose = T,
                         lag = 1,
                         verboseLag = 1000)
@@ -365,11 +411,25 @@ sem_know_model<- webppl(
 
 
 
-saveRDS(sem_know_model, "../saves/sem_know_model_variant3_100k_model_comparison.rds")
+saveRDS(sem_know_model, "../saves/sem_know_model_variant3_25k_model_comparison_noise.rds")
 
 sem_know_model <- readRDS("../saves/sem_know_model_variant3_100k_model_comparison.rds")
 
 ```
+
+## Model compatison
+
+```{r}
+log_like<- sem_know_model %>%
+  separate(Parameter, into = c("parameter", "model","noise","alignment"), sep = ",")%>%
+  filter(parameter == "log_like")%>%
+  separate(value, into = c("na", "log_like"),sep = ",")%>%
+  select(-na, -alignment)%>%
+  mutate(log_like =as.numeric(str_remove(log_like,"[)]")))%>%
+  group_by(model,noise)%>%
+  summarize(logP = logSumExp(log_like))
+```
+
 
 ## Summarizing parameters
 
@@ -885,12 +945,12 @@ ggarrange(p_comb_model,p_comb_data, common.legend = T, legend = "right", nrow = 
 ```
 
 ```{r}
-p_data_model <- ggplot(data = data_comb, aes(x = age_num, y = correct, col = source, fill = source, lty = alignment)) +
+p_data_model <- ggplot(data = data_comb, aes(x = age_num, y = correct, col = alignment, fill = alignment, lty = source)) +
   geom_hline(yintercept = 0.5, lty=2)+
   #geom_jitter(width = 0, height = 0.05, alpha = .6)+
   #geom_smooth(method = "glm", method.args = list(family = "binomial"), se = F, alpha = .5)+
   geom_smooth(method = "loess", se = F, alpha = .2, span = 2)+
-  geom_line(data = comb_model_predictions, aes(x=age,y = me_effect, col = source, lty = alignment), size = 1)+
+  geom_line(data = comb_model_predictions, aes(x=age,y = me_effect, col = alignment, lty = source), size = 1)+
   labs(x="Age",y="Mutual Exclusivity effect")+
   #facet_grid(condition~familiarObject)+
   facet_grid(~item)+
@@ -972,20 +1032,6 @@ ggsave("../graphs/overview_variant_3_100k.png", width = 12, height = 4, scale = 
 
 ```
 
-## Model compatison
-
-```{r}
-log_like<- sem_know_model %>%
-  separate(Parameter, into = c("parameter", "model","age","alignment"), sep = ",")%>%
-  filter(parameter == "log_like")%>%
-  separate(value, into = c("na", "log_like"),sep = ",")%>%
-  select(-na, -age, -alignment)%>%
-  mutate(log_like =as.numeric(str_remove(log_like,"[)]")))%>%
-  group_by(model,Chain)%>%
-  summarize(logP = logSumExp(log_like))
-```
-
-
 ## Plotting model predictions
 
 ```{r}
@@ -1029,6 +1075,459 @@ ggplot(comb_model_pred_agg, aes(x=age,y = mean, col = item, fill = item))+
 ```{r}
 ggsave("../graphs/model_pred_data.pdf", width = 20, height = 8, scale = 1.2)
 ```
+
+# MAP based predictions with noise parameter
+
+## Preparing data
+
+```{r}
+noise_model_data <- item_params_summary%>%
+  select(-uci,-lci)%>%
+  spread(parameter, mode) %>%
+  left_join(read_csv("../data/combination.csv") %>%
+  filter(condition != "train")%>%
+  mutate(alignment = condition,
+         item = familiarObject,
+         age = age_num - (min(age_num))))%>%
+  mutate(so_int = global_params_summary%>%filter(token == "speaker_optimality", parameter == "int")%>%pull(mode),
+         so_slope = global_params_summary%>%filter(token == "speaker_optimality", parameter == "slope")%>%pull(mode),
+    glob_sem_know_int = global_params_summary%>%filter(token == "global_sem", parameter == "int")%>%pull(mode),
+         glob_sem_know_slope = global_params_summary%>%filter(token == "global_sem", parameter == "slope")%>%pull(mode),
+         speaker_optimality = so_int + so_slope * age,
+         semantic_knowledge = plogis(int + slope * age),
+         global_semantic_knowledge = plogis(glob_sem_know_int + glob_sem_know_slope * age),
+         nov_int = novel_params$Intercept,
+         nov_slope = novel_params$age_num,
+         prior = ifelse(alignment == "congruent", plogis(nov_int + nov_slope* age),1-plogis(nov_int + age * nov_slope)))%>%
+  select(item, alignment,age, speaker_optimality, semantic_knowledge,global_semantic_knowledge, prior, correct)
+  
+```
+
+## Pragmatics model
+
+```{r}
+pragNoise <- '
+var allData = dataFromR.data
+
+var model = function(){
+
+  var noise = uniform({a: 0, b: 1}) 
+
+  var output = map(function(row){
+
+    var prior = [row.prior, 1-row.prior]
+
+    var modelPredictions = pragmaticListener({label: "novel_word"}, prior, row.speaker_optimality,row.semantic_knowledge)
+    
+    var noisyModelPredictions = addNoise(modelPredictions, noise)
+
+    observe(noisyModelPredictions, row.correct)
+  
+    return extend([row.alignment + "/" +  row.item + "/" + row.age, Math.exp(noisyModelPredictions.score(1))])
+
+}, allData)
+
+ return extend(_.fromPairs(output), {noise: noise})
+
+}
+'
+```
+
+
+```{r predictions pragmatic model ex 3 adults}
+prag_model_noise<- webppl(
+  program_code = paste(rsaUtils, rsaModel, pragNoise , sep='\n'),
+  data =list(data = noise_model_data),
+  data_var = "dataFromR",
+  chains = 3,
+  cores = 3,
+  inference_opts = list(method = "MCMC", samples = 2000, burn = 1000, verbose = T)
+)
+
+saveRDS(prag_model_noise, "../saves/prag_model_noise.rds")
+
+prag_model_noise <- readRDS("../saves/prag_model_noise.rds")
+
+
+# noise parameter
+prag_model_noise_noise_param_summary <- prag_model_noise %>%
+  filter(Parameter %in% c("noise"))  %>%
+  summarise(mean = estimate_mode(value), 
+            ci_lower = hdi_lower(value),
+            ci_upper = hdi_upper(value))
+
+
+# model predictions
+prag_model_noise_predictions <- prag_model_noise %>%
+  filter(!(Parameter %in% c("noise"))) %>%
+  separate(Parameter, into = c("alignment","item", "age"), sep="/")%>%
+  mutate(model = "pragmatic_noise")%>%
+  group_by(model,age,item, alignment) %>%
+  summarise(mean = estimate_mode(value), 
+            ci_lower = hdi_lower(value), 
+            ci_upper =hdi_upper(value))%>%
+  ungroup()%>%
+  mutate(age = as.numeric(age))%>%
+  left_join(aoa_ratings)%>%
+  ungroup()%>%
+  mutate(item = fct_reorder(factor(item), mean_aoa),
+         source = "Model")
+
+```
+
+### Plot model predictions
+
+```{r}
+ggplot() +
+  geom_hline(yintercept = 0.5, lty=2)+
+  geom_smooth(data = data_comb, aes(x = age_num, y = correct, col = alignment, fill = alignment, lty = source), method = "loess", se = F, alpha = .2, span = 2)+
+  geom_line(data = prag_model_noise_predictions, aes(x=age+2,y = mean, col = alignment, lty = source), size = 1)+
+  geom_ribbon(data = prag_model_noise_predictions, aes(x = age+2, ymin = ci_lower, ymax = ci_upper, fill = alignment), alpha = .4) +
+  labs(x="Age",y="Mutual Exclusivity effect")+
+  facet_wrap(~item)+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F)+ 
+  scale_colour_ptol(name = NULL)+
+  scale_fill_ptol(name = NULL)
+
+```
+
+## Pragmatics model global semantic knnowledge
+
+```{r}
+globalPragNoise <- '
+var allData = dataFromR.data
+
+var model = function(){
+
+  var noise = uniform({a: 0, b: 1}) 
+
+  var output = map(function(row){
+
+    var prior = [row.prior, 1-row.prior]
+
+    var modelPredictions = pragmaticListener({label: "novel_word"}, prior, row.speaker_optimality,row.global_semantic_knowledge)
+    
+    var noisyModelPredictions = addNoise(modelPredictions, noise)
+
+    observe(noisyModelPredictions, row.correct)
+  
+    return extend([row.alignment + "/" +  row.item + "/" + row.age, Math.exp(noisyModelPredictions.score(1))])
+
+}, allData)
+
+ return extend(_.fromPairs(output), {noise: noise})
+
+}
+'
+```
+
+
+```{r predictions pragmatic model ex 3 adults}
+global_prag_model_noise<- webppl(
+  program_code = paste(rsaUtils, rsaModel, globalPragNoise , sep='\n'),
+  data =list(data = noise_model_data),
+  data_var = "dataFromR",
+  chains = 3,
+  cores = 3,
+  inference_opts = list(method = "MCMC", samples = 2000, burn = 1000, verbose = T)
+)
+
+saveRDS(global_prag_model_noise, "../saves/global_prag_model_noise.rds")
+
+global_prag_model_noise <- readRDS("../saves/global_prag_model_noise.rds")
+
+
+# noise parameter
+global_prag_model_noise_noise_param_summary <- global_prag_model_noise %>%
+  filter(Parameter %in% c("noise"))  %>%
+  summarise(mean = estimate_mode(value), 
+            ci_lower = hdi_lower(value),
+            ci_upper = hdi_upper(value))
+
+
+# model predictions
+global_prag_model_noise_predictions <- global_prag_model_noise %>%
+  filter(!(Parameter %in% c("noise"))) %>%
+  separate(Parameter, into = c("alignment","item", "age"), sep="/")%>%
+  mutate(model = "global_pragmatic_noise")%>%
+  group_by(model,age,item, alignment) %>%
+  summarise(mean = estimate_mode(value), 
+            ci_lower = hdi_lower(value), 
+            ci_upper =hdi_upper(value))%>%
+  ungroup()%>%
+  mutate(age = as.numeric(age))%>%
+  left_join(aoa_ratings)%>%
+  ungroup()%>%
+  mutate(item = fct_reorder(factor(item), mean_aoa),
+         source = "Model")
+
+```
+
+### Plot model predictions
+
+```{r}
+ggplot() +
+  geom_hline(yintercept = 0.5, lty=2)+
+  geom_smooth(data = data_comb, aes(x = age_num, y = correct, col = alignment, fill = alignment, lty = source), method = "loess", se = F, alpha = .2, span = 2)+
+  geom_line(data = global_prag_model_noise_predictions, aes(x=age+2,y = mean, col = alignment, lty = source), size = 1)+
+  geom_ribbon(data = global_prag_model_noise_predictions, aes(x = age+2, ymin = ci_lower, ymax = ci_upper, fill = alignment), alpha = .4) +
+  labs(x="Age",y="Mutual Exclusivity effect")+
+  facet_wrap(~item)+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F)+ 
+  scale_colour_ptol(name = NULL)+
+  scale_fill_ptol(name = NULL)
+
+```
+
+## Flat prior model
+
+```{r}
+flatNoise <- '
+var allData = dataFromR.data
+
+var model = function(){
+
+  var noise = uniform({a: 0, b: 1}) 
+
+  var output = map(function(row){
+
+    var prior = [row.prior, 1-row.prior]
+
+    var modelPredictions = pragmaticListener({label: "novel_word"}, [.5,.5], row.speaker_optimality,row.semantic_knowledge)
+    
+    var noisyModelPredictions = addNoise(modelPredictions, noise)
+
+    observe(noisyModelPredictions, row.correct)
+  
+    return extend([row.alignment + "/" +  row.item + "/" + row.age, Math.exp(noisyModelPredictions.score(1))])
+
+}, allData)
+
+ return extend(_.fromPairs(output), {noise: noise})
+
+}
+'
+```
+
+
+```{r predictions pragmatic model ex 3 adults}
+flat_model_noise<- webppl(
+  program_code = paste(rsaUtils, rsaModel, flatNoise , sep='\n'),
+  data =list(data = noise_model_data),
+  data_var = "dataFromR",
+  chains = 3,
+  cores = 3,
+  inference_opts = list(method = "MCMC", samples = 2000, burn = 1000, verbose = T)
+)
+
+
+saveRDS(flat_model_noise, "../saves/flat_model_noise.rds")
+
+flat_model_noise <- readRDS("../saves/flat_model_noise.rds")
+
+
+# noise parameter
+flat_model_noise_noise_param_summary <- flat_model_noise %>%
+  filter(Parameter %in% c("noise"))  %>%
+  summarise(mean = estimate_mode(value), 
+            ci_lower = hdi_lower(value),
+            ci_upper = hdi_upper(value))
+
+
+# model predictions
+flat_model_noise_predictions <- flat_model_noise %>%
+  filter(!(Parameter %in% c("noise"))) %>%
+  separate(Parameter, into = c("alignment","item", "age"), sep="/")%>%
+  mutate(model = "flat_prior_noise")%>%
+  group_by(model,age,item, alignment) %>%
+  summarise(mean = estimate_mode(value), 
+            ci_lower = hdi_lower(value), 
+            ci_upper =hdi_upper(value))%>%
+  ungroup()%>%
+  mutate(age = as.numeric(age))%>%
+  left_join(aoa_ratings)%>%
+  ungroup()%>%
+  mutate(item = fct_reorder(factor(item), mean_aoa),
+         source = "Model")
+
+```
+
+### Plot model predictions
+
+```{r}
+ggplot() +
+  geom_hline(yintercept = 0.5, lty=2)+
+  geom_smooth(data = data_comb, aes(x = age_num, y = correct, col = alignment, fill = alignment, lty = source), method = "loess", se = F, alpha = .2, span = 2)+
+  geom_line(data = flat_model_noise_predictions, aes(x=age+2,y = mean, col = alignment, lty = source), size = 1)+
+  geom_ribbon(data = flat_model_noise_predictions, aes(x = age+2, ymin = ci_lower, ymax = ci_upper, fill = alignment), alpha = .4) +
+  labs(x="Age",y="Mutual Exclusivity effect")+
+  facet_wrap(~item)+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F)+ 
+  scale_colour_ptol(name = NULL)+
+  scale_fill_ptol(name = NULL)
+```
+
+## Prior only model
+
+```{r}
+priorOnlyNoise <- '
+var allData = dataFromR.data
+
+var model = function(){
+
+  var noise = uniform({a: 0, b: 1}) 
+
+  var output = map(function(row){
+
+    var prior = [row.prior, 1-row.prior]
+
+      var modelPredictions = Infer({method: "enumerate", model: function(){
+      var obj = sample( Categorical({vs: all_objects, ps: prior}));
+      return obj.shape == "novel_object" ? 1 : 0
+       }})
+    
+    var noisyModelPredictions = addNoise(modelPredictions, noise)
+
+    observe(noisyModelPredictions, row.correct)
+  
+    return extend([row.alignment + "/" +  row.item + "/" + row.age, Math.exp(noisyModelPredictions.score(1))])
+
+}, allData)
+
+ return extend(_.fromPairs(output), {noise: noise})
+
+}
+'
+```
+
+
+```{r predictions pragmatic model ex 3 adults}
+prior_only_model_noise<- webppl(
+  program_code = paste(rsaUtils, rsaModel, priorOnlyNoise , sep='\n'),
+  data =list(data = noise_model_data),
+  data_var = "dataFromR",
+  chains = 3,
+  cores = 3,
+  inference_opts = list(method = "MCMC", samples = 2000, burn = 1000, verbose = T)
+)
+
+
+saveRDS(prior_only_model_noise, "../saves/prior_only_model_noise.rds")
+
+prior_only_model_noise <- readRDS("../saves/prior_only_model_noise.rds")
+
+# noise parameter
+prior_only_model_noise_noise_param_summary <- prior_only_model_noise %>%
+  filter(Parameter %in% c("noise"))  %>%
+  summarise(mean = estimate_mode(value), 
+            ci_lower = hdi_lower(value),
+            ci_upper = hdi_upper(value))
+
+
+# model predictions
+prior_only_model_noise_predictions <- prior_only_model_noise %>%
+  filter(!(Parameter %in% c("noise"))) %>%
+  separate(Parameter, into = c("alignment","item", "age"), sep="/")%>%
+  mutate(model = "prior_only_noise")%>%
+  group_by(model,age,item, alignment) %>%
+  summarise(mean = estimate_mode(value), 
+            ci_lower = hdi_lower(value), 
+            ci_upper =hdi_upper(value))%>%
+  ungroup()%>%
+  mutate(age = as.numeric(age))%>%
+  left_join(aoa_ratings)%>%
+  ungroup()%>%
+  mutate(item = fct_reorder(factor(item), mean_aoa),
+         source = "Model")
+
+```
+
+### Plot model predictions
+
+```{r}
+ggplot() +
+  geom_hline(yintercept = 0.5, lty=2)+
+  geom_smooth(data = data_comb, aes(x = age_num, y = correct, col = alignment, fill = alignment, lty = source), method = "loess", se = F, alpha = .2, span = 2)+
+  geom_line(data = prior_only_model_noise_predictions, aes(x=age+2,y = mean, col = alignment, lty = source), size = 1)+
+  geom_ribbon(data = prior_only_model_noise_predictions, aes(x = age+2, ymin = ci_lower, ymax = ci_upper, fill = alignment), alpha = .4) +
+  labs(x="Age",y="Mutual Exclusivity effect")+
+  facet_wrap(~item)+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F)+ 
+  scale_colour_ptol(name = NULL)+
+  scale_fill_ptol(name = NULL)
+```
+
+## Compare noise parameters
+
+```{r}
+noise_plot <- bind_rows(
+  prag_model_noise %>%
+    filter(Parameter %in% c("noise"))%>%
+    mutate(Model = "Pragmatic"),
+  global_prag_model_noise %>%
+    filter(Parameter %in% c("noise"))%>%
+    mutate(Model = "Pragmatic no word knowledge"),
+  flat_model_noise %>%
+    filter(Parameter %in% c("noise"))%>%
+    mutate(Model = "Flat Prior"),
+  prior_only_model_noise %>%
+    filter(Parameter %in% c("noise"))%>%
+    mutate(Model = "Prior Only")
+)
+
+ggplot(noise_plot, aes(x = value, col = Model, fill = Model))+
+  geom_density(alpha = .7)+
+  theme_few()+
+  xlim(0,1)+
+  scale_color_ptol()+
+  scale_fill_ptol()+
+  theme(legend.position = "bottom")
+  
+
+```
+
+## Compare predictions
+
+```{r}
+
+noise_model_pred <- bind_rows(
+  prag_model_noise_predictions,
+  global_prag_model_noise_predictions,
+  prior_only_model_noise_predictions,
+  flat_model_noise_predictions
+)
+
+data_comb_plot<-data_comb%>%
+  mutate(model = "data")
+
+ggplot() +
+  geom_hline(yintercept = 0.5, lty=2)+
+  geom_smooth(data = data_comb_plot, aes(x = age_num, y = correct, col = "black", fill = model), method = "loess", se = F, alpha = .2, span = 2)+
+  geom_line(data = noise_model_pred, aes(x=age+2,y = mean, col = model), size = 1)+
+  geom_ribbon(data = noise_model_pred, aes(x = age+2, ymin = ci_lower, ymax = ci_upper, fill = model), alpha = .4) +
+  labs(x="Age",y="Mutual Exclusivity effect")+
+  facet_grid(alignment~item)+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F)+ 
+  scale_colour_ptol(name = NULL)+
+  scale_fill_ptol(name = NULL)
+```
+
+
 
 # OLD: Comparing parameters between model runs
 
