@@ -160,7 +160,6 @@ modelPredictions
 '
 ```
 
-
 ```{r}
 webppl(program_code = paste(rsaUtils, rsaModel, baseMeModel,sep='\n'))
 ```
