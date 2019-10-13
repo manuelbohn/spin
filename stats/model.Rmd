@@ -34,6 +34,8 @@ hdi_lower<- function(s){
 
 me_data <- read_csv("../data/me.csv")
 
+
+
 ```
 
 ```{r rsaUtils}
@@ -391,28 +393,26 @@ query.add(["log_like", "prior_only", "noise"], ["NA", log_likelihood_prior_only_
 ## Model run
 
 ```{r}
-
 sem_know_model<- webppl(
   program_code = paste(rsaUtils, rsaModel, sem_subj_str , sep='\n'),
   data = list(data = me_model_data, comb_data = data_comb_log),
   data_var = "dataFromR",
   model_var = "model",
-  chains = 3,
-  cores = 3,
+  chains = 8,
+  cores = 8,
   inference_opts = list(method = "incrementalMH",
-                        samples = 25000,
-                        burn = 20000,
+                        samples =200000,
+                        burn = 100000,
                         verbose = T,
                         lag = 1,
-                        verboseLag = 1000)
+                        verboseLag = 5000)
 )
 
 
 
+saveRDS(sem_know_model, "../saves/sem_know_model_variant3_100k_model_comparison_noise.rds")
 
-saveRDS(sem_know_model, "../saves/sem_know_model_variant3_25k_model_comparison_noise.rds")
-
-sem_know_model <- readRDS("../saves/sem_know_model_variant3_100k_model_comparison.rds")
+#sem_know_model <- readRDS("../saves/sem_know_model_variant3_100k_model_comparison.rds")
 
 ```
 
