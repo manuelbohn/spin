@@ -34,7 +34,7 @@ hdi_lower<- function(s){
 
 me_data <- read_csv("../data/me.csv")
 
-
+devtools::install_github("https://github.com/mhtess/webppl-sample-writer")
 
 ```
 
@@ -387,6 +387,20 @@ query.add(["log_like", "prior_only", "noise"], ["NA", log_likelihood_prior_only_
  
   return query 
 }
+
+
+var header = "iteration,a,b,c,d,e,f"
+var callback = webpplSampleWriter.streamQueryCSV("../saves/samples.csv", header);
+
+Infer({model,
+      samples: 2,
+      burn: 1,
+      verbose: T,
+      lag: 1,
+      verboseLag: 1,
+      method: "incrementalMH",
+      onlyMAP: true,
+      callbacks: [callback]});
 '
 ```
 
@@ -398,35 +412,48 @@ sem_know_model<- webppl(
   data = list(data = me_model_data, comb_data = data_comb_log),
   data_var = "dataFromR",
   model_var = "model",
-  chains = 8,
-  cores = 8,
-  inference_opts = list(method = "incrementalMH",
-                        samples =200000,
-                        burn = 100000,
-                        verbose = T,
-                        lag = 1,
-                        verboseLag = 5000)
+  chains = 1,
+  cores = 1,
+  packages = c("utils/webppl-sample-writer")
 )
 
 
 
-saveRDS(sem_know_model, "../saves/sem_know_model_variant3_100k_model_comparison_noise.rds")
+#saveRDS(sem_know_model, "../saves/sem_know_model_variant3_100k_model_comparison_noise.rds")
 
-#sem_know_model <- readRDS("../saves/sem_know_model_variant3_100k_model_comparison.rds")
+sem_know_model <- readRDS("../saves/sem_know_model_variant3_200k_model_comparison_noise.rds")
+
+model <- read_csv("../saves/samples.csv")
 
 ```
 
 ## Model compatison
 
 ```{r}
-log_like<- sem_know_model %>%
+log_like <- model %>%
+  filter(a == "log_like")%>%
+  select(-f, -d)%>%
+  rename(type = a, 
+         model =b,
+         parameter = c, 
+         log_like = e)
+
+log_like_chain<- sem_know_model %>%
   separate(Parameter, into = c("parameter", "model","noise","alignment"), sep = ",")%>%
   filter(parameter == "log_like")%>%
   separate(value, into = c("na", "log_like"),sep = ",")%>%
   select(-na, -alignment)%>%
   mutate(log_like =as.numeric(str_remove(log_like,"[)]")))%>%
-  group_by(model,noise)%>%
-  summarize(logP = logSumExp(log_like))
+  group_by(model,Chain, noise)%>%
+  summarize(logP = logSumExp(log_like))%>%
+  spread(noise, logP)
+
+
+log_like_chain %>%
+  group_by(model)%>%
+  mutate(noise = round(noise,2),
+         parameter_free = round(parameter_free,2))%>%
+  summarise(range_noise = paste(range(noise)[1],range(noise)[2], sep = " / "))
 ```
 
 
@@ -1513,7 +1540,7 @@ data_comb_plot<-data_comb%>%
 
 ggplot() +
   geom_hline(yintercept = 0.5, lty=2)+
-  geom_smooth(data = data_comb_plot, aes(x = age_num, y = correct, col = "black", fill = model), method = "loess", se = F, alpha = .2, span = 2)+
+  geom_smooth(data = data_comb_plot, aes(x = age_num, y = correct), col = "black", method = "loess", se = T, alpha = .5, span = 2)+
   geom_line(data = noise_model_pred, aes(x=age+2,y = mean, col = model), size = 1)+
   geom_ribbon(data = noise_model_pred, aes(x = age+2, ymin = ci_lower, ymax = ci_upper, fill = model), alpha = .4) +
   labs(x="Age",y="Mutual Exclusivity effect")+
@@ -1521,9 +1548,46 @@ ggplot() +
   theme_few() +
   ylim(-0.05,1.05)+
   xlim(2,5)+
-  guides(alpha = F)+ 
+  guides(alpha = F, fill = F)+ 
   scale_colour_ptol(name = NULL)+
   scale_fill_ptol(name = NULL)
+```
+
+## Correlate predictions with data 
+
+```{r}
+binned_noise_model <- prag_model_noise %>%
+  filter(!(Parameter %in% c("noise"))) %>%
+  separate(Parameter, into = c("alignment","item", "age"), sep="/")%>%
+  mutate(age = as.numeric(age) + min(me_data$age_num),
+         subage = cut(age, 
+                      breaks = c(2,3,4,5),
+                      labels = c(2,3,4)))%>%
+  group_by(subage, alignment, item)%>%
+  summarise(model_mean = estimate_mode(value),
+            model_ci_lower = hdi_lower(value),
+            model_ci_upper = hdi_upper(value))
+
+
+
+cor_plot_2 <- bind_rows(
+left_join(binned_model, binnned_data)%>%mutate(model = "Parameter free"), 
+left_join(binned_noise_model,binnned_data)%>%mutate(model = "Noise")
+)
+
+ggplot(data = cor_plot_2,aes(x = model_mean, y = data_mean, col = item)) +
+  geom_abline(intercept = 0, slope = 1, lty = 2, alpha = 1, size = .5)+
+  geom_errorbar(aes(ymin = data_ci_lower, ymax = data_ci_upper),width = 0,size = .7)+
+  geom_errorbarh(aes(xmin = model_ci_lower, xmax = model_ci_upper), height = 0,size = .7)+
+  geom_point(size = 2,  stroke = 1)+
+  coord_fixed()+
+ stat_cor(method = "pearson", label.x = 0.01, label.y = 0.99, aes(x = model_mean, y = data_mean), inherit.aes = F, size = 3)+
+  xlim(0,1)+ylim(0,1)+
+  xlab("Model")+
+  ylab("Data")+
+  facet_grid(model~subage)+
+  theme_few() + 
+  scale_colour_viridis_d(name ="Item")
 ```
 
 
