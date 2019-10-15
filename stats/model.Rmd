@@ -310,7 +310,12 @@ var all_log_likes = map(function(row) {
                                                prior, speakerOptimality, 
                                                sem_knowledge)
 
+  query.add(["pragmaticModelPredictions","parameterFree", row.condition, row.familiarObject, row.subid], [row.age, Math.exp(pragModelPredictions.score(1))])  
+
+
   var noisyPragModelPredictions = addNoise(pragModelPredictions, noise)
+  
+  query.add(["pragmaticModelPredictions","noise", row.condition, row.familiarObject, row.subid], [row.age, Math.exp(noisyPragModelPredictions.score(1))])
 
   var globalPragModelPredictions = pragmaticListener({label: "novel_word"}, 
                                                prior, speakerOptimality, 
@@ -389,7 +394,7 @@ query.add(["log_like", "prior_only", "noise"], ["NA", log_likelihood_prior_only_
 }
 
 
-var header = "iteration,a,b,c,d,e,f"
+var header = "iteration,a,b,c,d,e,f,g,h"
 var callback = webpplSampleWriter.streamQueryCSV("../saves/samples.csv", header);
 
 Infer({model,
