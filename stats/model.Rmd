@@ -15,6 +15,7 @@ library(readxl)
 library(ggpubr)
 library(stringr)
 library(matrixStats)
+library(data.table)
 
 estimate_mode <- function(s) {
   d <- density(s)
@@ -34,7 +35,6 @@ hdi_lower<- function(s){
 
 me_data <- read_csv("../data/me.csv")
 
-devtools::install_github("https://github.com/mhtess/webppl-sample-writer")
 
 ```
 
@@ -395,14 +395,17 @@ query.add(["log_like", "prior_only", "noise"], ["NA", log_likelihood_prior_only_
 
 
 var header = "iteration,a,b,c,d,e,f,g,h"
-var callback = webpplSampleWriter.streamQueryCSV("../saves/samples.csv", header);
+
+var randomNumberForFile = Math.round(uniform(0, 1000))
+
+var callback = webpplSampleWriter.streamQueryCSV("../saves/model/samples"+randomNumberForFile+".csv", header);
 
 Infer({model,
-      samples: 2,
-      burn: 1,
+      samples: 100,
+      burn: 100,
       verbose: T,
       lag: 1,
-      verboseLag: 1,
+      verboseLag: 5000,
       method: "incrementalMH",
       onlyMAP: true,
       callbacks: [callback]});
@@ -417,8 +420,8 @@ sem_know_model<- webppl(
   data = list(data = me_model_data, comb_data = data_comb_log),
   data_var = "dataFromR",
   model_var = "model",
-  chains = 1,
-  cores = 1,
+  chains = 4,
+  cores = 4,
   packages = c("utils/webppl-sample-writer")
 )
 
@@ -428,7 +431,14 @@ sem_know_model<- webppl(
 
 sem_know_model <- readRDS("../saves/sem_know_model_variant3_200k_model_comparison_noise.rds")
 
-model <- read_csv("../saves/samples.csv")
+model <- bind_rows(
+  read_csv("../saves/model/samples126.csv")%>%mutate(chain = 1),
+  read_csv("../saves/model/samples551.csv")%>%mutate(chain = 2),
+  read_csv("../saves/model/samples661.csv")%>%mutate(chain = 3),
+  read_csv("../saves/model/samples950.csv")%>%mutate(chain = 4)
+)
+
+
 
 ```
 
@@ -437,11 +447,12 @@ model <- read_csv("../saves/samples.csv")
 ```{r}
 log_like <- model %>%
   filter(a == "log_like")%>%
-  select(-f, -d)%>%
+  select(-f, -d, -g, -h)%>%
   rename(type = a, 
          model =b,
          parameter = c, 
-         log_like = e)
+         log_like = e)%>%
+  mutate(log_like = as.numeric(log_like))
 
 log_like_chain<- sem_know_model %>%
   separate(Parameter, into = c("parameter", "model","noise","alignment"), sep = ",")%>%
