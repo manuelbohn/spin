@@ -310,12 +310,9 @@ var all_log_likes = map(function(row) {
                                                prior, speakerOptimality, 
                                                sem_knowledge)
 
-  query.add(["pragmaticModelPredictions","parameterFree", row.condition, row.familiarObject, row.subid], [row.age, Math.exp(pragModelPredictions.score(1))])  
-
-
   var noisyPragModelPredictions = addNoise(pragModelPredictions, noise)
   
-  query.add(["pragmaticModelPredictions","noise", row.condition, row.familiarObject, row.subid], [row.age, Math.exp(noisyPragModelPredictions.score(1))])
+
 
   var globalPragModelPredictions = pragmaticListener({label: "novel_word"}, 
                                                prior, speakerOptimality, 
@@ -337,6 +334,15 @@ var all_log_likes = map(function(row) {
        }})
    
   var noisyPriorOnlyModelPredictions = addNoise(priorOnlyModelPredictions, noise) 
+
+    query.add(["modelPrediction","pragmatic","noise", row.condition, row.familiarObject, row.subid], [row.age, Math.exp(noisyPragModelPredictions.score(1))])
+
+  query.add(["modelPrediction","pragmatic","free", row.condition, row.familiarObject, row.subid], [row.age, Math.exp(pragModelPredictions.score(1))])  
+
+  query.add(["modelPrediction","globalPrag","free", row.condition, row.familiarObject, row.subid], [row.age, Math.exp(globalPragModelPredictions.score(1))])  
+
+  query.add(["modelPrediction","globalPrag","noise", row.condition, row.familiarObject, row.subid], [row.age, Math.exp(noisyGlobalPragModelPredictions.score(1))])  
+
 
   return {
     prag: pragModelPredictions.score(row.correct),
@@ -401,10 +407,10 @@ var randomNumberForFile = Math.round(uniform(0, 1000))
 var callback = webpplSampleWriter.streamQueryCSV("../saves/model/samples"+randomNumberForFile+".csv", header);
 
 Infer({model,
-      samples: 100,
-      burn: 100,
+      samples: 10,
+      burn: 10,
       verbose: T,
-      lag: 1,
+      lag: 4,
       verboseLag: 5000,
       method: "incrementalMH",
       onlyMAP: true,
@@ -422,37 +428,23 @@ sem_know_model<- webppl(
   model_var = "model",
   chains = 4,
   cores = 4,
-  packages = c("utils/webppl-sample-writer")
+  packages = c("webppl_packages/webppl-sample-writer")
 )
 
+#saveRDS(sem_know_model, "../saves/model1.rds")
 
-
-#saveRDS(sem_know_model, "../saves/sem_know_model_variant3_100k_model_comparison_noise.rds")
-
-sem_know_model <- readRDS("../saves/sem_know_model_variant3_200k_model_comparison_noise.rds")
-
-model <- bind_rows(
-  read_csv("../saves/model/samples126.csv")%>%mutate(chain = 1),
-  read_csv("../saves/model/samples551.csv")%>%mutate(chain = 2),
-  read_csv("../saves/model/samples661.csv")%>%mutate(chain = 3),
-  read_csv("../saves/model/samples950.csv")%>%mutate(chain = 4)
-)
-
-
-
+sem_know_model <- readRDS("../saves/model1.rds")
 ```
 
 ## Model compatison
 
 ```{r}
-log_like <- model %>%
-  filter(a == "log_like")%>%
-  select(-f, -d, -g, -h)%>%
-  rename(type = a, 
-         model =b,
-         parameter = c, 
-         log_like = e)%>%
-  mutate(log_like = as.numeric(log_like))
+log_like <- sem_know_model %>%
+  separate(Parameter, into = c("parameter", "model","noise","alignment"), sep = ",")%>%
+  filter(parameter == "log_like")%>%
+  separate(value, into = c("na", "log_like"),sep = ",")%>%
+  select(-na, -alignment)%>%
+  mutate(log_like =as.numeric(str_remove(log_like,"[)]")))
 
 log_like_chain<- sem_know_model %>%
   separate(Parameter, into = c("parameter", "model","noise","alignment"), sep = ",")%>%
@@ -477,13 +469,12 @@ log_like_chain %>%
 
 ```{r}
 
-# model_pred <- sem_know_model %>%
-#   separate(Parameter, into = c("type", "item","x"))%>%
-#   filter(type == "modelPrediction")%>%
-#   separate(value, into = c("age", "pred"),sep = ", ")%>%
-#   mutate(age = as.numeric(str_remove_all(age, "[(c]")),
-#          pred = as.numeric(str_remove(pred, "[)]")))%>%
-#   select(-x)
+model_pred <- sem_know_model %>%
+  separate(Parameter, into = c("type", "model","parameter","alignment","item"))%>%
+  filter(type == "modelPrediction")%>%
+  separate(value, into = c("age", "pred"),sep = ", ")%>%
+  mutate(age = as.numeric(str_remove_all(age, "[(c]")),
+         pred = as.numeric(str_remove(pred, "[)]")))
 
 
 item_params<- sem_know_model %>%
@@ -677,6 +668,86 @@ ggplot(plot_sem_know, aes(x = age+2, y= sem_know, col = item, group = item))+
   theme_few()+
   scale_colour_viridis_d(name = "familiar object")
 ```
+
+## Plotting model predictions
+
+```{r}
+
+plot_model_pred <- model_pred%>%
+  mutate(model = paste(model, parameter, sep = "_"))%>%
+  group_by(model, alignment, item, age)%>%
+  summarise(mean = estimate_mode(pred),
+            ci_lower = hdi_lower(pred),
+            ci_upper = hdi_upper(pred))
+
+
+ggplot() +
+  geom_hline(yintercept = 0.5, lty=2)+
+  #geom_smooth(data = data_comb_plot, aes(x = age_num, y = correct), col = "black", method = "loess", se = T, alpha = .5, span = 2)+
+  geom_line(data = plot_model_pred, aes(x=age+2,y = mean, col = model), size = 1)+
+  geom_ribbon(data = plot_model_pred, aes(x = age+2, ymin = ci_lower, ymax = ci_upper, fill = model), alpha = .4) +
+  labs(x="Age",y="Mutual Exclusivity effect")+
+  facet_grid(alignment~item)+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F, fill = F)+ 
+  scale_colour_ptol(name = NULL)+
+  scale_fill_ptol(name = NULL)
+```
+
+## Correlate model predictions
+
+```{r}
+binnned_data <- data_comb%>%
+  group_by(subage, alignment, item)%>%
+  summarize(k = sum(correct), n = n())%>%
+  ungroup() %>%
+  mutate(a = 1 + k,
+         b = 1 + n - k,
+         data_mean = (a-1)/(a+b-2),
+         data_ci_lower  = qbeta(.025, a, b),
+         data_ci_upper = qbeta(.975, a, b),
+         age = factor(subage))%>%
+  select(-a,-b,-n,-k)
+
+cor_model_pred <- model_pred%>%
+  mutate(model = paste(model, parameter, sep = "_"))%>%
+  mutate(age = as.numeric(age) + min(me_data$age_num),
+         age = cut(age, 
+                      breaks = c(2,3,4,5),
+                      labels = c(2,3,4)))%>%
+  group_by(model, alignment, item, age)%>%
+  summarise(model_mean = estimate_mode(pred),
+            model_ci_lower = hdi_lower(pred),
+            model_ci_upper = hdi_upper(pred))
+
+plot_cor_model_pred <- cor_model_pred %>%
+  left_join(
+    bind_rows(
+      binnned_data%>%mutate(model = "globalPrag_free"),
+      binnned_data%>%mutate(model = "globalPrag_noise"),
+      binnned_data%>%mutate(model = "pragmatic_free"),
+      binnned_data%>%mutate(model = "pragmatic_noise")
+      )
+  )
+
+
+ggplot(data = plot_cor_model_pred,aes(x = model_mean, y = data_mean, col = item)) +
+  geom_abline(intercept = 0, slope = 1, lty = 2, alpha = 1, size = .5)+
+  geom_errorbar(aes(ymin = data_ci_lower, ymax = data_ci_upper),width = 0,size = .7)+
+  geom_errorbarh(aes(xmin = model_ci_lower, xmax = model_ci_upper), height = 0,size = .7)+
+  geom_point(size = 1,  stroke = 1)+
+  coord_fixed()+
+ stat_cor(method = "pearson", label.x = 0.01, label.y = 0.99, aes(x = model_mean, y = data_mean), inherit.aes = F, size = 3)+
+  xlim(0,1)+ylim(0,1)+
+  xlab("Model")+
+  ylab("Data")+
+  facet_grid(age~model)+
+  theme_few() + 
+  scale_colour_viridis_d(name ="Item")
+```
+
 
 # MAP based inverse predictions for ME data
 

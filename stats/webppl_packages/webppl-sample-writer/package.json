@@ -1,0 +1,15 @@
+{
+  "name": "webppl-sample-writer",
+  "version": "0.0.1",
+  "description": "WebPPL library for streaming samples to disk.",
+  "webppl": {
+    "wppl": ["src/library.wppl"],
+    "headers": ["src/header.js"]
+  },
+  "main": "src/library.js",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "homepage": ""
+}
