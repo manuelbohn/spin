@@ -425,10 +425,10 @@ var randomNumberForFile = Math.round(uniform(0, 1000))
 var callback = webpplSampleWriter.streamQueryCSV("../saves/model/samples"+randomNumberForFile+".csv", header);
 
 Infer({model,
-      samples: 10,
-      burn: 10,
+      samples: 50000,
+      burn: 250000,
       verbose: T,
-      lag: 4,
+      lag: 10,
       verboseLag: 5000,
       method: "incrementalMH",
       onlyMAP: true,
@@ -444,20 +444,56 @@ sem_know_model<- webppl(
   data = list(data = me_model_data, comb_data = data_comb_log),
   data_var = "dataFromR",
   model_var = "model",
-  chains = 4,
-  cores = 4,
+  chains = 2,
+  cores = 2,
   packages = c("webppl_packages/webppl-sample-writer")
 )
 
-bind_rows(
-sem_know_model <- read_csv("../saves/model/samples628.csv")%>%mutate(chain =1)
+read_csv("../saves/model/samples434.csv")%>%mutate(chain =1)%>%
+  saveRDS("../saves/model/chain_1.rds")
+
+read_csv("../saves/model/samples434.csv")%>%mutate(chain =2)%>%
+  saveRDS("../saves/model/chain_2.rds")
+
+read_csv("../saves/model/samples434.csv")%>%mutate(chain =1)%>%
+  saveRDS("../saves/model/chain_3.rds")
+
+read_csv("../saves/model/samples434.csv")%>%mutate(chain =2)%>%
+  saveRDS("../saves/model/chain_4.rds")
+
+read_csv("../saves/model/samples434.csv")%>%mutate(chain =1)%>%
+  saveRDS("../saves/model/chain_5.rds")
+
+read_csv("../saves/model/samples434.csv")%>%mutate(chain =2)%>%
+  saveRDS("../saves/model/chain_6.rds")
+
+read_csv("../saves/model/samples434.csv")%>%mutate(chain =1)%>%
+  saveRDS("../saves/model/chain_7.rds")
+
+read_csv("../saves/model/samples434.csv")%>%mutate(chain =2)%>%
+  saveRDS("../saves/model/chain_8.rds")
+
+read_csv("../saves/model/samples434.csv")%>%mutate(chain =2)%>%
+  saveRDS("../saves/model/chain_9.rds")
+
+read_csv("../saves/model/samples434.csv")%>%mutate(chain =2)%>%
+  saveRDS("../saves/model/chain_10.rds")
+
+
+sem_know_model <- bind_rows(
+  readRDS("../saves/model/chain_1.rds"),
+  readRDS("../saves/model/chain_2.rds"),
+  readRDS("../saves/model/chain_3.rds"),
+  readRDS("../saves/model/chain_4.rds"),
+  readRDS("../saves/model/chain_5.rds"),
+  readRDS("../saves/model/chain_6.rds"),
+  readRDS("../saves/model/chain_7.rds"),
+  readRDS("../saves/model/chain_8.rds"),
+  readRDS("../saves/model/chain_9.rds"),
+  readRDS("../saves/model/chain_10.rds")
 )
 
 saveRDS(sem_know_model, "../saves/model_complete.rds")
-
-sem_know_model <- readRDS("../saves/model_complete.rds")
-
-
 
 ```
 ## Model comparison
