@@ -35,6 +35,24 @@ hdi_lower<- function(s){
 
 me_data <- read_csv("../data/me.csv")
 
+data_comb_pre <- read_csv("../data/combination.csv") 
+
+aoa_ratings_all <- read_xlsx(path = "../data/words_aoa_ratings.xlsx", sheet = 1)
+
+aoa_ratings <- aoa_ratings_all %>%
+  filter(Word %in% data_comb_pre$item )%>%
+  mutate(mean_aoa = as.numeric(Rating.Mean),
+         item = Word)%>%
+  select(item,mean_aoa)
+
+data_comb <- data_comb_pre%>%
+  filter(condition != "train")%>%
+  mutate(alignment = condition,
+         item = familiarObject)%>%
+  left_join(aoa_ratings)%>%
+  ungroup()%>%
+  mutate(item = fct_reorder(factor(familiarObject), mean_aoa), 
+         source = "Data")
 
 ```
 
@@ -431,31 +449,46 @@ sem_know_model<- webppl(
   packages = c("webppl_packages/webppl-sample-writer")
 )
 
-#saveRDS(sem_know_model, "../saves/model1.rds")
+bind_rows(
+sem_know_model <- read_csv("../saves/model/samples628.csv")%>%mutate(chain =1)
+)
 
-sem_know_model <- readRDS("../saves/model1.rds")
+saveRDS(sem_know_model, "../saves/model_complete.rds")
+
+sem_know_model <- readRDS("../saves/model_complete.rds")
+
+
+
 ```
-
-## Model compatison
+## Model comparison
 
 ```{r}
 log_like <- sem_know_model %>%
-  separate(Parameter, into = c("parameter", "model","noise","alignment"), sep = ",")%>%
-  filter(parameter == "log_like")%>%
-  separate(value, into = c("na", "log_like"),sep = ",")%>%
-  select(-na, -alignment)%>%
-  mutate(log_like =as.numeric(str_remove(log_like,"[)]")))
+  filter(a == "log_like")%>%
+  select(b,c,e)%>%
+  rename(model = b, 
+         parameter = c,
+         log_like = e)
 
-log_like_chain<- sem_know_model %>%
-  separate(Parameter, into = c("parameter", "model","noise","alignment"), sep = ",")%>%
-  filter(parameter == "log_like")%>%
-  separate(value, into = c("na", "log_like"),sep = ",")%>%
-  select(-na, -alignment)%>%
-  mutate(log_like =as.numeric(str_remove(log_like,"[)]")))%>%
-  group_by(model,Chain, noise)%>%
+saveRDS(log_like, "../saves/log_like.rds")
+log_like <- readRDS("../saves/log_like.rds")
+
+
+log_like_model<- log_like %>%
+  group_by(model,parameter)%>%
   summarize(logP = logSumExp(log_like))%>%
-  spread(noise, logP)
+  spread(parameter, logP)
 
+saveRDS(log_like_model, "../saves/log_like_model.rds")
+log_like_model <- readRDS("../saves/log_like_model.rds")
+
+log_like_chain<- log_like %>%
+  group_by(chain, model,parameter)%>%
+  summarize(logP = logSumExp(log_like))%>%
+  spread(parameter, logP)
+
+saveRDS(log_like_chain, "../saves/log_like_chain.rds")
+log_like_chain <- readRDS("../saves/log_like_chain.rds")
 
 log_like_chain %>%
   group_by(model)%>%
@@ -470,75 +503,66 @@ log_like_chain %>%
 ```{r}
 
 model_pred <- sem_know_model %>%
-  separate(Parameter, into = c("type", "model","parameter","alignment","item"))%>%
-  filter(type == "modelPrediction")%>%
-  separate(value, into = c("age", "pred"),sep = ", ")%>%
-  mutate(age = as.numeric(str_remove_all(age, "[(c]")),
-         pred = as.numeric(str_remove(pred, "[)]")))
+  filter(a == "modelPrediction")%>%
+  select(-a, -f)%>%
+  rename(model = b, 
+         parameter = c,
+         alignment = d,
+         item = e,
+         age = g, 
+         pred = h)
 
+saveRDS(model_pred, "../saves/model_pred.rds")
+model_pred <- readRDS("../saves/model_pred.rds")
 
-item_params<- sem_know_model %>%
-  separate(Parameter, into = c("parameter", "type","item"), sep = ",")%>%
-  filter(parameter == "parameter", type == "items")%>%
-  separate(value, into = c("int", "slope"),sep = ", ")%>%
-  mutate(int = as.numeric(str_remove_all(int, "[(c]")),
-         slope = as.numeric(str_remove(slope, "[)]")))%>%
+  
+model_params<- sem_know_model %>%
+  filter(a == "parameter")
+
+saveRDS(model_params, "../saves/model_params.rds")
+model_params <- readRDS("../saves/model_params.rds")
+  
+item_params <-  model_params %>%
+  filter(b == "items")%>%
+  select(-a,-b, -g,-h, -f)%>%
+    rename(item = c,
+         int = d,
+         slope = e)%>%
+  mutate(slope = as.numeric(slope),
+         int = as.numeric(int))%>%
+  gather(parameter, value, int, slope)
+    
+saveRDS(item_params, "../saves/item_params.rds")
+item_params <- readRDS("../saves/item_params.rds")
+
+global_params <- model_params %>%
+  filter(b == "parameters")%>%
+  select(-a,-b, -g,-h, -f)%>%
+    rename(token = c,
+         int = d,
+         slope = e)%>%
+  mutate(slope = as.numeric(slope),
+         int = as.numeric(int))%>%
   gather(parameter, value, int, slope)
 
-
-global_params <- sem_know_model %>%
-  separate(Parameter, into = c("parameter", "type","token"), sep = ",")%>%
-  filter(parameter == "parameter", type == "parameters")%>%
-    separate(value, into = c("int", "slope"),sep = ", ")%>%
-    mutate(int = as.numeric(str_remove_all(int, "[(c]")),
-         slope = as.numeric(str_remove(slope, "[)]")))%>%
-    gather(parameter, value, int, slope)
-
+saveRDS(global_params, "../saves/global_params.rds")
+global_params <- readRDS("../saves/global_params.rds")
 
 
 global_sigma<- sem_know_model %>%
-  separate(Parameter, into = c("parameter", "type","token"), sep = ",")%>%
-  filter(parameter == "parameter", type == "sigma", token != "global_subject_sigmas")%>%
-    separate(value, into = c("sigma_int", "sigma_slope"),sep = ", ")%>%
-    mutate(sigma_int = as.numeric(str_remove_all(sigma_int, "[(c]")),
-         sigma_slope = as.numeric(str_remove(sigma_slope, "[)]")))%>%
-    gather(parameter, value, sigma_int, sigma_slope)
+  filter(b == "sigma")%>%
+  select(-a,-b, -g,-h, -f)%>%
+    rename(token = c,
+         int = d,
+         slope = e)%>%
+  mutate(slope = as.numeric(slope),
+         int = as.numeric(int))%>%
+  gather(parameter, value, int, slope)
 
-
-subj_sigma<- sem_know_model %>%
-  separate(Parameter, into = c("parameter", "type","token"), sep = ",")%>%
-  filter(parameter == "parameter", token == "global_subject_sigmas")%>%
-  separate(value, into = c("na", "sigma"),sep = ", ")%>%
-  select(-na)%>%
-  mutate(sigma = as.numeric(str_remove(sigma, "[)]")))
-
-
-subject_params<- sem_know_model %>%
-  separate(Parameter, into = c("parameter", "type","id"), sep = ",")%>%
-  filter(parameter == "parameter", type == "subj_intercept")%>%
-  separate(value, into = c("na", "int"),sep = ", ")%>%
-  select(-na)%>%
-  mutate(int = as.numeric(str_remove(int, "[)]")))
-
-
-model_pred<- sem_know_model %>%
-  separate(Parameter, into = c("parameter", "item","age","alignment"), sep = ",")%>%
-  filter(parameter == "prediction")%>%
-  separate(value, into = c("na", "me_effect"),sep = ",")%>%
-  select(-na)%>%
-  mutate(age = as.numeric(age),
-         me_effect =as.numeric(str_remove(me_effect,"[)]")))
-
-
-
+saveRDS(global_sigma, "../saves/global_sigma.rds")
+global_sigma <- readRDS("../saves/global_sigma.rds")
 
 #### summaries
-
-# model_pred_summary <- model_pred %>%
-#   group_by(item,age)%>%
-#   summarise(mode = estimate_mode(pred),
-#             uci = hdi_upper(pred),
-#             lci = hdi_lower(pred))
 
 item_params_summary <- item_params %>%
   group_by(item, parameter)%>%
@@ -559,7 +583,7 @@ global_params_summary <- global_params %>%
 ### Semantic knowledge
 
 ```{r}
-plot_item_params <- ggplot(item_params, aes(x = value, fill = factor(Chain)))+
+plot_item_params <- ggplot(item_params, aes(x = value, fill = factor(chain)))+
   geom_density(alpha = 0.3)+
   xlab("Parameter")+
   facet_grid(parameter~item, scales = 'free')+
@@ -576,7 +600,7 @@ plot_item_params
 
 ```{r}
 
-plot_global_params <- ggplot(global_params, aes(x = value, fill = factor(Chain)))+
+plot_global_params <- ggplot(global_params, aes(x = value, fill = factor(chain)))+
   geom_density(alpha = 0.3)+
   xlab("Parameter")+
   facet_grid(parameter~token, scales = 'free')+
@@ -588,7 +612,7 @@ plot_global_params
 ### Global sigmas
 
 ```{r}
-plot_global_sigma <- ggplot(global_sigma, aes(x = value, fill = factor(Chain)))+
+plot_global_sigma <- ggplot(global_sigma, aes(x = value, fill = factor(chain)))+
   geom_density(alpha = 0.3)+
   xlab("Sigma")+
   facet_grid(~parameter, scales = 'free')+
@@ -687,7 +711,7 @@ ggplot() +
   geom_line(data = plot_model_pred, aes(x=age+2,y = mean, col = model), size = 1)+
   geom_ribbon(data = plot_model_pred, aes(x = age+2, ymin = ci_lower, ymax = ci_upper, fill = model), alpha = .4) +
   labs(x="Age",y="Mutual Exclusivity effect")+
-  facet_grid(alignment~item)+
+  facet_grid(model + alignment~item)+
   theme_few() +
   ylim(-0.05,1.05)+
   xlim(2,5)+
