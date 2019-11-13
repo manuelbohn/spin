@@ -107,7 +107,7 @@ library(rwebppl)
 # write_csv(d_spin, "../data/novelty.csv")
 # #write_csv(d, "../data/child_novelty.csv")
 
-d <- read_csv("../data/novelty.csv")%>%
+d_spin <- read_csv("../data/novelty.csv")%>%
   mutate(subage = factor(subage))
 
 
@@ -127,7 +127,7 @@ Main question: Do SPIN and MCC datasets differ?
 
 
 ## sanity checks
-d %>%
+d_spin %>%
   group_by(experiment,subage) %>%
   summarise(n = length(unique(subid)),
             data_points = n())%>%
@@ -179,7 +179,7 @@ ggplot(data = p5, aes(x = age_num, y = correct, col = experiment)) +
   scale_colour_solarized()
 
 
-ggsave("../graphs/novelty.png", width = 5, height = 3, scale = 1.2)
+ggsave("../graphs/novelty.png", width = , height = 4, scale = 1.2)
 ```
 
 # SPIN GLMM

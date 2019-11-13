@@ -162,8 +162,8 @@ p2 <- d %>%
 ggplot(data = p2, aes(x = age_num, y = correct, col = familiar, fill = familiar)) +
   geom_hline(yintercept = 0.5, lty=2)+
   geom_jitter(width = 0, height = 0.05, alpha = .6)+
-  #geom_smooth(method = "glm", method.args = list(family = "binomial"), se = F, alpha = .5)+
-  geom_smooth(method = "loess", se = F, alpha = .5)+
+  geom_smooth(method = "glm", method.args = list(family = "binomial"), se = F, alpha = .5)+
+  #geom_smooth(method = "loess", se = F, alpha = .5)+
   labs(x="Age",y="Mutual Exclusivity effect")+
   #facet_grid(~familiar)+
   #ggtitle("Data")+
@@ -174,7 +174,7 @@ ggplot(data = p2, aes(x = age_num, y = correct, col = familiar, fill = familiar)
   scale_colour_viridis_d(name = "familiar object")+
   scale_fill_viridis_d(name = "familiar object")
 
-ggsave("../graphs/me_by_item.png", width = 6, height = 3, scale = 1.2)
+ggsave("../graphs/me_by_item.png", width = 5, height = 4, scale = 1.2)
 ```
 
 ```{r plot by numerical age, echo = F}

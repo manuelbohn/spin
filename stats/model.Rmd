@@ -16,6 +16,8 @@ library(ggpubr)
 library(stringr)
 library(matrixStats)
 library(data.table)
+library(bigmemory)
+library(langcog)
 
 estimate_mode <- function(s) {
   d <- density(s)
@@ -214,10 +216,112 @@ data_comb_log <- read_csv("../data/combination.csv") %>%
          nov_slope = novel_params$age_num,
          prior = ifelse(alignment == "congruent", plogis(nov_int + nov_slope* age),1-plogis(nov_int + age * nov_slope)))
 
-data_comb_log
+
+
 ```
 
 ## Model code
+
+### Prior model 
+
+```{r}
+prior_params <- '
+  
+var priorData = dataFromR.data
+
+var subjects = levels(priorData, "subid")
+
+//display(subjects)
+
+var model  = function(){
+
+  var prior_slope = uniformDrift({a: -2, b: 2, width: 0.4})
+  var prior_int = uniformDrift({a: -2, b: 2, width: 0.4})
+
+  var subject_sigma = uniformDrift({a: 0, b:3, width: 0.2}) 
+
+  var sampleSub = function(age){
+    return gaussianDrift({ mu: age, sigma: subject_sigma, width: 0.1 })
+  }
+
+  foreach(function(subid){
+      var subjectData = _.filter(priorData, {subid: subid})
+
+      display(subjects)
+
+      var subj_age = subjectData[0].age
+      var subjectPrior = sampleSub(subj_age)
+
+    foreach(function(row){
+  
+      var priorReg = logistic(prior_int + prior_slope * subjectPrior)
+
+      var prior = [priorReg, 1-priorReg]
+
+      var modelPredictions = Infer({method: "enumerate", model: function(){
+      var obj = sample( Categorical({vs: all_objects, ps: prior}));
+      return obj.shape == "novel_object" ? 1 : 0
+       }})
+    
+     observe(modelPredictions, row.correct)
+
+    }, subjectData)
+
+  }, subjects)
+
+  query.add(["intercept"], [prior_int])
+  query.add(["slope"], [prior_slope])
+  query.add(["sigma"], [subject_sigma])
+ 
+  return query 
+
+}
+
+'
+```
+
+```{r}
+
+prior_data <- read_csv("../data/novelty.csv")%>%
+  mutate(age = age_num - min(age_num))
+
+prior_model<- webppl(
+  program_code = paste(rsaUtils, rsaModel, prior_params , sep='\n'),
+  data = list(data = prior_data),
+  data_var = "dataFromR",
+  model_var = "model",
+  chains = 3,
+  cores = 3,
+  inference_opts = list(method = "MCMC", samples = 10000, burn = 5000, verbose = T)
+)
+
+prior <- prior_model%>%
+  mutate(value = unlist(value))%>%
+  filter(Chain !=2)
+
+prior_summary <- prior%>%
+  group_by(Parameter)%>%
+  summarise(param_map = estimate_mode(value))
+
+
+```
+
+```{r}
+ggplot(prior, aes(x = value, fill = factor(Chain)))+
+  geom_density(alpha = 0.3)+
+  xlab("Parameter")+
+  facet_grid(Parameter~., scales = 'free')+
+  theme_few()
+
+```
+
+
+```{r}
+novel_bm <- readRDS("../saves/novelty_model.rds")
+summary(novel_bm)
+```
+
+
 
 ```{r work in progress}
 sem_subj_str <- '
@@ -449,88 +553,82 @@ sem_know_model<- webppl(
   packages = c("webppl_packages/webppl-sample-writer")
 )
 
-read_csv("../saves/model/samples434.csv")%>%mutate(chain =1)%>%
-  saveRDS("../saves/model/chain_1.rds")
-
-read_csv("../saves/model/samples434.csv")%>%mutate(chain =2)%>%
-  saveRDS("../saves/model/chain_2.rds")
-
-read_csv("../saves/model/samples434.csv")%>%mutate(chain =1)%>%
-  saveRDS("../saves/model/chain_3.rds")
-
-read_csv("../saves/model/samples434.csv")%>%mutate(chain =2)%>%
-  saveRDS("../saves/model/chain_4.rds")
-
-read_csv("../saves/model/samples434.csv")%>%mutate(chain =1)%>%
-  saveRDS("../saves/model/chain_5.rds")
-
-read_csv("../saves/model/samples434.csv")%>%mutate(chain =2)%>%
-  saveRDS("../saves/model/chain_6.rds")
-
-read_csv("../saves/model/samples434.csv")%>%mutate(chain =1)%>%
-  saveRDS("../saves/model/chain_7.rds")
-
-read_csv("../saves/model/samples434.csv")%>%mutate(chain =2)%>%
-  saveRDS("../saves/model/chain_8.rds")
-
-read_csv("../saves/model/samples434.csv")%>%mutate(chain =2)%>%
-  saveRDS("../saves/model/chain_9.rds")
-
-read_csv("../saves/model/samples434.csv")%>%mutate(chain =2)%>%
-  saveRDS("../saves/model/chain_10.rds")
-
-
-sem_know_model <- bind_rows(
-  readRDS("../saves/model/chain_1.rds"),
-  readRDS("../saves/model/chain_2.rds"),
-  readRDS("../saves/model/chain_3.rds"),
-  readRDS("../saves/model/chain_4.rds"),
-  readRDS("../saves/model/chain_5.rds"),
-  readRDS("../saves/model/chain_6.rds"),
-  readRDS("../saves/model/chain_7.rds"),
-  readRDS("../saves/model/chain_8.rds"),
-  readRDS("../saves/model/chain_9.rds"),
-  readRDS("../saves/model/chain_10.rds")
-)
-
-saveRDS(sem_know_model, "../saves/model_complete.rds")
 
 ```
 ## Model comparison
 
 ```{r}
-log_like <- sem_know_model %>%
-  filter(a == "log_like")%>%
-  select(b,c,e)%>%
-  rename(model = b, 
-         parameter = c,
-         log_like = e)
-
-saveRDS(log_like, "../saves/log_like.rds")
-log_like <- readRDS("../saves/log_like.rds")
-
+log_like <- bind_rows(
+  readRDS("../saves/log_like_chain1.rds")%>%mutate(chain = 1),
+  readRDS("../saves/log_like_chain2.rds")%>%mutate(chain = 2),
+  readRDS("../saves/log_like_chain3.rds")%>%mutate(chain = 3),
+  readRDS("../saves/log_like_chain4.rds")%>%mutate(chain = 4),
+  readRDS("../saves/log_like_chain5.rds")%>%mutate(chain = 5)
+)
 
 log_like_model<- log_like %>%
   group_by(model,parameter)%>%
   summarize(logP = logSumExp(log_like))%>%
   spread(parameter, logP)
 
-saveRDS(log_like_model, "../saves/log_like_model.rds")
-log_like_model <- readRDS("../saves/log_like_model.rds")
-
 log_like_chain<- log_like %>%
   group_by(chain, model,parameter)%>%
   summarize(logP = logSumExp(log_like))%>%
   spread(parameter, logP)
 
-saveRDS(log_like_chain, "../saves/log_like_chain.rds")
-log_like_chain <- readRDS("../saves/log_like_chain.rds")
-
 log_like_chain %>%
   group_by(model)%>%
   mutate(noise = round(noise,2),
          parameter_free = round(parameter_free,2))%>%
-  summarise(range_noise = paste(range(noise)[1],range(noise)[2], sep = " / "))
+  summarise(range_param_free = paste(range(parameter_free)[1],range(parameter_free)[2], sep = " / "),
+            range_noise = paste(range(noise)[1],range(noise)[2], sep = " / "))
+
+
+
+log_like_2 <-  readRDS("../saves/sem_know_model_variant3_200k_model_comparison_noise.rds")%>%
+  separate(Parameter, into = c("parameter", "model","noise","alignment"), sep = ",")%>%
+  filter(parameter == "log_like")%>%
+  separate(value, into = c("na", "log_like"),sep = ",")%>%
+  select(-na, -alignment)%>%
+  mutate(log_like =as.numeric(str_remove(log_like,"[)]")))
+
+log_like_model_2 <- log_like_2%>%
+  group_by(model,noise)%>%
+  summarize(logP = logSumExp(log_like))
+
+
+model_comp <- log_like_2%>%
+  spread(model,log_like)%>%
+  mutate(prag_vs_prag_global = pragmatics - pragmatics_global,
+         prag_vs_flat_prior = pragmatics - flat_prior,
+         prag_vs_prior_only = pragmatics - prior_only)%>%
+  group_by(noise)%>%
+  summarize(prag_vs_prag_global = logSumExp(prag_vs_prag_global),
+            prag_vs_flat_prior = logSumExp(prag_vs_flat_prior),
+            prag_vs_prior_only = logSumExp(prag_vs_prior_only))
+  
+
+
+```
+
+```{r}
+ggplot(log_like_model, aes(x = model, y = logP, col = model))+
+  geom_segment( aes(x=model, xend=model, y=-1150, yend=logP), col = "black", size = 1)+
+  geom_point(size = 7)+
+  theme_few()+ 
+  xlab("")+
+  ylab("Log-likelihood")+
+  theme(axis.text.x=element_text(angle = 45, vjust = 1, hjust = 1))+
+  facet_grid(~parameter)+
+  ylim(-1750,-1150)+
+  scale_color_ptol(breaks=c("pragmatics","pragmatics_global","prior_only","flat_prior"),
+                     labels=c("Pragmatic", "Pragmatic global","Prior only","Flat prior"))+
+    theme(axis.text.x=element_blank(), 
+        axis.ticks.x=element_blank())
+```
+
+```{r}
+ggsave("../graphs/like.png", width = 6, height = 2.5, scale = 1.5)
 ```
 
 
@@ -552,11 +650,14 @@ saveRDS(model_pred, "../saves/model_pred.rds")
 model_pred <- readRDS("../saves/model_pred.rds")
 
   
-model_params<- sem_know_model %>%
-  filter(a == "parameter")
-
-saveRDS(model_params, "../saves/model_params.rds")
-model_params <- readRDS("../saves/model_params.rds")
+model_params <- bind_rows(
+  readRDS("../saves/model_params_chain1.rds")%>%mutate(chain = 1),
+  readRDS("../saves/model_params_chain2.rds")%>%mutate(chain = 2),
+  readRDS("../saves/model_params_chain3.rds")%>%mutate(chain = 3),
+  readRDS("../saves/model_params_chain4.rds")%>%mutate(chain = 4),
+  readRDS("../saves/model_params_chain5.rds")%>%mutate(chain = 5)
+  
+)
   
 item_params <-  model_params %>%
   filter(b == "items")%>%
@@ -567,9 +668,6 @@ item_params <-  model_params %>%
   mutate(slope = as.numeric(slope),
          int = as.numeric(int))%>%
   gather(parameter, value, int, slope)
-    
-saveRDS(item_params, "../saves/item_params.rds")
-item_params <- readRDS("../saves/item_params.rds")
 
 global_params <- model_params %>%
   filter(b == "parameters")%>%
@@ -581,11 +679,7 @@ global_params <- model_params %>%
          int = as.numeric(int))%>%
   gather(parameter, value, int, slope)
 
-saveRDS(global_params, "../saves/global_params.rds")
-global_params <- readRDS("../saves/global_params.rds")
-
-
-global_sigma<- sem_know_model %>%
+global_sigma<- model_params %>%
   filter(b == "sigma")%>%
   select(-a,-b, -g,-h, -f)%>%
     rename(token = c,
@@ -595,8 +689,6 @@ global_sigma<- sem_know_model %>%
          int = as.numeric(int))%>%
   gather(parameter, value, int, slope)
 
-saveRDS(global_sigma, "../saves/global_sigma.rds")
-global_sigma <- readRDS("../saves/global_sigma.rds")
 
 #### summaries
 
@@ -731,9 +823,81 @@ ggplot(plot_sem_know, aes(x = age+2, y= sem_know, col = item, group = item))+
 
 ## Plotting model predictions
 
+### Pragmatic free model
+
+```{r}
+data_comb_plot<-data_comb%>%
+  mutate(model = "data")
+
+
+model_pred_prag_free<- bind_rows(
+  readRDS("../saves/model_pred_pragmatic_free_chain1.rds")%>%mutate(chain = 1),
+  readRDS("../saves/model_pred_pragmatic_free_chain2.rds")%>%mutate(chain = 2),
+  readRDS("../saves/model_pred_pragmatic_free_chain3.rds")%>%mutate(chain = 3),
+  readRDS("../saves/model_pred_pragmatic_free_chain4.rds")%>%mutate(chain = 4),
+  readRDS("../saves/model_pred_pragmatic_free_chain5.rds")%>%mutate(chain = 5)
+)
+
+plot_model_pred_prag_free <- model_pred_prag_free%>%
+  mutate(model = paste(model, parameter, sep = "_"))%>%
+  group_by(model, alignment, item, age)%>%
+  summarise(mean = estimate_mode(pred),
+            ci_lower = hdi_lower(pred),
+            ci_upper = hdi_upper(pred))
+
+saveRDS(plot_model_pred_prag_free, "../saves/plot_model_pred_prag_free.rds")
+plot_model_pred_prag_free <- readRDS("../saves/plot_model_pred_prag_free.rds")
+
+
+ggplot() +
+  geom_hline(yintercept = 0.5, lty=2)+
+  geom_smooth(data = data_comb_plot, aes(x = age_num, y = correct), col = "black", method = "loess", se = T, alpha = .5, span = 2)+
+  geom_line(data = plot_model_pred_prag_free, aes(x=age+2,y = mean, col = model), size = 1)+
+  geom_ribbon(data = plot_model_pred_prag_free, aes(x = age+2, ymin = ci_lower, ymax = ci_upper, fill = model), alpha = .4) +
+  labs(x="Age",y="Mutual Exclusivity effect")+
+  facet_grid(alignment~item)+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F, fill = F, col = F)+ 
+  scale_colour_ptol(name = NULL)+
+  scale_fill_ptol(name = NULL)
+
+x <- sample(1:48000, 500)
+
+plot_model_prag_noise_line <- model_pred_prag_free%>%
+  filter(iteration %in% x)
+
+ggplot() +
+  geom_hline(yintercept = 0.5, lty=2)+
+  geom_line(data = plot_model_prag_noise_line, aes(x=age+2,y = pred, col = factor(chain), group = interaction(chain,iteration)),size = .2, alpha = .05)+
+  geom_smooth(data = data_comb_plot, aes(x = age_num, y = correct), col = "black", method = "loess", se = T, alpha = .5, span = 2)+
+  labs(x="Age",y="Mutual Exclusivity effect")+
+  facet_grid(alignment~item)+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F, fill = F)+ 
+  scale_colour_ptol(name = NULL)
+```
+
+```{r}
+ggsave("../graphs/pred_model_data.pdf", width = 10, height = 4, scale = 1)
+```
+
+### Pragmatic noise model
+
 ```{r}
 
-plot_model_pred <- model_pred%>%
+model_pred_prag_noise<- bind_rows(
+  readRDS("../saves/model_pred_pragmatic_noise_chain1.rds")%>%mutate(chain = 1),
+  readRDS("../saves/model_pred_pragmatic_noise_chain2.rds")%>%mutate(chain = 2),
+  readRDS("../saves/model_pred_pragmatic_noise_chain3.rds")%>%mutate(chain = 3),
+  readRDS("../saves/model_pred_pragmatic_noise_chain4.rds")%>%mutate(chain = 4),
+  readRDS("../saves/model_pred_pragmatic_noise_chain5.rds")%>%mutate(chain = 5)
+)
+
+plot_model_pred_prag_noise <- model_pred_prag_noise%>%
   mutate(model = paste(model, parameter, sep = "_"))%>%
   group_by(model, alignment, item, age)%>%
   summarise(mean = estimate_mode(pred),
@@ -741,11 +905,81 @@ plot_model_pred <- model_pred%>%
             ci_upper = hdi_upper(pred))
 
 
+saveRDS(plot_model_pred_prag_noise, "../saves/plot_model_pred_prag_noise.rds")
+plot_model_pred_prag_noise <- readRDS("../saves/plot_model_pred_prag_noise.rds")
+
+plot_model_pred_prag_noise_chain <- model_pred_prag_noise%>%
+  mutate(model = paste(model, parameter, sep = "_"))%>%
+  group_by(model, alignment, item,chain, age)%>%
+  summarise(mean = estimate_mode(pred),
+            ci_lower = hdi_lower(pred),
+            ci_upper = hdi_upper(pred))
+
+
+saveRDS(plot_model_pred_prag_noise_chain, "../saves/plot_model_pred_prag_noise_chain.rds")
+plot_model_pred_prag_noise_chain <- readRDS("../saves/plot_model_pred_prag_noise_chain.rds")
+
+ggplot() +
+  geom_hline(yintercept = 0.5, lty=2)+
+geom_smooth(data = data_comb_plot, aes(x = age_num, y = correct), col = "black", method = "loess", se = T, alpha = .5, span = 2)+
+  geom_ribbon(data = plot_model_pred_prag_noise, aes(x = age+2, ymin = ci_lower, ymax = ci_upper, fill = model), alpha = .3) +
+  geom_line(data = plot_model_pred_prag_noise, aes(x=age+2,y = mean, col = model), size = 1, alpha = .5)+
+  labs(x="Age",y="Mutual Exclusivity effect")+
+  facet_grid(alignment~item)+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F, fill = F)+ 
+  scale_colour_ptol(name = NULL)+
+  scale_fill_ptol(name = NULL)
+
+x <- sample(1:48000, 500)
+
+plot_model_prag_noise_line <- model_pred_prag_noise%>%
+  filter(iteration %in% x)
+
+ggplot() +
+  geom_hline(yintercept = 0.5, lty=2)+
+  geom_smooth(data = data_comb_plot, aes(x = age_num, y = correct), col = "black", method = "loess", se = T, alpha = .4, span = 2)+
+  geom_line(data = plot_model_prag_noise_line, aes(x=age+2,y = pred, col = factor(chain), group = interaction(chain,iteration)),size = .2, alpha = .075)+
+  labs(x="Age",y="Mutual Exclusivity effect")+
+  facet_grid(alignment~item)+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F, fill = F)+ 
+  scale_colour_ptol(name = NULL)
+```
+
+```{r}
+ggsave("../graphs/model_pred_noise_ribbon.pdf", width = 10, height = 4, scale = 1.2)
+```
+
+### Global pragmatic free model
+
+```{r}
+
+model_pred_global_free<- bind_rows(
+  readRDS("../saves/model_pred_globalPrag_free_chain1.rds")%>%mutate(chain = 1),
+  readRDS("../saves/model_pred_globalPrag_free_chain2.rds")%>%mutate(chain = 2)
+)
+
+plot_model_pred_global_free <- model_pred_global_free%>%
+  mutate(model = paste(model, parameter, sep = "_"))%>%
+  group_by(model, alignment, item, age)%>%
+  summarise(mean = estimate_mode(pred),
+            ci_lower = hdi_lower(pred),
+            ci_upper = hdi_upper(pred))
+
+
+saveRDS(plot_model_pred_global_free, "../saves/plot_model_pred_global_free.rds")
+plot_model_pred_global_free <- readRDS("../saves/plot_model_pred_global_free.rds")
+
 ggplot() +
   geom_hline(yintercept = 0.5, lty=2)+
   #geom_smooth(data = data_comb_plot, aes(x = age_num, y = correct), col = "black", method = "loess", se = T, alpha = .5, span = 2)+
-  geom_line(data = plot_model_pred, aes(x=age+2,y = mean, col = model), size = 1)+
-  geom_ribbon(data = plot_model_pred, aes(x = age+2, ymin = ci_lower, ymax = ci_upper, fill = model), alpha = .4) +
+  geom_line(data = plot_model_pred_global_free, aes(x=age+2,y = mean, col = model), size = 1)+
+  geom_ribbon(data = plot_model_pred_global_free, aes(x = age+2, ymin = ci_lower, ymax = ci_upper, fill = model), alpha = .4) +
   labs(x="Age",y="Mutual Exclusivity effect")+
   facet_grid(model + alignment~item)+
   theme_few() +
@@ -756,7 +990,43 @@ ggplot() +
   scale_fill_ptol(name = NULL)
 ```
 
-## Correlate model predictions
+### Global pragmatic noise model
+
+```{r}
+
+model_pred_global_noise<- bind_rows(
+  readRDS("../saves/model_pred_globalPrag_noise_chain1.rds")%>%mutate(chain = 1),
+  readRDS("../saves/model_pred_globalPrag_noise_chain2.rds")%>%mutate(chain = 2)
+)
+
+plot_model_pred_global_noise <- model_pred_global_noise%>%
+  mutate(model = paste(model, parameter, sep = "_"))%>%
+  group_by(model, alignment, item, age)%>%
+  summarise(mean = estimate_mode(pred),
+            ci_lower = hdi_lower(pred),
+            ci_upper = hdi_upper(pred))
+
+
+saveRDS(plot_model_pred_global_noise, "../saves/plot_model_pred_global_noise.rds")
+plot_model_pred_global_noise <- readRDS("../saves/plot_model_pred_global_noise.rds")
+
+
+ggplot() +
+  geom_hline(yintercept = 0.5, lty=2)+
+  #geom_smooth(data = data_comb_plot, aes(x = age_num, y = correct), col = "black", method = "loess", se = T, alpha = .5, span = 2)+
+  geom_line(data = plot_model_pred_global_noise, aes(x=age+2,y = mean, col = model), size = 1)+
+  geom_ribbon(data = plot_model_pred_global_noise, aes(x = age+2, ymin = ci_lower, ymax = ci_upper, fill = model), alpha = .4) +
+  labs(x="Age",y="Mutual Exclusivity effect")+
+  facet_grid(model + alignment~item)+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F, fill = F)+ 
+  scale_colour_ptol(name = NULL)+
+  scale_fill_ptol(name = NULL)
+```
+
+## Correlate model predictions and data 
 
 ```{r}
 binnned_data <- data_comb%>%
@@ -771,7 +1041,8 @@ binnned_data <- data_comb%>%
          age = factor(subage))%>%
   select(-a,-b,-n,-k)
 
-cor_model_pred <- model_pred%>%
+
+cor_prag_free <- model_pred_prag_free%>%
   mutate(model = paste(model, parameter, sep = "_"))%>%
   mutate(age = as.numeric(age) + min(me_data$age_num),
          age = cut(age, 
@@ -782,30 +1053,84 @@ cor_model_pred <- model_pred%>%
             model_ci_lower = hdi_lower(pred),
             model_ci_upper = hdi_upper(pred))
 
+saveRDS(cor_prag_free, "../saves/cor_prag_free.rds")
+cor_prag_free <- readRDS( "../saves/cor_prag_free.rds")
+
+cor_prag_noise <- model_pred_prag_noise%>%
+  mutate(model = paste(model, parameter, sep = "_"))%>%
+  mutate(age = as.numeric(age) + min(me_data$age_num),
+         age = cut(age, 
+                      breaks = c(2,3,4,5),
+                      labels = c(2,3,4)))%>%
+  group_by(model, alignment, item, age)%>%
+  summarise(model_mean = estimate_mode(pred),
+            model_ci_lower = hdi_lower(pred),
+            model_ci_upper = hdi_upper(pred))
+
+saveRDS(cor_prag_noise, "../saves/cor_prag_noise.rds")
+cor_prag_noise <- readRDS( "../saves/cor_prag_noise.rds")
+
+cor_global_free <- model_pred_global_free%>%
+  mutate(model = paste(model, parameter, sep = "_"))%>%
+  mutate(age = as.numeric(age) + min(me_data$age_num),
+         age = cut(age, 
+                      breaks = c(2,3,4,5),
+                      labels = c(2,3,4)))%>%
+  group_by(model, alignment, item, age)%>%
+  summarise(model_mean = estimate_mode(pred),
+            model_ci_lower = hdi_lower(pred),
+            model_ci_upper = hdi_upper(pred))
+
+cor_global_noise <- model_global_noise%>%
+  mutate(model = paste(model, parameter, sep = "_"))%>%
+  mutate(age = as.numeric(age) + min(me_data$age_num),
+         age = cut(age, 
+                      breaks = c(2,3,4,5),
+                      labels = c(2,3,4)))%>%
+  group_by(model, alignment, item, age)%>%
+  summarise(model_mean = estimate_mode(pred),
+            model_ci_lower = hdi_lower(pred),
+            model_ci_upper = hdi_upper(pred))
+
+cor_model_pred <- bind_rows(
+  cor_prag_free,
+  cor_prag_noise
+ # cor_global_free,
+#  cor_global_noise
+)
+
+
 plot_cor_model_pred <- cor_model_pred %>%
   left_join(
     bind_rows(
-      binnned_data%>%mutate(model = "globalPrag_free"),
-      binnned_data%>%mutate(model = "globalPrag_noise"),
+      #binnned_data%>%mutate(model = "globalPrag_free"),
+      #binnned_data%>%mutate(model = "globalPrag_noise"),
       binnned_data%>%mutate(model = "pragmatic_free"),
       binnned_data%>%mutate(model = "pragmatic_noise")
       )
   )
+
+saveRDS(plot_cor_model_pred, "../saves/model_cor.rds")
+plot_cor_model_pred <- readRDS( "../saves/model_cor.rds")
 
 
 ggplot(data = plot_cor_model_pred,aes(x = model_mean, y = data_mean, col = item)) +
   geom_abline(intercept = 0, slope = 1, lty = 2, alpha = 1, size = .5)+
   geom_errorbar(aes(ymin = data_ci_lower, ymax = data_ci_upper),width = 0,size = .7)+
   geom_errorbarh(aes(xmin = model_ci_lower, xmax = model_ci_upper), height = 0,size = .7)+
-  geom_point(size = 1,  stroke = 1)+
+  geom_point(size = 1.5, stroke = 1)+
   coord_fixed()+
  stat_cor(method = "pearson", label.x = 0.01, label.y = 0.99, aes(x = model_mean, y = data_mean), inherit.aes = F, size = 3)+
   xlim(0,1)+ylim(0,1)+
   xlab("Model")+
   ylab("Data")+
-  facet_grid(age~model)+
+  facet_grid(model~age)+
   theme_few() + 
   scale_colour_viridis_d(name ="Item")
+```
+
+```{r}
+ggsave("../graphs/cor_model_data.pdf", width = 8, height = 3.5, scale = 1)
 ```
 
 
@@ -1000,7 +1325,7 @@ novel_data <- read_csv("../data/novelty.csv")%>%
 
 novel_bm <- readRDS("../saves/novelty_model.rds")
 
-#summary(novel_bm)
+summary(novel_bm)
 
 novel_params <- as_tibble(fixef(novel_bm), rownames = "term")%>%
   select(term,Estimate)%>%
@@ -1357,13 +1682,45 @@ ggplot() +
   geom_line(data = prag_model_noise_predictions, aes(x=age+2,y = mean, col = alignment, lty = source), size = 1)+
   geom_ribbon(data = prag_model_noise_predictions, aes(x = age+2, ymin = ci_lower, ymax = ci_upper, fill = alignment), alpha = .4) +
   labs(x="Age",y="Mutual Exclusivity effect")+
-  facet_wrap(~item)+
+  facet_grid(alignment~item)+
   theme_few() +
   ylim(-0.05,1.05)+
   xlim(2,5)+
   guides(alpha = F)+ 
   scale_colour_ptol(name = NULL)+
   scale_fill_ptol(name = NULL)
+
+ggplot() +
+  geom_hline(yintercept = 0.5, lty=2)+
+geom_smooth(data = data_comb_plot, 
+            aes(x = age_num, y = correct), 
+            col = "black", method = "glm", method.args = list(family = "binomial"), se = T, alpha = .5)+
+  geom_pointrange(data = p1, aes(x = subage+.5, y = mean, ymin = ci_lower, ymax = ci_upper))+
+  geom_ribbon(data = prag_model_noise_predictions, aes(x = age+2, ymin = ci_lower, ymax = ci_upper, fill = model), alpha = .6) +
+  geom_line(data = prag_model_noise_predictions, aes(x=age+2,y = mean, col = model), size = 1, alpha = 1)+
+  labs(x="Age",y="Mutual Exclusivity effect")+
+  facet_wrap(alignment~item)+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F, fill = F)+ 
+  scale_colour_ptol(name = NULL)+
+  scale_fill_ptol(name = NULL)
+
+p1 <- data_comb%>%
+  mutate(alignment = condition)%>%
+  group_by(alignment, item ,subage)%>%
+  multi_boot_standard(col = "correct")
+  
+
+ggplot(p1, aes(x = subage, y = mean))+
+  geom_pointrange(aes(ymin = ci_lower, ymax = ci_upper))+
+  facet_grid(condition ~familiarObject)+
+  geom_line(aes(group=condition))+
+  geom_line(data = prag_model_noise_predictions, aes(x=age+2,y = mean, col = model), size = 1, alpha = 1)+
+  geom_ribbon(data = prag_model_noise_predictions, aes(x = age+2, ymin = ci_lower, ymax = ci_upper, fill = model), alpha = .5) +
+  theme_few() +
+
 
 ```
 
@@ -1651,7 +2008,7 @@ noise_plot <- bind_rows(
     mutate(Model = "Pragmatic"),
   global_prag_model_noise %>%
     filter(Parameter %in% c("noise"))%>%
-    mutate(Model = "Pragmatic no word knowledge"),
+    mutate(Model = "Pragmatic global"),
   flat_model_noise %>%
     filter(Parameter %in% c("noise"))%>%
     mutate(Model = "Flat Prior"),
@@ -1661,14 +2018,18 @@ noise_plot <- bind_rows(
 )
 
 ggplot(noise_plot, aes(x = value, col = Model, fill = Model))+
-  geom_density(alpha = .7)+
+  geom_density(alpha = .7, bw = .01)+
   theme_few()+
   xlim(0,1)+
   scale_color_ptol()+
   scale_fill_ptol()+
-  theme(legend.position = "bottom")
+  theme()
   
 
+```
+
+```{r}
+ggsave("../graphs/noise.pdf", width = 6, height = 3, scale = 1.2)
 ```
 
 ## Compare predictions
@@ -1707,9 +2068,9 @@ binned_noise_model <- prag_model_noise %>%
   filter(!(Parameter %in% c("noise"))) %>%
   separate(Parameter, into = c("alignment","item", "age"), sep="/")%>%
   mutate(age = as.numeric(age) + min(me_data$age_num),
-         subage = cut(age, 
+         subage = factor(cut(age, 
                       breaks = c(2,3,4,5),
-                      labels = c(2,3,4)))%>%
+                      labels = c(2,3,4))))%>%
   group_by(subage, alignment, item)%>%
   summarise(model_mean = estimate_mode(value),
             model_ci_lower = hdi_lower(value),
@@ -1732,11 +2093,14 @@ ggplot(data = cor_plot_2,aes(x = model_mean, y = data_mean, col = item)) +
   xlim(0,1)+ylim(0,1)+
   xlab("Model")+
   ylab("Data")+
-  facet_grid(model~subage)+
+  facet_grid(~subage)+
   theme_few() + 
   scale_colour_viridis_d(name ="Item")
 ```
 
+```{r}
+ggsave("../graphs/cor_plot_noise.pdf", width = 10, height = 4, scale = .8)
+```
 
 
 # OLD: Comparing parameters between model runs
