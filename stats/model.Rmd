@@ -250,7 +250,10 @@ var model  = function(){
       //display(subjects)
 
       var subj_age = subjectData[0].age
+
       var subjectPrior = sampleSub(subj_age)
+
+      display(subjectPrior)
 
     foreach(function(row){
   
@@ -290,14 +293,15 @@ prior_model<- webppl(
   data = list(data = prior_data),
   data_var = "dataFromR",
   model_var = "model",
-  chains = 3,
-  cores = 3,
-  inference_opts = list(method = "MCMC", samples = 10000, burn = 5000, verbose = T)
+  chains = 1,
+  cores = 1,
+  inference_opts = list(method = "MCMC", samples = 1, burn = 1, verbose = T)
 )
 
+saveRDS(prior_model, "../saves/prior_model.rds")
+
 prior <- prior_model%>%
-  mutate(value = unlist(value))%>%
-  filter(Chain !=2)
+  mutate(value = unlist(value))
 
 prior_summary <- prior%>%
   group_by(Parameter)%>%
@@ -305,6 +309,8 @@ prior_summary <- prior%>%
 
 
 ```
+
+#### Visualizing parameters
 
 ```{r}
 ggplot(prior, aes(x = value, fill = factor(Chain)))+
@@ -315,13 +321,77 @@ ggplot(prior, aes(x = value, fill = factor(Chain)))+
 
 ```
 
+#### Comparison to brm models
 
 ```{r}
-novel_bm <- readRDS("../saves/novelty_model.rds")
+
+# same model as webppl model  implemented in brms
+
+novel_bm <- brm(correct ~ age + (1 | subid), 
+          data = prior_data, family = bernoulli(),
+          control = list(adapt_delta = 0.95),
+          sample_prior = F,
+          save_all_pars = TRUE,
+          iter = 20000)
+
 summary(novel_bm)
+
+saveRDS(novel_bm, "../saves/novelty_model_brm.rds")
 ```
 
 
+```{r}
+# brm model from last chunk
+novel_bm <- readRDS("../saves/novelty_model_brm.rds")
+
+brm_params <- as_tibble(fixef(novel_bm), rownames = "term")%>%
+  select(term,Estimate)%>%
+  spread(term, Estimate)
+
+brm_plot <- tibble(
+  age = prior_data$age,
+  y = plogis(brm_params$Intercept + brm_params$age * age),
+  model = "brm"
+)
+
+
+#brm model with additional random intercept and slope for item
+novel_bm_full <- readRDS("../saves/novelty_model.rds")
+
+brm_full_params <- as_tibble(fixef(novel_bm_full), rownames = "term")%>%
+  select(term,Estimate)%>%
+  spread(term, Estimate)
+
+brm_full_plot <- tibble(
+  age = prior_data$age,
+  y = plogis(brm_full_params$Intercept + brm_full_params$age_num * age),
+  model = "brm_full"
+)
+
+
+# webppl model
+webppl_plot <- tibble(
+  age = prior_data$age,
+  y = plogis(prior_summary%>%filter(Parameter == "intercept")%>%pull(param_map) + prior_summary%>%filter(Parameter == "slope")%>%pull(param_map) * age),
+  model = "webppl"
+)
+
+prior_comp_plot <- bind_rows(
+  brm_plot,
+  webppl_plot,
+  brm_full_plot
+  
+)
+```
+
+
+```{r}
+ggplot(prior_comp_plot, aes(x = age, y = y, col = model))+
+  geom_line()+
+  ylim(0,1)+
+  theme_few()+
+  scale_color_ptol()
+```
 
 ```{r work in progress}
 sem_subj_str <- '
