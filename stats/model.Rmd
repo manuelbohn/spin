@@ -247,7 +247,7 @@ var model  = function(){
   foreach(function(subid){
       var subjectData = _.filter(priorData, {subid: subid})
 
-      display(subjects)
+      //display(subjects)
 
       var subj_age = subjectData[0].age
       var subjectPrior = sampleSub(subj_age)
