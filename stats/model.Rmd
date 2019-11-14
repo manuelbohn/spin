@@ -312,7 +312,9 @@ prior <- prior_model%>%
 
 prior_summary <- prior%>%
   group_by(Parameter)%>%
-  summarise(param_map = estimate_mode(value))
+  summarise(param_map = estimate_mode(value),
+            param_uci = hdi_upper(value),
+            param_lci = hdi_lower(value))
 
 
 ```
@@ -351,6 +353,8 @@ saveRDS(novel_bm, "../saves/novelty_model_brm.rds")
 # brm model from last chunk
 novel_bm <- readRDS("../saves/novelty_model_brm.rds")
 
+#summary(novel_bm)
+
 brm_params <- as_tibble(fixef(novel_bm), rownames = "term")%>%
   select(term,Estimate)%>%
   spread(term, Estimate)
@@ -364,6 +368,8 @@ brm_plot <- tibble(
 
 #brm model with additional random intercept and slope for item
 novel_bm_full <- readRDS("../saves/novelty_model.rds")
+
+#summary(novel_bm_full)
 
 brm_full_params <- as_tibble(fixef(novel_bm_full), rownames = "term")%>%
   select(term,Estimate)%>%
