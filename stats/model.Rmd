@@ -56,6 +56,21 @@ data_comb <- data_comb_pre%>%
   mutate(item = fct_reorder(factor(familiarObject), mean_aoa), 
          source = "Data")
 
+
+prior_data <- read_csv("../data/novelty.csv")
+
+prior_model_data <- read_csv("../data/novelty.csv")%>%
+  mutate(age = age_num - min(age_num))
+
+
+me_model_data <- read_csv("../data/me.csv")%>%
+    filter(trial != "train1",
+           trial != "train2")%>%
+  mutate(age = age_num - min(age_num))
+
+data_comb_plot<-data_comb%>%
+  mutate(model = "data")
+
 ```
 
 ```{r rsaUtils}
@@ -191,11 +206,6 @@ webppl(program_code = paste(rsaUtils, rsaModel, baseMeModel,sep='\n'))
 ## Prepare data
 
 ```{r}
-me_model_data <- read_csv("../data/me.csv")%>%
-    filter(trial != "train1",
-           trial != "train2")%>%
-  mutate(age = age_num - min(age_num))
-
 
 novel_bm <- readRDS("../saves/novelty_model.rds")
 
@@ -229,7 +239,7 @@ prior_params <- '
   
 var priorData = dataFromR.data
 
-var subjects = levels(priorData, "subid")
+var priorSubjects = levels(priorData, "subid")
 
 //display(subjects)
 
@@ -238,22 +248,20 @@ var model  = function(){
   var prior_slope = uniformDrift({a: -2, b: 2, width: 0.4})
   var prior_int = uniformDrift({a: -2, b: 2, width: 0.4})
 
-  var subject_sigma = uniformDrift({a: 0, b:3, width: 0.2}) 
+  var prior_subject_sigma = uniformDrift({a: 0, b:3, width: 0.2}) 
 
-  var sampleSub = function(age){
-    return gaussianDrift({ mu: age, sigma: subject_sigma, width: 0.1 })
+  var priorSampleSub = function(age){
+    return gaussianDrift({ mu: age, sigma: prior_subject_sigma, width: 0.1 })
   }
 
   foreach(function(subid){
-      var subjectData = _.filter(priorData, {subid: subid})
+      var priorSubjectData = _.filter(priorData, {subid: subid})
 
       //display(subjects)
 
-      var subj_age = subjectData[0].age
+      var subj_age = priorSubjectData[0].age
 
-      var subjectPrior = sampleSub(subj_age)
-
-      display(subjectPrior)
+      var subjectPrior = priorSampleSub(subj_age)
 
     foreach(function(row){
   
@@ -268,13 +276,13 @@ var model  = function(){
     
      observe(modelPredictions, row.correct)
 
-    }, subjectData)
+    }, priorSubjectData)
 
-  }, subjects)
+  }, priorSubjects)
 
   query.add(["intercept"], [prior_int])
   query.add(["slope"], [prior_slope])
-  query.add(["sigma"], [subject_sigma])
+  query.add(["sigma"], [prior_subject_sigma])
  
   return query 
 
@@ -285,12 +293,9 @@ var model  = function(){
 
 ```{r}
 
-prior_data <- read_csv("../data/novelty.csv")%>%
-  mutate(age = age_num - min(age_num))
-
 prior_model<- webppl(
   program_code = paste(rsaUtils, rsaModel, prior_params , sep='\n'),
-  data = list(data = prior_data),
+  data = list(data = prior_model_data),
   data_var = "dataFromR",
   model_var = "model",
   chains = 1,
@@ -299,6 +304,8 @@ prior_model<- webppl(
 )
 
 saveRDS(prior_model, "../saves/prior_model.rds")
+
+prior_model <- readRDS("../saves/prior_model.rds")
 
 prior <- prior_model%>%
   mutate(value = unlist(value))
@@ -328,7 +335,7 @@ ggplot(prior, aes(x = value, fill = factor(Chain)))+
 # same model as webppl model  implemented in brms
 
 novel_bm <- brm(correct ~ age + (1 | subid), 
-          data = prior_data, family = bernoulli(),
+          data = prior_model_data, family = bernoulli(),
           control = list(adapt_delta = 0.95),
           sample_prior = F,
           save_all_pars = TRUE,
@@ -349,7 +356,7 @@ brm_params <- as_tibble(fixef(novel_bm), rownames = "term")%>%
   spread(term, Estimate)
 
 brm_plot <- tibble(
-  age = prior_data$age,
+  age = prior_model_data$age,
   y = plogis(brm_params$Intercept + brm_params$age * age),
   model = "brm"
 )
@@ -363,7 +370,7 @@ brm_full_params <- as_tibble(fixef(novel_bm_full), rownames = "term")%>%
   spread(term, Estimate)
 
 brm_full_plot <- tibble(
-  age = prior_data$age,
+  age = prior_model_data$age,
   y = plogis(brm_full_params$Intercept + brm_full_params$age_num * age),
   model = "brm_full"
 )
@@ -371,7 +378,7 @@ brm_full_plot <- tibble(
 
 # webppl model
 webppl_plot <- tibble(
-  age = prior_data$age,
+  age = prior_model_data$age,
   y = plogis(prior_summary%>%filter(Parameter == "intercept")%>%pull(param_map) + prior_summary%>%filter(Parameter == "slope")%>%pull(param_map) * age),
   model = "webppl"
 )
@@ -393,16 +400,66 @@ ggplot(prior_comp_plot, aes(x = age, y = y, col = model))+
   scale_color_ptol()
 ```
 
+### Combination Model
+
 ```{r work in progress}
 sem_subj_str <- '
+
 var data = dataFromR.data
+var priorData = dataFromR.data
 
 var priorProbs = [.5,.5]
 
 var familiars = levels(data, "familiar")
 var subjects = levels(data, "subid")
+var priorSubjects = levels(priorData, "subid")
 
 var model  = function(){
+
+
+//////////////// Prior ////////////////////////
+
+ var prior_slope = uniformDrift({a: -2, b: 2, width: 0.4})
+  var prior_int = uniformDrift({a: -2, b: 2, width: 0.4})
+
+  var prior_subject_sigma = uniformDrift({a: 0, b:3, width: 0.2}) 
+
+  var priorSampleSub = function(age){
+    return gaussianDrift({ mu: age, sigma: prior_subject_sigma, width: 0.1 })
+  }
+
+  foreach(function(subid){
+      var priorSubjectData = _.filter(priorData, {subid: subid})
+
+      //display(subjects)
+
+      var subj_age = priorSubjectData[0].age
+
+      var subjectPrior = priorSampleSub(subj_age)
+
+    foreach(function(row){
+  
+      var priorReg = logistic(prior_int + prior_slope * subjectPrior)
+
+      var prior = [priorReg, 1-priorReg]
+
+      var modelPredictions = Infer({method: "enumerate", model: function(){
+      var obj = sample( Categorical({vs: all_objects, ps: prior}));
+      return obj.shape == "novel_object" ? 1 : 0
+       }})
+    
+     observe(modelPredictions, row.correct)
+
+    }, priorSubjectData)
+
+  }, priorSubjects)
+
+  query.add(["parameter","parameters", "prior"], [prior_int, prior_slope])
+  query.add(["parameter","sigma", "prior"], ["NA", prior_subject_sigma])
+
+
+
+//////////////// Semantic knowledge and speaker optimality ////////////////////////
 
   var speakerOptimalityParameters = {
     intercept: uniformDrift({a: -3, b: 3, width: 0.5}),
@@ -484,11 +541,26 @@ var model  = function(){
   }, subjects)
 
 
+//////////////// Model predictions and combination ////////////////////////
+
+
 var noise = uniformDrift({a: 0, b:1, width: 0.1})
  
 var all_log_likes = map(function(row) { 
-  var prior = [row.prior, 1-row.prior]
+  
+  var priorReg = logistic(prior_int + prior_slope * row.age)
+
+  var cond = row.condition
+
+  var prior = function(cnd){
+    var cndPrior = cnd == "congruent" ? [priorReg, 1-priorReg] : [1-priorReg, priorReg] ;
+    return cndPrior
+  }
+
+  var priorComb = prior(cond)
+
   var itemLineParameters = all_item_parameters[row.item]
+
   var sem_knowledge = logistic(itemLineParameters.intercept + 
                                itemLineParameters.slope * row.age)
 
@@ -499,7 +571,7 @@ var all_log_likes = map(function(row) {
       speakerOptimalityParameters.slope * row.age
 
   var pragModelPredictions = pragmaticListener({label: "novel_word"}, 
-                                               prior, speakerOptimality, 
+                                               priorComb, speakerOptimality, 
                                                sem_knowledge)
 
   var noisyPragModelPredictions = addNoise(pragModelPredictions, noise)
@@ -507,7 +579,7 @@ var all_log_likes = map(function(row) {
 
 
   var globalPragModelPredictions = pragmaticListener({label: "novel_word"}, 
-                                               prior, speakerOptimality, 
+                                               priorComb, speakerOptimality, 
                                                global_sem_knowledge)
 
    var noisyGlobalPragModelPredictions = addNoise(globalPragModelPredictions, noise)
@@ -521,20 +593,15 @@ var all_log_likes = map(function(row) {
 
   
   var priorOnlyModelPredictions = Infer({method: "enumerate", model: function(){
-      var obj = sample( Categorical({vs: all_objects, ps: prior}));
+      var obj = sample( Categorical({vs: all_objects, ps: priorComb}));
       return obj.shape == "novel_object" ? 1 : 0
        }})
    
   var noisyPriorOnlyModelPredictions = addNoise(priorOnlyModelPredictions, noise) 
 
-    query.add(["modelPrediction","pragmatic","noise", row.condition, row.familiarObject, row.subid], [row.age, Math.exp(noisyPragModelPredictions.score(1))])
-
   query.add(["modelPrediction","pragmatic","free", row.condition, row.familiarObject, row.subid], [row.age, Math.exp(pragModelPredictions.score(1))])  
 
-  query.add(["modelPrediction","globalPrag","free", row.condition, row.familiarObject, row.subid], [row.age, Math.exp(globalPragModelPredictions.score(1))])  
-
-  query.add(["modelPrediction","globalPrag","noise", row.condition, row.familiarObject, row.subid], [row.age, Math.exp(noisyGlobalPragModelPredictions.score(1))])  
-
+//  query.add(["modelPrediction","globalPrag","free", row.condition, row.familiarObject, row.subid], [row.age, Math.exp(globalPragModelPredictions.score(1))])  
 
   return {
     prag: pragModelPredictions.score(row.correct),
@@ -600,10 +667,10 @@ var callback = webpplSampleWriter.streamQueryCSV("../saves/model/samples"+random
 
 Infer({model,
       samples: 50000,
-      burn: 250000,
+      burn: 50000,
       verbose: T,
-      lag: 10,
-      verboseLag: 5000,
+      lag: 1,
+      verboseLag: 1000,
       method: "incrementalMH",
       onlyMAP: true,
       callbacks: [callback]});
@@ -615,7 +682,7 @@ Infer({model,
 ```{r}
 sem_know_model<- webppl(
   program_code = paste(rsaUtils, rsaModel, sem_subj_str , sep='\n'),
-  data = list(data = me_model_data, comb_data = data_comb_log),
+  data = list(data = me_model_data, comb_data = data_comb_log, prior_data = prior_model_data),
   data_var = "dataFromR",
   model_var = "model",
   chains = 2,
@@ -706,12 +773,13 @@ ggsave("../graphs/like.png", width = 6, height = 2.5, scale = 1.5)
 
 ```{r}
 
-model_pred <- sem_know_model %>%
+model_pred <- read_csv("../saves/model/samples78.csv") %>%
   filter(a == "modelPrediction")%>%
-  select(-a, -f)%>%
+  select(-a)%>%
   rename(model = b, 
          parameter = c,
          alignment = d,
+         id = f,
          item = e,
          age = g, 
          pred = h)
@@ -774,7 +842,11 @@ global_params_summary <- global_params %>%
   summarise(mode = estimate_mode(value),
             uci = hdi_upper(value),
             lci = hdi_lower(value))
-  
+
+
+model_pred %>%
+  filter(item == "pawn")%>%
+  arrange(age)
 ```
 ## Plotting model parameters
 
@@ -896,8 +968,6 @@ ggplot(plot_sem_know, aes(x = age+2, y= sem_know, col = item, group = item))+
 ### Pragmatic free model
 
 ```{r}
-data_comb_plot<-data_comb%>%
-  mutate(model = "data")
 
 
 model_pred_prag_free<- bind_rows(
@@ -908,7 +978,7 @@ model_pred_prag_free<- bind_rows(
   readRDS("../saves/model_pred_pragmatic_free_chain5.rds")%>%mutate(chain = 5)
 )
 
-plot_model_pred_prag_free <- model_pred_prag_free%>%
+plot_model_pred_prag_free <- model_pred%>%
   mutate(model = paste(model, parameter, sep = "_"))%>%
   group_by(model, alignment, item, age)%>%
   summarise(mean = estimate_mode(pred),
