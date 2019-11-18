@@ -1,0 +1,4 @@
+var json = {
+  read: webpplJson.read,
+  write: webpplJson.write
+};

@@ -1,0 +1,86 @@
+{
+  "_args": [
+    [
+      {
+        "raw": "webppl-json",
+        "scope": null,
+        "escapedName": "webppl-json",
+        "name": "webppl-json",
+        "rawSpec": "",
+        "spec": "latest",
+        "type": "tag"
+      },
+      "/Users/MBohn/Work/Spin/spin/webppl"
+    ]
+  ],
+  "_from": "webppl-json@latest",
+  "_id": "webppl-json@0.0.1",
+  "_inCache": true,
+  "_location": "/webppl-json",
+  "_nodeVersion": "5.0.0",
+  "_npmOperationalInternal": {
+    "host": "packages-12-west.internal.npmjs.com",
+    "tmp": "tmp/webppl-json-0.0.1.tgz_1461007066794_0.7586328384932131"
+  },
+  "_npmUser": {
+    "name": "stuhlmueller",
+    "email": "andreas@stuhlmueller.org"
+  },
+  "_npmVersion": "3.8.2",
+  "_phantomChildren": {},
+  "_requested": {
+    "raw": "webppl-json",
+    "scope": null,
+    "escapedName": "webppl-json",
+    "name": "webppl-json",
+    "rawSpec": "",
+    "spec": "latest",
+    "type": "tag"
+  },
+  "_requiredBy": [
+    "#USER"
+  ],
+  "_resolved": "https://registry.npmjs.org/webppl-json/-/webppl-json-0.0.1.tgz",
+  "_shasum": "08c61765a32cfb86155720a02b62c4fce6374428",
+  "_shrinkwrap": null,
+  "_spec": "webppl-json",
+  "_where": "/Users/MBohn/Work/Spin/spin/webppl",
+  "author": {
+    "name": "Andreas Stuhlmueller"
+  },
+  "bugs": {
+    "url": "https://github.com/stuhlmueller/webppl-json/issues"
+  },
+  "dependencies": {},
+  "description": "Utilities for reading and writing JSON files from webppl",
+  "devDependencies": {},
+  "directories": {},
+  "dist": {
+    "shasum": "08c61765a32cfb86155720a02b62c4fce6374428",
+    "tarball": "https://registry.npmjs.org/webppl-json/-/webppl-json-0.0.1.tgz"
+  },
+  "gitHead": "342c5af2dbcc004c68802dbe82710155da278339",
+  "homepage": "https://github.com/stuhlmueller/webppl-json#readme",
+  "license": "MIT",
+  "main": "src/main.js",
+  "maintainers": [
+    {
+      "name": "stuhlmueller",
+      "email": "andreas@stuhlmueller.org"
+    }
+  ],
+  "name": "webppl-json",
+  "optionalDependencies": {},
+  "readme": "ERROR: No README data found!",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stuhlmueller/webppl-json.git"
+  },
+  "scripts": {},
+  "version": "0.0.1",
+  "webppl": {
+    "wppl": [
+      "src/json.wppl"
+    ]
+  }
+}

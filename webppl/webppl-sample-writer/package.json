@@ -1,0 +1,60 @@
+{
+  "_args": [
+    [
+      {
+        "raw": "webppl-sample-writer",
+        "scope": null,
+        "escapedName": "webppl-sample-writer",
+        "name": null,
+        "rawSpec": "webppl-sample-writer",
+        "spec": "/Users/MBohn/Work/Spin/spin/webppl/webppl-sample-writer",
+        "type": "directory"
+      },
+      "/Users/MBohn/Work/Spin/spin/webppl"
+    ]
+  ],
+  "_from": "../Work/Spin/spin/webppl/webppl-sample-writer",
+  "_id": "webppl-sample-writer@0.0.1",
+  "_inCache": true,
+  "_location": "/webppl-sample-writer",
+  "_phantomChildren": {},
+  "_requested": {
+    "raw": "webppl-sample-writer",
+    "scope": null,
+    "escapedName": "webppl-sample-writer",
+    "name": null,
+    "rawSpec": "webppl-sample-writer",
+    "spec": "/Users/MBohn/Work/Spin/spin/webppl/webppl-sample-writer",
+    "type": "directory"
+  },
+  "_requiredBy": [
+    "#USER"
+  ],
+  "_resolved": "file:../Work/Spin/spin/webppl/webppl-sample-writer",
+  "_shasum": "78431d1a406746fa5c9f6b452128c84424c14038",
+  "_shrinkwrap": null,
+  "_spec": "webppl-sample-writer",
+  "_where": "/Users/MBohn/Work/Spin/spin/webppl",
+  "dependencies": {},
+  "description": "WebPPL library for streaming samples to disk.",
+  "devDependencies": {},
+  "homepage": "",
+  "main": "src/library.js",
+  "name": "webppl-sample-writer",
+  "optionalDependencies": {},
+  "readme": "## webppl-sample-writer\n\nThis package requires\nWebPPL\n[v0.9.14](https://github.com/probmods/webppl/releases/tag/v0.9.14) or\nlater.\n\nTo test, run:\n\n    cd webppl-sample-writer\n    webppl test.wppl --require .\n\nThis will attempt to write a `samples.json` file to the current\ndirectory.\n",
+  "readmeFilename": "README.md",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "version": "0.0.1",
+  "webppl": {
+    "wppl": [
+      "src/library.wppl"
+    ],
+    "headers": [
+      "src/header.js"
+    ]
+  }
+}

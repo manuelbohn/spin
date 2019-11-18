@@ -1,0 +1,7 @@
+.DS_Store
+node_modules
+data/test-joint.csv
+data/sequential-output.csv
+data/query-table.csv
+data/test-marginals.csv
+data/test-file-copy.csv

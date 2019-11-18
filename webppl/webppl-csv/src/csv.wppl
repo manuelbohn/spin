@@ -1,0 +1,10 @@
+var csv = {
+  read: webpplCsv.readCSV,
+  write: webpplCsv.writeCSV,
+  open: webpplCsv.openFile,
+  close: webpplCsv.closeFile,
+  writeLine: webpplCsv.writeLine,
+  writeMarginals: webpplCsv.writeMarginals,
+  writeJoint: webpplCsv.writeJoint,
+  writeDistTable: webpplCsv.writeDistTable
+};

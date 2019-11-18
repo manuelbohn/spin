@@ -1,0 +1,40 @@
+// example 1: read / write via lists of lists
+
+var testData = csv.read('data/test-file.csv');
+display(testData)
+csv.write(testData, 'data/test-file-copy.csv');
+
+
+// example 2: writing distributions
+
+var myJointDistribution = Infer({model: function(){
+	var a = flip(0.5)
+	var b = flip(0.9)
+	return {a, b}
+}})
+
+// write distribution, maintaining joint distributional information
+csv.writeJoint(myJointDistribution, 'data/test-joint.csv')
+
+// write distribution, one variable per line (marginalized)
+csv.writeMarginals(myJointDistribution, 'data/test-marginals.csv')
+
+
+// example 3: writing line by line
+var output_handle = csv.open("data/sequential-output.csv")
+csv.writeLine("t,h,i,s", output_handle)
+csv.writeLine("i,s,,a", output_handle)
+csv.writeLine("t,e,s,t", output_handle)
+csv.close(output_handle)
+
+// example 4: write distribution with query.table
+var myQueryDistribution = Infer({model: function(){
+	var a = uniform(0, 0.5)
+	var b = uniform(0.5, 1)
+	query.add("A", a)
+	query.add("B", b)
+	return query
+}, method: "MCMC", samples: 10})
+
+
+csv.writeDistTable(myQueryDistribution, "param, val", "data/query-table.csv")

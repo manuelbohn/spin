@@ -1,0 +1,19 @@
+var model = function() {
+  map(function(i){
+    var x = gaussian(0, 1)
+    query.add(i, x)
+  }, [1,2,3,4])
+  return query
+};
+
+var header = "parameter,value,score"
+var callback = webpplSampleWriter.streamQueryCSV('querySamples.csv', header);
+
+// In practice this would be combined with onlyMAP inference option to
+// avoid holding all samples in memory.
+
+Infer({model,
+       samples: 10,
+       method: 'incrementalMH',
+       onlyMAP: true,
+       callbacks: [callback]});

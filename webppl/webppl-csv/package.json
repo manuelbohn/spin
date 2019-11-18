@@ -1,0 +1,87 @@
+{
+  "_args": [
+    [
+      {
+        "raw": "webppl-csv",
+        "scope": null,
+        "escapedName": "webppl-csv",
+        "name": "webppl-csv",
+        "rawSpec": "",
+        "spec": "latest",
+        "type": "tag"
+      },
+      "/Users/MBohn/Work/Spin/spin/webppl"
+    ]
+  ],
+  "_from": "webppl-csv@latest",
+  "_id": "webppl-csv@0.0.2",
+  "_inCache": true,
+  "_location": "/webppl-csv",
+  "_nodeVersion": "6.11.2",
+  "_npmOperationalInternal": {
+    "host": "s3://npm-registry-packages",
+    "tmp": "tmp/webppl-csv-0.0.2.tgz_1505986293176_0.540208614198491"
+  },
+  "_npmUser": {
+    "name": "mhtess",
+    "email": "mtessler@stanford.edu"
+  },
+  "_npmVersion": "3.10.10",
+  "_phantomChildren": {},
+  "_requested": {
+    "raw": "webppl-csv",
+    "scope": null,
+    "escapedName": "webppl-csv",
+    "name": "webppl-csv",
+    "rawSpec": "",
+    "spec": "latest",
+    "type": "tag"
+  },
+  "_requiredBy": [
+    "#USER"
+  ],
+  "_resolved": "https://registry.npmjs.org/webppl-csv/-/webppl-csv-0.0.2.tgz",
+  "_shasum": "31da2a875889711fab8a23ecaa745006d94e438d",
+  "_shrinkwrap": null,
+  "_spec": "webppl-csv",
+  "_where": "/Users/MBohn/Work/Spin/spin/webppl",
+  "author": {
+    "name": "Michael Henry Tessler"
+  },
+  "bugs": {
+    "url": "https://github.com/mhtess/webppl-csv/issues"
+  },
+  "dependencies": {
+    "papaparse": "4.3"
+  },
+  "description": "WebPPL library for reading and writing CSV files",
+  "devDependencies": {},
+  "directories": {},
+  "dist": {
+    "shasum": "31da2a875889711fab8a23ecaa745006d94e438d",
+    "tarball": "https://registry.npmjs.org/webppl-csv/-/webppl-csv-0.0.2.tgz"
+  },
+  "gitHead": "341978badf5c0b9fb9cb240f849169455ef0cb6a",
+  "homepage": "https://github.com/mhtess/webppl-csv",
+  "main": "src/library.js",
+  "maintainers": [
+    {
+      "name": "mhtess",
+      "email": "mtessler@stanford.edu"
+    }
+  ],
+  "name": "webppl-csv",
+  "optionalDependencies": {},
+  "readme": "ERROR: No README data found!",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mhtess/webppl-csv.git"
+  },
+  "scripts": {},
+  "version": "0.0.2",
+  "webppl": {
+    "wppl": [
+      "src/csv.wppl"
+    ]
+  }
+}

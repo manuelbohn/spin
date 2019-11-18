@@ -1,0 +1,6 @@
+var testData = json.read('data/test-file.json');
+json.write('data/test-file-copy.json', testData);
+var testData2 = json.read('data/test-file-copy.json');
+var testPassed = 'Test passed: ' + _.isEqual(testData, testData2);
+
+testPassed
