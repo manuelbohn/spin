@@ -440,8 +440,8 @@ var randomNumberForFile = Math.round(uniform(0, 1000))
 var callback = webpplSampleWriter.streamQueryCSV("../saves/model/samples"+randomNumberForFile+".csv", header);
 
 Infer({model,
-      samples: 1,
-      burn: 1,
+      samples: 10,
+      burn: 10,
       verbose: T,
       lag: 1,
       verboseLag: 1000,
