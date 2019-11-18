@@ -373,9 +373,9 @@ var all_log_likes = map(function(row) {
    
   var noisyPriorOnlyModelPredictions = addNoise(priorOnlyModelPredictions, noise) 
 
-  query.add(["modelPrediction","pragmatic","free", row.condition, row.familiarObject, row.subid], [row.age, Math.exp(pragModelPredictions.score(1))])  
+  query.add(["modelPrediction","pragmatic","free", row.alignment, row.item, row.subid], [row.age, Math.exp(pragModelPredictions.score(1))])  
 
-//  query.add(["modelPrediction","globalPrag","free", row.condition, row.familiarObject, row.subid], [row.age, Math.exp(globalPragModelPredictions.score(1))])  
+//  query.add(["modelPrediction","globalPrag","free", row.alignment, row.item, row.subid], [row.age, Math.exp(globalPragModelPredictions.score(1))])  
 
   return {
     prag: pragModelPredictions.score(row.correct),
