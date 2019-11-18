@@ -58,17 +58,23 @@ d_raw%>%
 d <- left_join(d_raw,log, by = "subid")%>%
   filter(keep_drop == "keep")%>%
   mutate(age_num = lubridate::time_length(difftime(test_date,dob), "years"),
-         check_age = ifelse(substr(age_num,1,1) == subage, T, F))
+         check_age = ifelse(substr(age_num,1,1) == subage, T, F))%>%
+    mutate(age = age_num - min(age_num))%>%
+  filter(condition != "train")%>%
+  mutate(alignment = condition,
+         item = familiarObject)%>%
+  select(-pick_src, -test_date, -experimenter, - keep_drop, -dob, -sex, -check_age, - condition, -familiarObject, -rt)
 
 
-d%>%
+ d%>%
   filter(check_age == F)%>%
   select(subid, subage,test_date,dob,age_num,check_age)
 
 
 write_csv(d, "../data/combination.csv")
+write_json(d, "../data/combination.json")
 
-d <- read_csv("../data/combination.csv")%>%
+ d <- read_csv("../data/combination.csv")%>%
   mutate(subage = factor(subage))
 
 ```

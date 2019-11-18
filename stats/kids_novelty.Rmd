@@ -20,46 +20,47 @@ library(rwebppl)
 
 # import spin data
 
-# files <- dir("~/Work/Spin/raw_data/kids/novelty/")
-# 
-# raw_data <- data_frame()
-# for (f in files) {
-#   jf <- paste("~/Work/Spin/raw_data/kids/novelty/",f,sep="")
-#   jd <- jsonlite::fromJSON(paste(readLines(jf), collapse=""))
-#   date <- str_sub(jf,46,str_length(jf)-11)
-#   id <- as_data_frame(jd$data$data) %>% mutate(test_date = date)
-#   raw_data <- bind_rows(raw_data, id)
-# }
-# 
-# 
-# length(unique(raw_data$subid))
-# 
-# d_raw <-raw_data %>%
-#   mutate(test_date = as.Date(test_date),
-#          subid = ifelse(subid =="190422_6_nov,","190422_6_nov",subid),
-#          subage = ifelse(subid =="190422_2_nov","4",subage))
-# 
-# 
-# log <- read_excel("../../SPIN-subject_log.xlsx", 1)%>%
-#   filter(Condition == "nov")%>%
-#   mutate(dob = as.character(dob),
-#          dob = ifelse(subid =="190502_9_nov","2016-10-08",dob),
-#          dob = as.Date(dob))%>%
-#   select(subid,experimenter,keep_drop,sex,dob)
-# 
-# d_raw%>%
-#   group_by(subid)%>%
-#   summarise(n())%>%
-#   filter(!(subid %in% unique(log$subid)))
-# 
-#  
-# d_spin <- left_join(d_raw,log, by = "subid")%>%
-#   filter(keep_drop == "keep",
-#          trial != "train1", trial != "train2")%>%
-#   mutate(age_num = lubridate::time_length(difftime(test_date,dob), "years"),
-#          check_age = ifelse(substr(age_num,1,1) == subage, T, F),
-#          experiment = condition)%>%
-#   select(-pick_src)
+files <- dir("~/Work/Spin/raw_data/kids/novelty/")
+
+raw_data <- data_frame()
+for (f in files) {
+  jf <- paste("~/Work/Spin/raw_data/kids/novelty/",f,sep="")
+  jd <- jsonlite::fromJSON(paste(readLines(jf), collapse=""))
+  date <- str_sub(jf,46,str_length(jf)-11)
+  id <- as_data_frame(jd$data$data) %>% mutate(test_date = date)
+  raw_data <- bind_rows(raw_data, id)
+}
+
+
+length(unique(raw_data$subid))
+
+d_raw <-raw_data %>%
+  mutate(test_date = as.Date(test_date),
+         subid = ifelse(subid =="190422_6_nov,","190422_6_nov",subid),
+         subage = ifelse(subid =="190422_2_nov","4",subage))
+
+
+log <- read_excel("../../SPIN-subject_log.xlsx", 1)%>%
+  filter(Condition == "nov")%>%
+  mutate(dob = as.character(dob),
+         dob = ifelse(subid =="190502_9_nov","2016-10-08",dob),
+         dob = as.Date(dob))%>%
+  select(subid,experimenter,keep_drop,sex,dob)
+
+d_raw%>%
+  group_by(subid)%>%
+  summarise(n())%>%
+  filter(!(subid %in% unique(log$subid)))
+
+
+d_spin <- left_join(d_raw,log, by = "subid")%>%
+  filter(keep_drop == "keep",
+         trial != "train1", trial != "train2")%>%
+  mutate(age_num = lubridate::time_length(difftime(test_date,dob), "years"),
+         check_age = ifelse(substr(age_num,1,1) == subage, T, F),
+         experiment = condition)%>%
+  mutate(age = age_num - min(age_num))%>%
+  select(-pick_src, -test_date, -experimenter, - keep_drop, -dob, -sex, -check_age, - condition, -rt)
 # 
 # 
 # ## import mcc data
@@ -92,7 +93,7 @@ library(rwebppl)
 #   mutate(age_num = lubridate::time_length(difftime(test_date,dob), "years"),
 #          check_age = ifelse(substr(age_num,1,1) == subage, T, F),
 #          leftObject = leftFruit,
-#          rightObject = rightFruit, 
+#          rightObject = rightFruit,
 #          pick = str_sub(pick,72,str_length(pick)-4),
 #          agent = ifelse(speakerChange == "false", agent,altAgent),
 #          experiment = "dis_novelty_mcc")%>%
@@ -104,8 +105,10 @@ library(rwebppl)
 # 
 # d <- bind_rows(d_spin, d_mcc)
 # 
-# write_csv(d_spin, "../data/novelty.csv")
-# #write_csv(d, "../data/child_novelty.csv")
+write_csv(d_spin, "../data/novelty.csv")
+
+write_json(d_spin, "../data/novelty.json")
+#write_csv(d, "../data/child_novelty.csv")
 
 d_spin <- read_csv("../data/novelty.csv")%>%
   mutate(subage = factor(subage))

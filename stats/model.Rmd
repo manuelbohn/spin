@@ -48,25 +48,18 @@ aoa_ratings <- aoa_ratings_all %>%
   select(item,mean_aoa)
 
 data_comb <- data_comb_pre%>%
-  filter(condition != "train")%>%
-  mutate(alignment = condition,
-         item = familiarObject)%>%
   left_join(aoa_ratings)%>%
   ungroup()%>%
-  mutate(item = fct_reorder(factor(familiarObject), mean_aoa), 
+  mutate(item = fct_reorder(factor(item), mean_aoa), 
          source = "Data")
 
 
 prior_data <- read_csv("../data/novelty.csv")
 
-prior_model_data <- read_csv("../data/novelty.csv")%>%
-  mutate(age = age_num - min(age_num))
+prior_model_data <- read_csv("../data/novelty.csv")
 
 
-me_model_data <- read_csv("../data/me.csv")%>%
-    filter(trial != "train1",
-           trial != "train2")%>%
-  mutate(age = age_num - min(age_num))
+me_model_data <- read_csv("../data/me.csv")
 
 data_comb_plot<-data_comb%>%
   mutate(model = "data")
@@ -192,7 +185,7 @@ var speakerOptimality = 1
 
 var modelPredictions = pragmaticListener({label: "novel_word"}, priorProbs, speakerOptimality, sem_knowledge)
 
-modelPredictions
+  modelPredictions
 
 '
 ```
@@ -218,10 +211,6 @@ novel_params <- as_tibble(fixef(novel_bm), rownames = "term")%>%
 
 
 data_comb_log <- read_csv("../data/combination.csv") %>%
-  filter(condition != "train")%>%
-  mutate(alignment = condition,
-         item = familiarObject, 
-         age = age_num - (min(age_num))) %>%
   mutate(nov_int = novel_params$Intercept,
          nov_slope = novel_params$age_num,
          prior = ifelse(alignment == "congruent", plogis(nov_int + nov_slope* age),1-plogis(nov_int + age * nov_slope)))
@@ -241,7 +230,7 @@ var priorData = dataFromR.data
 
 var priorSubjects = levels(priorData, "subid")
 
-//display(subjects)
+display(priorData)
 
 var model  = function(){
 
