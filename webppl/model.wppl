@@ -362,11 +362,11 @@ var randomNumberForFile = Math.round(uniform(0, 1000))
 var callback = webpplSampleWriter.streamQueryCSV("output/samples"+randomNumberForFile+".csv", header);
 
 var output  = Infer({model,
-      samples: 1,
-      burn: 1,
+      samples: 50000,
+      burn: 100000,
       verbose: T,
       lag: 1,
-      verboseLag: 1,
+      verboseLag: 2000,
       method: "incrementalMH",
       onlyMAP: true,
       callbacks: [callback]});
