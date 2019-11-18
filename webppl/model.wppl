@@ -1,3 +1,4 @@
+
 var all_objects = [
 { shape: "novel_object"},  
 { shape: "familiar_object"}
