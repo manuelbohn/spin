@@ -367,10 +367,10 @@ var header = "iteration,a,b,c,d,e,f,g,h"
 
 // var randomNumberForFile = Math.round(uniform(0, 1000))
 
-var callback = webpplSampleWriter.streamQueryCSV("output/samples"+chain+".csv", header);
-
-var totalIterations = 10, lag =  1;
+var totalIterations = 50000, lag =  5;
 var samples = totalIterations/lag, burn = totalIterations / 2;
+var output_file = 'output/samples_mcmc-'+ totalIterations+'_burn'+burn+'_lag'+lag+'_chain'+chain+'.csv'
+var callback = webpplSampleWriter.streamQueryCSV(output_file, header);
 
 var output  = Infer({model,
       samples: samples,
@@ -381,3 +381,5 @@ var output  = Infer({model,
       method: "incrementalMH",
       onlyMAP: true,
       callbacks: [callback]});
+
+'output written to ' + output_file
