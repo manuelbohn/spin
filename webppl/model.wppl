@@ -1,5 +1,5 @@
 // example call: webppl model.wppl --require webppl-json --require webppl-sample-writer 1
-
+// ~/webppl-github/webppl model.wppl --require webppl-json --require webppl-sample-writer $SLURM_ARRAY_TASK_ID
 var chain = last(process.argv) // load index as last command line index
 
 var all_objects = [
@@ -375,11 +375,11 @@ var callback = webpplSampleWriter.streamQueryCSV(output_file, header);
 var output  = Infer({model,
       samples: samples,
       burn: burn,
-      verbose: T,
-      lag: 1,
-      verboseLag: totalIterations / 20,
-      method: "incrementalMH",
+      lag: lag,
+      method: 'incrementalMH',
       onlyMAP: true,
+      verbose: T,
+      verboseLag: totalIterations / 20,
       callbacks: [callback]});
 
 'output written to ' + output_file
