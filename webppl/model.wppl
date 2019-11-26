@@ -252,7 +252,7 @@ var model  = function(){
 
 var noise = uniformDrift({a: 0, b:1, width: 0.1})
 
-var all_log_likes = map(function(row) {
+foreach(function(row) {
 
   var priorReg = logistic(prior_int + prior_slope * row.age)
 
@@ -337,50 +337,57 @@ var all_log_likes = map(function(row) {
   var noisyPriorOnlyModelPredictions = addNoise(priorOnlyModelPredictions, noise)
 
   query.add(["modelPrediction","pragmatic","free", row.alignment, row.item, row.subid], [row.age, Math.exp(pragModelPredictions.score(1))])
+  query.add(["modelPrediction","pragmatic","noise", row.alignment, row.item, row.subid], [row.age, Math.exp(noisyPragModelPredictions.score(1))])
+  query.add(["modelPrediction","global","free", row.alignment, row.item, row.subid], [row.age, Math.exp(globalPragModelPredictions.score(1))])
+  query.add(["modelPrediction","global","noise", row.alignment, row.item, row.subid], [row.age, Math.exp(noisyPragModelPredictions.score(1))])
+  query.add(["modelPrediction","flat","free", row.alignment, row.item, row.subid], [row.age, Math.exp(flatModelPredictions.score(1))])
+  query.add(["modelPrediction","flat","noise", row.alignment, row.item, row.subid], [row.age, Math.exp(noisyFlatModelPredictions.score(1))])
+  query.add(["modelPrediction","prior","free", row.alignment, row.item, row.subid], [row.age, Math.exp(priorOnlyModelPredictions.score(1))])
+  query.add(["modelPrediction","prior","noise", row.alignment, row.item, row.subid], [row.age, Math.exp(noisyPriorOnlyModelPredictions.score(1))])
 
 //  query.add(["modelPrediction","globalPrag","free", row.condition, row.familiarObject, row.subid], [row.age, Math.exp(globalPragModelPredictions.score(1))])
 
-  return {
-    prag: pragModelPredictions.score(row.correct),
-    noisePrag: noisyPragModelPredictions.score(row.correct),
-
-    globalPrag: globalPragModelPredictions.score(row.correct),
-    noiseGlobalPrag: noisyGlobalPragModelPredictions.score(row.correct),
-
-    flat: flatModelPredictions.score(row.correct),
-    noiseFlat: noisyFlatModelPredictions.score(row.correct),
-
-    priorOnly: priorOnlyModelPredictions.score(row.correct),
-    noisePriorOnly: noisyPriorOnlyModelPredictions.score(row.correct)
-  }
+  // return {
+  //   prag: pragModelPredictions.score(row.correct),
+  //   noisePrag: noisyPragModelPredictions.score(row.correct),
+  //
+  //   globalPrag: globalPragModelPredictions.score(row.correct),
+  //   noiseGlobalPrag: noisyGlobalPragModelPredictions.score(row.correct),
+  //
+  //   flat: flatModelPredictions.score(row.correct),
+  //   noiseFlat: noisyFlatModelPredictions.score(row.correct),
+  //
+  //   priorOnly: priorOnlyModelPredictions.score(row.correct),
+  //   noisePriorOnly: noisyPriorOnlyModelPredictions.score(row.correct)
+  // }
 
 }, combData)
 
 
-var log_likelihood_prag = sum(_.map(all_log_likes, "prag"))
-var log_likelihood_prag_noise = sum(_.map(all_log_likes, "noisePrag"))
-
-var log_likelihood_prag_global = sum(_.map(all_log_likes, "globalPrag"))
-var log_likelihood_prag_global_noise = sum(_.map(all_log_likes, "noiseGlobalPrag"))
-
-var log_likelihood_flat = sum(_.map(all_log_likes, "flat"))
-var log_likelihood_flat_noise = sum(_.map(all_log_likes, "noiseFlat"))
-
-var log_likelihood_prior_only = sum(_.map(all_log_likes, "priorOnly"))
-var log_likelihood_prior_only_noise = sum(_.map(all_log_likes, "noisePriorOnly"))
-
-query.add(["log_like", "pragmatics", "parameter_free", "NA", "NA", "NA"], ["NA", log_likelihood_prag])
-query.add(["log_like", "pragmatics", "noise", "NA", "NA", "NA"], ["NA", log_likelihood_prag_noise])
-
-query.add(["log_like", "pragmatics_global", "parameter_free", "NA", "NA", "NA"], ["NA", log_likelihood_prag_global])
-query.add(["log_like", "pragmatics_global", "noise", "NA", "NA", "NA"], ["NA", log_likelihood_prag_global_noise])
-
-query.add(["log_like", "flat_prior", "parameter_free", "NA", "NA", "NA"], ["NA", log_likelihood_flat])
-query.add(["log_like", "flat_prior", "noise", "NA", "NA", "NA"], ["NA", log_likelihood_flat_noise])
-
-query.add(["log_like", "prior_only", "parameter_free", "NA", "NA", "NA"], ["NA", log_likelihood_prior_only])
-query.add(["log_like", "prior_only", "noise", "NA", "NA", "NA"], ["NA", log_likelihood_prior_only_noise])
-
+// var log_likelihood_prag = sum(_.map(all_log_likes, "prag"))
+// var log_likelihood_prag_noise = sum(_.map(all_log_likes, "noisePrag"))
+//
+// var log_likelihood_prag_global = sum(_.map(all_log_likes, "globalPrag"))
+// var log_likelihood_prag_global_noise = sum(_.map(all_log_likes, "noiseGlobalPrag"))
+//
+// var log_likelihood_flat = sum(_.map(all_log_likes, "flat"))
+// var log_likelihood_flat_noise = sum(_.map(all_log_likes, "noiseFlat"))
+//
+// var log_likelihood_prior_only = sum(_.map(all_log_likes, "priorOnly"))
+// var log_likelihood_prior_only_noise = sum(_.map(all_log_likes, "noisePriorOnly"))
+//
+// query.add(["log_like", "pragmatics", "parameter_free", "NA", "NA", "NA"], ["NA", log_likelihood_prag])
+// query.add(["log_like", "pragmatics", "noise", "NA", "NA", "NA"], ["NA", log_likelihood_prag_noise])
+//
+// query.add(["log_like", "pragmatics_global", "parameter_free", "NA", "NA", "NA"], ["NA", log_likelihood_prag_global])
+// query.add(["log_like", "pragmatics_global", "noise", "NA", "NA", "NA"], ["NA", log_likelihood_prag_global_noise])
+//
+// query.add(["log_like", "flat_prior", "parameter_free", "NA", "NA", "NA"], ["NA", log_likelihood_flat])
+// query.add(["log_like", "flat_prior", "noise", "NA", "NA", "NA"], ["NA", log_likelihood_flat_noise])
+//
+// query.add(["log_like", "prior_only", "parameter_free", "NA", "NA", "NA"], ["NA", log_likelihood_prior_only])
+// query.add(["log_like", "prior_only", "noise", "NA", "NA", "NA"], ["NA", log_likelihood_prior_only_noise])
+//
 
   foreach(function(item){
     var itemLineParameters = all_item_parameters[item]
