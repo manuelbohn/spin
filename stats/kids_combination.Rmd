@@ -59,7 +59,7 @@ d <- left_join(d_raw,log, by = "subid")%>%
   filter(keep_drop == "keep")%>%
   mutate(age_num = lubridate::time_length(difftime(test_date,dob), "years"),
          age_num_month = lubridate::time_length(difftime(test_date,dob), "month"),
-         age_num_month = round(age_num_month),
+         age_num_month = round(age_num_month)/12,
          check_age = ifelse(substr(age_num,1,1) == subage, T, F))%>%
     mutate(age = age_num - min(age_num),
            age_month = age_num_month - min(age_num_month))%>%
