@@ -518,22 +518,26 @@ model_comp <- log_like_2%>%
   group_by(noise)%>%
   summarize(prag_vs_prag_global = logSumExp(prag_vs_prag_global),
             prag_vs_flat_prior = logSumExp(prag_vs_flat_prior),
-            prag_vs_prior_only = logSumExp(prag_vs_prior_only))
+            prag_vs_prior_only = logSumExp(prag_vs_prior_only))%>%
+  gather(model,logP,-noise)
   
 
+log_like_model_2_free <- log_like_model_2%>%
+  filter(noise == "parameter_free")
+  
 
 ```
 
 ```{r}
-ggplot(log_like_model, aes(x = model, y = logP, col = model))+
+ggplot(log_like_model_2_free, aes(x = model, y = logP, col = model))+
   geom_segment( aes(x=model, xend=model, y=-1150, yend=logP), col = "black", size = 1)+
   geom_point(size = 7)+
   theme_few()+ 
   xlab("")+
   ylab("Log-likelihood")+
   theme(axis.text.x=element_text(angle = 45, vjust = 1, hjust = 1))+
-  facet_grid(~parameter)+
-  ylim(-1750,-1150)+
+  #facet_grid(~parameter)+
+  #ylim(-1750,-1150)+
   scale_color_ptol(breaks=c("pragmatics","pragmatics_global","prior_only","flat_prior"),
                      labels=c("Pragmatic", "Pragmatic global","Prior only","Flat prior"))+
     theme(axis.text.x=element_blank(), 
@@ -541,7 +545,7 @@ ggplot(log_like_model, aes(x = model, y = logP, col = model))+
 ```
 
 ```{r}
-ggsave("../graphs/like.png", width = 6, height = 2.5, scale = 1.5)
+ggsave("../graphs/like_talk_free.png", width = 4, height = 2.5, scale = 1.5)
 ```
 
 
@@ -605,7 +609,6 @@ global_sigma<- model_params %>%
 
 
 #### summaries
-
 item_params_summary <- item_params %>%
   group_by(item, parameter)%>%
   summarise(mode = estimate_mode(value),
@@ -1053,6 +1056,45 @@ ggsave("../graphs/cor_model_data.pdf", width = 8, height = 3.5, scale = 1)
 # MAP based inverse predictions for ME data
 
 ```{r}
+model <- readRDS("../saves/sem_know_model_variant3_200k_model_comparison_noise.rds")
+
+
+item_params<- model %>%
+  separate(Parameter, into = c("parameter", "type","item"), sep = ",")%>%
+  filter(parameter == "parameter", type == "items")%>%
+  separate(value, into = c("int", "slope"),sep = ", ")%>%
+  mutate(int = as.numeric(str_remove_all(int, "[(c]")),
+         slope = as.numeric(str_remove(slope, "[)]")))%>%
+  gather(parameter, value, int, slope)
+
+
+global_params <- model %>%
+  separate(Parameter, into = c("parameter", "type","token"), sep = ",")%>%
+  filter(parameter == "parameter", type == "parameters")%>%
+    separate(value, into = c("int", "slope"),sep = ", ")%>%
+    mutate(int = as.numeric(str_remove_all(int, "[(c]")),
+         slope = as.numeric(str_remove(slope, "[)]")))%>%
+    gather(parameter, value, int, slope)
+
+
+#### summaries
+
+item_params_summary <- item_params %>%
+  group_by(item, parameter)%>%
+  summarise(mode = estimate_mode(value),
+            uci = hdi_upper(value),
+            lci = hdi_lower(value))
+
+
+global_params_summary <- global_params %>%
+  group_by(token, parameter)%>%
+  summarise(mode = estimate_mode(value),
+            uci = hdi_upper(value),
+            lci = hdi_lower(value))
+```
+
+
+```{r}
 # speak_opt_params <- speak_opt %>%
 #   group_by(parameter)%>%
 #   summarise(mode = estimate_mode(value),
@@ -1292,7 +1334,10 @@ comb_model_pred<- webppl(
   program_code = paste(rsaUtils, rsaModel, combPred , sep='\n'),
   data =list(data = comb_model_data),
   data_var = "dataFromR"
-)
+) %>%
+saveRDS("../saves/prag_model.rds")
+
+comb_model_pred <- readRDS("../saves/prag_model.rds")
 
 
 comb_model_predictions <- comb_model_pred %>%
@@ -1326,19 +1371,16 @@ p_comb_model
 
 ```{r}
 data_comb <- read_csv("../data/combination.csv") %>%
-  filter(condition != "train")%>%
-  mutate(alignment = condition,
-         item = familiarObject)%>%
   left_join(aoa_ratings)%>%
   ungroup()%>%
-  mutate(item = fct_reorder(factor(familiarObject), mean_aoa), 
+  mutate(item = fct_reorder(factor(item), mean_aoa), 
          source = "Data")
 
 p_comb_data <- ggplot(data = data_comb, aes(x = age_num, y = correct, col = item, fill = item)) +
   geom_hline(yintercept = 0.5, lty=2)+
   geom_jitter(width = 0, height = 0.05, alpha = .6)+
   #geom_smooth(method = "glm", method.args = list(family = "binomial"), se = F, alpha = .5)+
-  geom_smooth(method = "loess", se = F, alpha = .5, span = 2)+
+  geom_smooth(method = "glm", se = F, alpha = .5, span = 2)+
   labs(x="Age",y="Mutual Exclusivity effect")+
   facet_grid(~alignment)+
   ggtitle("Combination Data")+
@@ -1363,7 +1405,7 @@ p_data_model <- ggplot(data = data_comb, aes(x = age_num, y = correct, col = ali
   geom_hline(yintercept = 0.5, lty=2)+
   #geom_jitter(width = 0, height = 0.05, alpha = .6)+
   #geom_smooth(method = "glm", method.args = list(family = "binomial"), se = F, alpha = .5)+
-  geom_smooth(method = "loess", se = F, alpha = .2, span = 2)+
+  #geom_smooth(method = "loess", se = F, alpha = .2, span = 2)+
   geom_line(data = comb_model_predictions, aes(x=age,y = me_effect, col = alignment, lty = source), size = 1)+
   labs(x="Age",y="Mutual Exclusivity effect")+
   #facet_grid(condition~familiarObject)+
@@ -1376,12 +1418,31 @@ p_data_model <- ggplot(data = data_comb, aes(x = age_num, y = correct, col = ali
   scale_colour_ptol(name = NULL)+
   scale_fill_ptol(name = NULL)
 
-p_data_model
+p1 <- data_comb%>%
+  group_by(source, alignment, item ,subage)%>%
+  multi_boot_standard(col = "correct")
+  
+
+ggplot(p1, aes(x = subage+0.5, y = mean))+
+  #geom_pointrange(aes(ymin = ci_lower, ymax = ci_upper, col = source))+
+  facet_grid(alignment ~item)+
+  #geom_line(aes(group=alignment,col = source))+
+  #geom_smooth(data = data_comb, aes(x = age_num, y = correct, col = source),method = "glm", method.args = list(family = "binomial"), se = T, alpha = .2, span = 2)+
+  geom_line(data = comb_model_predictions, aes(x=age,y = me_effect, col = source), size = 1)+
+  #geom_line(data = prag_model_noise_predictions, aes(x=age+2,y = mean, col = source), size = 1, alpha = 1)+
+  #geom_ribbon(data = prag_model_noise_predictions, aes(x = age+2, ymin = ci_lower, ymax = ci_upper, fill = source), alpha = .5) +
+  theme_few()+
+  labs(x ="Age", y = "Mutual Exclusivity effect")+
+  scale_color_manual(name = "",
+                     values = c("#117733", "#117733", "#CC6677"))+
+  scale_fill_manual(values = c("#CC6677"))+
+  guides(fill = F)+
+  theme(legend.position = "bottom")
+
 ```
 
-
 ```{r}
-ggsave("../graphs/combination_model_data_by_item.pdf", width = 8, height = 3, scale = 1.5)
+ggsave("../graphs/data_model_talk_00.pdf", width = 12, height = 3.5, scale = 1.2)
 ```
 
 ## Correlate model predictions and data 
@@ -1427,11 +1488,11 @@ ggplot(data = cor_plot,aes(x = model_mean, y = data_mean, col = item)) +
   ylab("Data")+
   facet_grid(~subage)+
   theme_few() + 
-  scale_colour_viridis_d(name ="Item")
+  scale_colour_viridis_d(name ="Familiar object")
 ```
 
 ```{r}
-#ggsave("../graphs/combination_correlation.pdf", width = 8, height = 4, scale = 1.2)
+ggsave("../graphs/talk_combination_correlation.pdf", width = 8, height = 4, scale = 1.2)
 ```
 
 
@@ -1585,7 +1646,8 @@ prag_model_noise_predictions <- prag_model_noise %>%
   left_join(aoa_ratings)%>%
   ungroup()%>%
   mutate(item = fct_reorder(factor(item), mean_aoa),
-         source = "Model")
+         age = age + min(me_data$age_num),
+         source = "noisy Model")
 
 ```
 
@@ -1639,6 +1701,58 @@ ggplot(p1, aes(x = subage, y = mean))+
 
 
 ```
+
+### Correlate model predictions and data 
+
+```{r}
+binnned_data <- data_comb%>%
+  group_by(subage, alignment, item)%>%
+  summarize(k = sum(correct), n = n())%>%
+  ungroup() %>%
+  mutate(a = 1 + k,
+         b = 1 + n - k,
+         data_mean = (a-1)/(a+b-2),
+         data_ci_lower  = qbeta(.025, a, b),
+         data_ci_upper = qbeta(.975, a, b),
+         subage = factor(subage))%>%
+  select(-a,-b,-n,-k)
+
+
+binned_noise_model <- prag_model_noise_predictions %>%
+  mutate(subage = cut(age, 
+                      breaks = c(-0.1,1,2,3),
+                      labels = c(2,3,4)))%>%
+  group_by(subage, alignment, item)%>%
+  summarise(model_mean = estimate_mode(mean),
+            model_ci_lower = hdi_lower(mean),
+            model_ci_upper = hdi_upper(mean))
+
+
+
+cor_plot <- left_join(
+  binnned_data,
+  binned_noise_model)
+
+
+ggplot(data = cor_plot,aes(x = model_mean, y = data_mean, col = item)) +
+  geom_abline(intercept = 0, slope = 1, lty = 2, alpha = 1, size = .5)+
+  geom_errorbar(aes(ymin = data_ci_lower, ymax = data_ci_upper),width = 0,size = .7)+
+  geom_errorbarh(aes(xmin = model_ci_lower, xmax = model_ci_upper), height = 0,size = .7)+
+  geom_point(size = 2,  stroke = 1)+
+  coord_fixed()+
+ stat_cor(method = "pearson", label.x = 0.01, label.y = 0.99, aes(x = model_mean, y = data_mean), inherit.aes = F, size = 3)+
+  xlim(0,1)+ylim(0,1)+
+  xlab("Model")+
+  ylab("Data")+
+  facet_grid(~subage)+
+  theme_few() + 
+  scale_colour_viridis_d(name ="Familiar object")
+```
+
+```{r}
+ggsave("../graphs/talk_noise_combination_correlation.pdf", width = 8, height = 4, scale = 1.2)
+```
+
 
 ## Pragmatics model global semantic knnowledge
 

@@ -64,6 +64,8 @@ d_raw%>%
 d <- left_join(d_raw,log, by = "subid")%>%
   filter(keep_drop == "keep")%>%
   mutate(age_num = lubridate::time_length(difftime(test_date,dob), "years"),
+          age_month = lubridate::time_length(difftime(test_date,dob), "month"),
+         age_month = round(age_month),
          check_age = ifelse(substr(age_num,1,1) == subage, T, F))%>%
   filter(trial != "train1",
            trial != "train2")%>%
@@ -86,10 +88,10 @@ d <- read_csv("../data/me.csv")%>%
 aoa_ratings_all <- read_xlsx(path = "../data/words_aoa_ratings.xlsx", sheet = 1)
 
 aoa_ratings <- aoa_ratings_all %>%
-  filter(Word %in% d$familiar )%>%
+  filter(Word %in% d$item )%>%
   mutate(mean_aoa = as.numeric(Rating.Mean),
-         familiar = Word)%>%
-  select(familiar,mean_aoa)
+         item = Word)%>%
+  select(item,mean_aoa)
 ```
 
 
@@ -227,15 +229,13 @@ ggplot(data = p4, aes(x = age_num, y = mean)) +
 
 
 ```{r}
-d_model <- d %>%
-    filter(trial != "train1",
-         trial != "train2")%>%
-  mutate(age_num = age_num - mean(age_num))
 
-model <- brm(correct ~ age_num + (1|subid) + (age_num | familiar),
-                    data = d_model, family = bernoulli(),
+model <- brm(correct ~ age + (1|subid) + (age | item),
+                    data = d, family = bernoulli(),
           control = list(adapt_delta = 0.95),
           sample_prior = F,
+          cores = 4, 
+          chains = 4,
           save_all_pars = TRUE,
           iter = 2000)
 
@@ -245,19 +245,19 @@ fixef <- as_tibble(fixef(model), rownames = "term")
 
 ranef <-  ranef(model)
 
-ranef_plot <- as_tibble(ranef$familiar, rownames = "familiar")%>%
+ranef_plot <- as_tibble(ranef$item, rownames = "item")%>%
   mutate(grand_intercept = fixef%>%filter(term=="Intercept")%>%pull(Estimate),
-         grand_slope = fixef%>%filter(term=="age_num")%>%pull(Estimate))%>%
-  group_by(familiar) %>%
-  expand(Estimate.Intercept,Estimate.age_num,grand_intercept,grand_slope,age = d$age_num - mean(d$age_num))%>%
-  mutate(y = plogis(grand_intercept + Estimate.Intercept+(Estimate.age_num+grand_slope)*age), 
-         age = age+mean(d$age_num))%>%
+         grand_slope = fixef%>%filter(term=="age")%>%pull(Estimate))%>%
+  group_by(item) %>%
+  expand(Estimate.Intercept,Estimate.age,grand_intercept,grand_slope, age = d$age)%>%
+  mutate(y = plogis(grand_intercept + Estimate.Intercept+(Estimate.age+grand_slope)*age), 
+         age = age+min(d$age_num))%>%
   left_join(aoa_ratings)%>%
   ungroup()%>%
-  mutate(familiar = fct_reorder(factor(familiar), mean_aoa))
+  mutate(item = fct_reorder(factor(item), mean_aoa))
 
 
-model_plot <- ggplot(ranef_plot, aes(x=age,y = y, col = familiar))+
+model_plot <- ggplot(ranef_plot, aes(x=age,y = y, col = item))+
   geom_hline(yintercept = 0.5, lty=2)+
   geom_line(size = 1)+
   ggtitle("Model")+
@@ -277,18 +277,22 @@ ggarrange(data_plot,model_plot, common.legend = T, legend = "right")
 
 ```{r}
 
-cor_plot <- as_tibble(ranef$familiar, rownames = "familiar") %>%
+cor_plot <- as_tibble(ranef$item, rownames = "item") %>%
   left_join(aoa_ratings)
 
 ggplot(cor_plot, aes(x = mean_aoa, y = Estimate.Intercept))+
   geom_point()+
   geom_smooth(method = "lm")+
-  xlab("Age of acquisition rating")+
+  xlab("Rated age of acquisition")+
   ylab("ME effect (model intercept)")+
-  stat_cor(method = "pearson", label.x = 8, label.y = .99)+
-  coord_fixed(ratio = 2)+
+  stat_cor(method = "pearson", label.x = 5, label.y = .99)+
+  coord_fixed(ratio = 3)+
   theme_few()
   
+```
+
+```{r}
+ggsave("../graphs/talk_me_rating_cor.pdf", width = 4, height = 4, scale = 1)
 ```
 
 ```{r}
