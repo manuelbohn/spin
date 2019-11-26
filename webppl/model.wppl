@@ -409,7 +409,7 @@ var header = "iteration,a,b,c,d,e,f,g,h"
 
 var totalIterations = 50000, lag =  5;
 var samples = totalIterations/lag, burn = totalIterations / 2;
-var output_file = 'output/samples_mcmc-'+ totalIterations+'_burn'+burn+'_lag'+lag+'_chain'+chain+'.csv'
+var output_file = 'output/samples-noMap-_mcmc-'+ totalIterations+'_burn'+burn+'_lag'+lag+'_chain'+chain+'.csv'
 var callback = webpplSampleWriter.streamQueryCSV(output_file, header);
 
 var output  = Infer({model,
