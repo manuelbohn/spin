@@ -85,41 +85,6 @@ var priorProbs = [.5,.5]
 
 var model  = function(){
 
-
-    var literalListener = cache(function(utterance, sem_knowledge, priorProbs){
-      Infer({method: "enumerate", model: function(){
-        var lexiconName = sample(LexiconPrior);
-        var lexicon = lexiconObject[lexiconName];
-        var obj = sample( Categorical({vs: all_objects, ps: [.5,.5]}));
-        if ("label" in utterance) {
-          var truthValue = lexicon(utterance, obj, sem_knowledge);
-          condition(truthValue)
-        }
-        return obj.shape
-      }})
-    }, 10000)
-
-    var speaker = cache(function(obj, lexiconName, speakerOptimality, sem_knowledge, priorProbs){
-      Infer({method: "enumerate", model: function(){
-        var utterance = utterancePrior();
-        var L0 = literalListener(utterance, sem_knowledge, priorProbs);
-        factor(speakerOptimality * L0.score(obj.shape))
-        return utterance
-      }})
-    }, 10000)
-
-    var pragmaticListener = cache(function(utterance, speakerOptimality, sem_knowledge, priorProbs){
-      Infer({method: "enumerate", model: function(){
-        // display('inside RSA = ' + sem_knowledge)
-        var lexiconName = sample(LexiconPrior);
-        var obj = sample( Categorical({vs: all_objects, ps: priorProbs}));
-        var S1 = speaker(obj, lexiconName, speakerOptimality, sem_knowledge, priorProbs);
-        observe(S1, utterance)
-        return obj.shape == "novel_object" ? 1 : 0
-      }})
-    }, 10000)
-
-
 //////////////// Prior ////////////////////////
 
  var prior_slope = uniformDrift({a: -2, b: 2, width: 0.4})
@@ -216,7 +181,41 @@ var model  = function(){
 
       // question: should we use age here instead of the random intercept? or a different random intercept?
 
-  var speakerOptimality = speakerOptimalityParameters.intercept  + speakerOptimalityParameters.slope * subj_age
+      var speakerOptimality = speakerOptimalityParameters.intercept  + speakerOptimalityParameters.slope * subj_age
+
+      var literalListener = cache(function(utterance, sem_knowledge, priorProbs){
+        Infer({method: "enumerate", model: function(){
+          var lexiconName = sample(LexiconPrior);
+          var lexicon = lexiconObject[lexiconName];
+          var obj = sample( Categorical({vs: all_objects, ps: [.5,.5]}));
+          if ("label" in utterance) {
+            var truthValue = lexicon(utterance, obj, sem_knowledge);
+            condition(truthValue)
+          }
+          return obj.shape
+        }})
+      }, 10000)
+
+      var speaker = cache(function(obj, lexiconName, sem_knowledge, priorProbs){
+        Infer({method: "enumerate", model: function(){
+          var utterance = utterancePrior();
+          var L0 = literalListener(utterance, sem_knowledge, priorProbs);
+          factor(speakerOptimality * L0.score(obj.shape))
+          return utterance
+        }})
+      }, 10000)
+
+      var pragmaticListener = function(utterance, sem_knowledge, priorProbs){
+        Infer({method: "enumerate", model: function(){
+          // display('inside RSA = ' + sem_knowledge)
+          var lexiconName = sample(LexiconPrior);
+          var obj = sample( Categorical({vs: all_objects, ps: priorProbs}));
+          var S1 = speaker(obj, lexiconName, sem_knowledge, priorProbs);
+          observe(S1, utterance)
+          return obj.shape == "novel_object" ? 1 : 0
+        }})
+      }
+
 
       // each row is a different item
       foreach(function(row){
@@ -230,7 +229,7 @@ var model  = function(){
         // display(sem_knowledge)
 
         var modelPredictions = pragmaticListener({label: "novel_word"},
-            speakerOptimality, sem_knowledge, priorProbs)
+         sem_knowledge, priorProbs)
         // display(modelPredictions.score(row.correct))
 
         observe(modelPredictions, row.correct)
@@ -275,7 +274,41 @@ var all_log_likes = map(function(row) {
   var speakerOptimality = speakerOptimalityParameters.intercept  +
       speakerOptimalityParameters.slope * row.age
 
-  var pragModelPredictions = pragmaticListener({label: "novel_word"}, speakerOptimality,
+      var literalListener = cache(function(utterance, sem_knowledge, priorProbs){
+        Infer({method: "enumerate", model: function(){
+          var lexiconName = sample(LexiconPrior);
+          var lexicon = lexiconObject[lexiconName];
+          var obj = sample( Categorical({vs: all_objects, ps: [.5,.5]}));
+          if ("label" in utterance) {
+            var truthValue = lexicon(utterance, obj, sem_knowledge);
+            condition(truthValue)
+          }
+          return obj.shape
+        }})
+      }, 10000)
+
+      var speaker = cache(function(obj, lexiconName, sem_knowledge, priorProbs){
+        Infer({method: "enumerate", model: function(){
+          var utterance = utterancePrior();
+          var L0 = literalListener(utterance, sem_knowledge, priorProbs);
+          factor(speakerOptimality * L0.score(obj.shape))
+          return utterance
+        }})
+      }, 10000)
+
+      var pragmaticListener = function(utterance, sem_knowledge, priorProbs){
+        Infer({method: "enumerate", model: function(){
+          // display('inside RSA = ' + sem_knowledge)
+          var lexiconName = sample(LexiconPrior);
+          var obj = sample( Categorical({vs: all_objects, ps: priorProbs}));
+          var S1 = speaker(obj, lexiconName, sem_knowledge, priorProbs);
+          observe(S1, utterance)
+          return obj.shape == "novel_object" ? 1 : 0
+        }})
+      }
+
+
+  var pragModelPredictions = pragmaticListener({label: "novel_word"},
                                                sem_knowledge, priorComb)
 
   var noisyPragModelPredictions = addNoise(pragModelPredictions, noise)
@@ -283,14 +316,12 @@ var all_log_likes = map(function(row) {
 
 
   var globalPragModelPredictions = pragmaticListener({label: "novel_word"},
-                                               speakerOptimality,
                                                global_sem_knowledge, priorComb)
 
    var noisyGlobalPragModelPredictions = addNoise(globalPragModelPredictions, noise)
 
 
    var flatModelPredictions = pragmaticListener({label: "novel_word"},
-                                               speakerOptimality,
                                                sem_knowledge, [.5, .5])
 
    var noisyFlatModelPredictions = addNoise(flatModelPredictions, noise)
