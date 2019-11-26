@@ -1,0 +1,69 @@
+---
+title: "Model Samples Processing"
+author: "M. Bohn"
+date: "18 11 2019"
+output: html_document
+---
+
+# Read in raw filed
+
+```{r}
+
+model <- bind_rows(
+  read_csv("../saves/model/samples340.csv")%>%mutate(chain = 1),
+  read_csv("../saves/model/samples561.csv")%>%mutate(chain = 2)
+)
+
+```
+
+# Model predictions
+```{r}
+model_pred <- model %>%
+  filter(a == "modelPrediction")%>%
+  select(-a)%>%
+  rename(model = b, 
+         parameter = c,
+         alignment = d,
+         id = f,
+         item = e,
+         age = g, 
+         pred = h)
+
+saveRDS(model_pred, "../saves/model_pred.rds")
+model_pred <- readRDS("../saves/model_pred.rds")
+```
+
+# Model Parameters 
+
+```{r}
+item_params <-  model %>%
+  filter(b == "items")%>%
+  select(-a,-b, -g,-h, -f)%>%
+    rename(item = c,
+         int = d,
+         slope = e)%>%
+  mutate(slope = as.numeric(slope),
+         int = as.numeric(int))%>%
+  gather(parameter, value, int, slope)
+
+global_params <- model %>%
+  filter(b == "parameters")%>%
+  select(-a,-b, -g,-h, -f)%>%
+    rename(token = c,
+         int = d,
+         slope = e)%>%
+  mutate(slope = as.numeric(slope),
+         int = as.numeric(int))%>%
+  gather(parameter, value, int, slope)
+
+global_sigma<- model %>%
+  filter(b == "sigma")%>%
+  select(-a,-b, -g,-h, -f)%>%
+    rename(token = c,
+         int = d,
+         slope = e)%>%
+  mutate(slope = as.numeric(slope),
+         int = as.numeric(int))%>%
+  gather(parameter, value, int, slope)
+```
+

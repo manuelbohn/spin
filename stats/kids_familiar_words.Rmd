@@ -84,3 +84,6 @@ ggplot(d_select, aes(x = reorder(Word, Rating.Mean), y = Rating.Mean)) +
 
 ```
 
+```{r}
+ggsave("../graphs/talk_items_selection.pdf", width = 12, height = 8, scale = 1.5)
+```
