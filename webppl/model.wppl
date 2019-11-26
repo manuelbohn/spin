@@ -83,9 +83,10 @@ var subjects = levels(meData, "subid")
 
 var priorProbs = [.5,.5]
 
+// combData
 var model  = function(){
 
-//////////////// Prior ////////////////////////
+////////////// Prior ////////////////////////
 
  var prior_slope = uniformDrift({a: -2, b: 2, width: 0.4})
   var prior_int = uniformDrift({a: -2, b: 2, width: 0.4})
@@ -183,38 +184,6 @@ var model  = function(){
 
       var speakerOptimality = speakerOptimalityParameters.intercept  + speakerOptimalityParameters.slope * subj_age
 
-      var literalListener = cache(function(utterance, sem_knowledge, priorProbs){
-        Infer({method: "enumerate", model: function(){
-          var lexiconName = sample(LexiconPrior);
-          var lexicon = lexiconObject[lexiconName];
-          var obj = sample( Categorical({vs: all_objects, ps: [.5,.5]}));
-          if ("label" in utterance) {
-            var truthValue = lexicon(utterance, obj, sem_knowledge);
-            condition(truthValue)
-          }
-          return obj.shape
-        }})
-      }, 10000)
-
-      var speaker = cache(function(obj, lexiconName, sem_knowledge, priorProbs){
-        Infer({method: "enumerate", model: function(){
-          var utterance = utterancePrior();
-          var L0 = literalListener(utterance, sem_knowledge, priorProbs);
-          factor(speakerOptimality * L0.score(obj.shape))
-          return utterance
-        }})
-      }, 10000)
-
-      var pragmaticListener = function(utterance, sem_knowledge, priorProbs){
-        Infer({method: "enumerate", model: function(){
-          // display('inside RSA = ' + sem_knowledge)
-          var lexiconName = sample(LexiconPrior);
-          var obj = sample( Categorical({vs: all_objects, ps: priorProbs}));
-          var S1 = speaker(obj, lexiconName, sem_knowledge, priorProbs);
-          observe(S1, utterance)
-          return obj.shape == "novel_object" ? 1 : 0
-        }})
-      }
 
 
       // each row is a different item
@@ -226,10 +195,43 @@ var model  = function(){
             itemLineParameters.slope * subj_linguistic_competence)
             // display('outside RSA = ' + sem_knowledge)
 
+
+            var literalListener = cache(function(utterance, priorProbs){
+              Infer({method: "enumerate", model: function(){
+                var lexiconName = sample(LexiconPrior);
+                var lexicon = lexiconObject[lexiconName];
+                var obj = sample( Categorical({vs: all_objects, ps: [.5,.5]}));
+                if ("label" in utterance) {
+                  var truthValue = lexicon(utterance, obj, sem_knowledge);
+                  condition(truthValue)
+                }
+                return obj.shape
+              }})
+            }, 10000)
+
+            var speaker = cache(function(obj, lexiconName, priorProbs){
+              Infer({method: "enumerate", model: function(){
+                var utterance = utterancePrior();
+                var L0 = literalListener(utterance, priorProbs);
+                factor(speakerOptimality * L0.score(obj.shape))
+                return utterance
+              }})
+            }, 10000)
+
+            var pragmaticListener = function(utterance, priorProbs){
+              Infer({method: "enumerate", model: function(){
+                // display('inside RSA = ' + sem_knowledge)
+                var lexiconName = sample(LexiconPrior);
+                var obj = sample( Categorical({vs: all_objects, ps: priorProbs}));
+                var S1 = speaker(obj, lexiconName, priorProbs);
+                observe(S1, utterance)
+                return obj.shape == "novel_object" ? 1 : 0
+              }})
+            }
+
         // display(sem_knowledge)
 
-        var modelPredictions = pragmaticListener({label: "novel_word"},
-         sem_knowledge, priorProbs)
+        var modelPredictions = pragmaticListener({label: "novel_word"}, priorProbs)
         // display(modelPredictions.score(row.correct))
 
         observe(modelPredictions, row.correct)
@@ -254,7 +256,7 @@ var all_log_likes = map(function(row) {
 
   var priorReg = logistic(prior_int + prior_slope * row.age)
 
-  var cond = row.condition
+  var cond = row.alignment
 
   var prior = function(cnd){
     var cndPrior = cnd == "congruent" ? [priorReg, 1-priorReg] : [1-priorReg, priorReg] ;
@@ -334,7 +336,7 @@ var all_log_likes = map(function(row) {
 
   var noisyPriorOnlyModelPredictions = addNoise(priorOnlyModelPredictions, noise)
 
-  query.add(["modelPrediction","pragmatic","free", row.condition, row.familiarObject, row.subid], [row.age, Math.exp(pragModelPredictions.score(1))])
+  query.add(["modelPrediction","pragmatic","free", row.alignment, row.item, row.subid], [row.age, Math.exp(pragModelPredictions.score(1))])
 
 //  query.add(["modelPrediction","globalPrag","free", row.condition, row.familiarObject, row.subid], [row.age, Math.exp(globalPragModelPredictions.score(1))])
 
