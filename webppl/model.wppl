@@ -1,4 +1,4 @@
-// example call: webppl model.wppl --require webppl-json --require webppl-sample-writer 1
+// example call: time webppl model.wppl --require webppl-json --require webppl-sample-writer 1
 // ~/webppl-github/webppl model.wppl --require webppl-json --require webppl-sample-writer $SLURM_ARRAY_TASK_ID
 var chain = last(process.argv) // load index as last command line index
 
@@ -122,6 +122,7 @@ var model  = function(){
         // display(modelPredictions.score(d))
         observe(modelPredictions, d);
       })
+
   }, priorSubjectsAges)
 
   query.add(["parameter","parameters", "prior", "NA", "NA", "NA"], [prior_int, prior_slope])
@@ -440,6 +441,10 @@ var header = "iteration,a,b,c,d,e,f,g,h"
 // var totalIterations = 50000, lag =  5;
 var totalIterations = 50000, lag =  5;
 var samples = totalIterations/lag, burn = totalIterations / 2;
+// var totalIterations = 100
+// var samples = totalIterations
+// var burn = 0
+// var lag = 0
 var output_file = 'output/samples-reFactor-noRandomEffects_mcmc-'+ totalIterations+'_burn'+burn+'_lag'+lag+'_chain'+chain+'.csv'
 var callback = webpplSampleWriter.streamQueryCSV(output_file, header);
 
@@ -447,7 +452,8 @@ var output  = Infer({model,
       samples: samples,
       burn: burn,
       lag: lag,
-      method: 'incrementalMH',
+      method: 'MCMC',
+      // method: 'incrementalMH',
       onlyMAP: true,
       verbose: T,
       verboseLag: totalIterations / 20,
