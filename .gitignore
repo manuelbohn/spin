@@ -9,3 +9,6 @@ stats/utils
 stats/kids_novelty_cache
 stats/kids_novelty_files
 /graphs
+
+*.DS_Store
+webppl/output/
