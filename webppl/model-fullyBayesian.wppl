@@ -160,7 +160,8 @@ var model = function() {
 
   }, priorSubjectsAges)
 
-  query.add(["parameter", "parameters", "prior", "NA", "NA", "NA"], [prior_int, prior_slope])
+  query.add(["parameter","parameters", "prior", "intercept", "NA", "NA"], prior_int)
+  query.add(["parameter","parameters", "prior", "slope", "NA", "NA"], prior_slope)
   // query.add(["parameter","sigma", "prior", "NA", "NA", "NA"], ["NA", prior_subject_sigma])
 
 
@@ -458,7 +459,8 @@ var model = function() {
 
           // display(expectation(modelPredictions))
           // display(expectation(noisyModelPredictions))
-          query.add(["modelPrediction", model_type, "free", alignment_condition, item, "NA"], [age_month, Math.exp(modelPredictions.score(1))])
+          query.add(["modelPrediction",model_type,"free", alignment_condition, item, age_month], Math.exp(modelPredictions.score(1)))
+
           // query.add(["modelPrediction",model_type,"noise", alignment_condition, item, "NA"], [age_month, Math.exp(noisyModelPredictions.score(1))])
 
         }, ["pragmatic"])
@@ -482,14 +484,18 @@ var model = function() {
   }, combDataAges)
 
 
-  foreach(function(item) {
+  foreach(function(item){
     var itemLineParameters = all_item_parameters[item]
-    query.add(["parameter", "items", item, "NA", "NA", "NA"], [itemLineParameters.intercept, itemLineParameters.slope])
+    query.add(["parameter","items", item, "intercept", "NA", "NA"], itemLineParameters.intercept)
+    query.add(["parameter","items", item, "slope", "NA", "NA"], itemLineParameters.slope)
   }, familiars)
 
-  query.add(["parameter", "parameters", "speaker_optimality", "NA", "NA", "NA"], [speakerOptimalityParameters.intercept, speakerOptimalityParameters.slope])
-  query.add(["parameter", "parameters", "global_sem", "NA", "NA", "NA"], [globalLineParameters.intercept, globalLineParameters.slope])
-  query.add(["parameter", "sigma", "global_sem_sigmas", "NA", "NA", "NA"], [itemVariability.intercept, itemVariability.slope])
+  query.add(["parameter","parameters","speaker_optimality", "intercept", "NA", "NA"], speakerOptimalityParameters.intercept)
+  query.add(["parameter","parameters","speaker_optimality", "slope", "NA", "NA"], speakerOptimalityParameters.slope)
+  query.add(["parameter","parameters", "global_sem", "intercept", "NA", "NA"], globalLineParameters.intercept)
+  query.add(["parameter","parameters", "global_sem", "slope", "NA", "NA"], globalLineParameters.slope)
+  query.add(["parameter","sigma", "global_sem_sigmas", "intercept", "NA", "NA"], itemVariability.intercept)
+  query.add(["parameter","sigma", "global_sem_sigmas", "slope", "NA", "NA"], itemVariability.slope)
   // query.add(["parameter","sigma", "global_subject_sigmas", "NA", "NA", "NA"], ["NA", subject_sigma])
 
   return query
@@ -507,7 +513,7 @@ var header = "iteration,a,b,c,d,e,f,g,h"
 var totalIterations = 100
 var samples = totalIterations
 var burn = 0
-var lag = 0
+var lag = 0z
 var output_file = 'output/samples-fullyBayesian-pragmatic-reFactor-noRandomEffects_mcmc-' + totalIterations + '_burn' + burn + '_lag' + lag + '_chain' + chain + '.csv'
 var callback = webpplSampleWriter.streamQueryCSV(output_file, header);
 
