@@ -177,7 +177,7 @@ var model  = function(){
   }
 
   foreach(function(age_month){
-    display(age_month)
+    //display(age_month)
       var subjectData_byAge = _.filter(meData, {age_month: age_month})
 
       var subj_age = subjectData_byAge[0].age_month

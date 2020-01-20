@@ -553,16 +553,16 @@ ggsave("../graphs/like_talk_free.png", width = 4, height = 2.5, scale = 1.5)
 
 ```{r}
 
-model_pred <- read_csv("../saves/model/samples78.csv") %>%
+model <- read_csv("../webppl/output/samples-reFactor-noRandomEffects_mcmc-2_burn1_lag1_chain1.csv")
+
+model_pred <- model %>%
   filter(a == "modelPrediction")%>%
-  select(-a)%>%
   rename(model = b, 
          parameter = c,
          alignment = d,
-         id = f,
          item = e,
-         age = g, 
-         pred = h)
+         age = f, 
+         pred = g)
 
 saveRDS(model_pred, "../saves/model_pred.rds")
 model_pred <- readRDS("../saves/model_pred.rds")
