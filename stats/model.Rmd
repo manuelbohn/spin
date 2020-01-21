@@ -553,60 +553,13 @@ ggsave("../graphs/like_talk_free.png", width = 4, height = 2.5, scale = 1.5)
 
 ```{r}
 
-model <- read_csv("../webppl/output/samples-reFactor-noRandomEffects_mcmc-2_burn1_lag1_chain1.csv")
-
-model_pred <- model %>%
-  filter(a == "modelPrediction")%>%
-  rename(model = b, 
-         parameter = c,
-         alignment = d,
-         item = e,
-         age = f, 
-         pred = g)
-
-saveRDS(model_pred, "../saves/model_pred.rds")
 model_pred <- readRDS("../saves/model_pred.rds")
 
-  
-model_params <- bind_rows(
-  readRDS("../saves/model_params_chain1.rds")%>%mutate(chain = 1),
-  readRDS("../saves/model_params_chain2.rds")%>%mutate(chain = 2),
-  readRDS("../saves/model_params_chain3.rds")%>%mutate(chain = 3),
-  readRDS("../saves/model_params_chain4.rds")%>%mutate(chain = 4),
-  readRDS("../saves/model_params_chain5.rds")%>%mutate(chain = 5)
-  
-)
-  
-item_params <-  model_params %>%
-  filter(b == "items")%>%
-  select(-a,-b, -g,-h, -f)%>%
-    rename(item = c,
-         int = d,
-         slope = e)%>%
-  mutate(slope = as.numeric(slope),
-         int = as.numeric(int))%>%
-  gather(parameter, value, int, slope)
+item_params <- readRDS("../saves/item_params.rds")
 
-global_params <- model_params %>%
-  filter(b == "parameters")%>%
-  select(-a,-b, -g,-h, -f)%>%
-    rename(token = c,
-         int = d,
-         slope = e)%>%
-  mutate(slope = as.numeric(slope),
-         int = as.numeric(int))%>%
-  gather(parameter, value, int, slope)
+global_params <- readRDS("../saves/global_params.rds")
 
-global_sigma<- model_params %>%
-  filter(b == "sigma")%>%
-  select(-a,-b, -g,-h, -f)%>%
-    rename(token = c,
-         int = d,
-         slope = e)%>%
-  mutate(slope = as.numeric(slope),
-         int = as.numeric(int))%>%
-  gather(parameter, value, int, slope)
-
+global_sigma <- readRDS("../saves/global_sigma.rds")
 
 #### summaries
 item_params_summary <- item_params %>%
@@ -622,10 +575,6 @@ global_params_summary <- global_params %>%
             uci = hdi_upper(value),
             lci = hdi_lower(value))
 
-
-model_pred %>%
-  filter(item == "pawn")%>%
-  arrange(age)
 ```
 ## Plotting model parameters
 

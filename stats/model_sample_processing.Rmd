@@ -5,32 +5,64 @@ date: "18 11 2019"
 output: html_document
 ---
 
-# Read in raw filed
+```{r}
+library(tidyverse)
+library(rwebppl)
+library(brms)
+library(coda)
+library(ggthemes)
+library(readxl)
+library(ggpubr)
+library(stringr)
+library(matrixStats)
+library(data.table)
+library(bigmemory)
+library(langcog)
+
+estimate_mode <- function(s) {
+  d <- density(s)
+  return(d$x[which.max(d$y)])
+}
+
+
+hdi_upper<- function(s){
+  m <- HPDinterval(mcmc(s))
+  return(m["var1","upper"])
+}
+
+hdi_lower<- function(s){
+  m <- HPDinterval(mcmc(s))
+  return(m["var1","lower"])
+}
+```
+
+
+# Read in raw file
 
 ```{r}
 
 model <- bind_rows(
-  read_csv("../saves/model/samples340.csv")%>%mutate(chain = 1),
-  read_csv("../saves/model/samples561.csv")%>%mutate(chain = 2)
+  read_csv("../webppl/output/model/samples-reFactor-noRandomEffects_mcmc-50000_burn25000_lag5_chain1.csv")%>%mutate(chain = 1),
+  read_csv("../saves/model/samples-reFactor-noRandomEffects_mcmc-50000_burn25000_lag5_chain2.csv")%>%mutate(chain = 2)
 )
 
 ```
 
 # Model predictions
+
 ```{r}
 model_pred <- model %>%
   filter(a == "modelPrediction")%>%
-  select(-a)%>%
+  select(-a, -h)%>%
   rename(model = b, 
          parameter = c,
          alignment = d,
-         id = f,
          item = e,
-         age = g, 
-         pred = h)
+         age = f, 
+         pred = g)
 
 saveRDS(model_pred, "../saves/model_pred.rds")
-model_pred <- readRDS("../saves/model_pred.rds")
+
 ```
 
 # Model Parameters 
@@ -38,32 +70,29 @@ model_pred <- readRDS("../saves/model_pred.rds")
 ```{r}
 item_params <-  model %>%
   filter(b == "items")%>%
-  select(-a,-b, -g,-h, -f)%>%
+  select(-a,-b, -e, -f, -h)%>%
     rename(item = c,
-         int = d,
-         slope = e)%>%
-  mutate(slope = as.numeric(slope),
-         int = as.numeric(int))%>%
-  gather(parameter, value, int, slope)
+         parameter = d,
+         value = g)
+
+saveRDS(item_params, "../saves/item_params.rds")
 
 global_params <- model %>%
   filter(b == "parameters")%>%
-  select(-a,-b, -g,-h, -f)%>%
-    rename(token = c,
-         int = d,
-         slope = e)%>%
-  mutate(slope = as.numeric(slope),
-         int = as.numeric(int))%>%
-  gather(parameter, value, int, slope)
+  select(-a,-b, -e,-f, -h)%>%
+    rename(parameter = c,
+         type = d,
+         value = g)
+
+saveRDS(global_params, "../saves/global_params.rds")
 
 global_sigma<- model %>%
   filter(b == "sigma")%>%
-  select(-a,-b, -g,-h, -f)%>%
-    rename(token = c,
-         int = d,
-         slope = e)%>%
-  mutate(slope = as.numeric(slope),
-         int = as.numeric(int))%>%
-  gather(parameter, value, int, slope)
+  select(-a,-b, -e,-f,-h)%>%
+    rename(parameter = c,
+         type = d,
+         value = g)
+
+saveRDS(global_sigma, "../saves/global_sigma.rds")
 ```
 
