@@ -17,7 +17,6 @@ library(stringr)
 library(matrixStats)
 library(data.table)
 library(bigmemory)
-library(langcog)
 
 estimate_mode <- function(s) {
   d <- density(s)
