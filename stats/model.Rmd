@@ -570,7 +570,7 @@ item_params_summary <- item_params %>%
 
 
 global_params_summary <- global_params %>%
-  group_by(token, parameter)%>%
+  group_by (parameter,type)%>%
   summarise(mode = estimate_mode(value),
             uci = hdi_upper(value),
             lci = hdi_lower(value))
@@ -601,10 +601,17 @@ plot_item_params
 plot_global_params <- ggplot(global_params, aes(x = value, fill = factor(chain)))+
   geom_density(alpha = 0.3)+
   xlab("Parameter")+
-  facet_grid(parameter~token, scales = 'free')+
+  facet_grid(type~parameter, scales = 'free')+
   theme_few()
 
 plot_global_params
+
+
+plot_global_params %>%
+  group_by(parameter, type)%>%
+  summarise(mode = estimate_mode(value),
+            uci = hdi_upper(value),
+            lci = hdi_lower(value))
 ```
 
 ### Global sigmas
@@ -697,49 +704,38 @@ ggplot(plot_sem_know, aes(x = age+2, y= sem_know, col = item, group = item))+
 
 ```{r}
 
-
-model_pred_prag_free<- bind_rows(
-  readRDS("../saves/model_pred_pragmatic_free_chain1.rds")%>%mutate(chain = 1),
-  readRDS("../saves/model_pred_pragmatic_free_chain2.rds")%>%mutate(chain = 2),
-  readRDS("../saves/model_pred_pragmatic_free_chain3.rds")%>%mutate(chain = 3),
-  readRDS("../saves/model_pred_pragmatic_free_chain4.rds")%>%mutate(chain = 4),
-  readRDS("../saves/model_pred_pragmatic_free_chain5.rds")%>%mutate(chain = 5)
-)
-
-plot_model_pred_prag_free <- model_pred%>%
-  mutate(model = paste(model, parameter, sep = "_"))%>%
+plot_model_pred <- model_pred%>%
   group_by(model, alignment, item, age)%>%
   summarise(mean = estimate_mode(pred),
             ci_lower = hdi_lower(pred),
             ci_upper = hdi_upper(pred))
 
-saveRDS(plot_model_pred_prag_free, "../saves/plot_model_pred_prag_free.rds")
-plot_model_pred_prag_free <- readRDS("../saves/plot_model_pred_prag_free.rds")
-
-
 ggplot() +
   geom_hline(yintercept = 0.5, lty=2)+
   geom_smooth(data = data_comb_plot, aes(x = age_num, y = correct), col = "black", method = "loess", se = T, alpha = .5, span = 2)+
-  geom_line(data = plot_model_pred_prag_free, aes(x=age+2,y = mean, col = model), size = 1)+
-  geom_ribbon(data = plot_model_pred_prag_free, aes(x = age+2, ymin = ci_lower, ymax = ci_upper, fill = model), alpha = .4) +
+  geom_line(data = plot_model_pred, aes(x=age+2,y = mean, col = model), size = 1)+
+  geom_ribbon(data = plot_model_pred, aes(x = age+2, ymin = ci_lower, ymax = ci_upper, fill = model), alpha = .4) +
   labs(x="Age",y="Mutual Exclusivity effect")+
   facet_grid(alignment~item)+
   theme_few() +
   ylim(-0.05,1.05)+
   xlim(2,5)+
-  guides(alpha = F, fill = F, col = F)+ 
-  scale_colour_ptol(name = NULL)+
-  scale_fill_ptol(name = NULL)
+  guides(alpha = F, fill = F)+ 
+  scale_colour_ptol()+
+  scale_fill_ptol()
 
-x <- sample(1:48000, 500)
 
-plot_model_prag_noise_line <- model_pred_prag_free%>%
-  filter(iteration %in% x)
+length(unique(model_pred$iteration))
+
+x <- sample(1:10000, 500)
+
+plot_model_prag__line <- model_pred%>%
+  filter(model == "pragmatic", iteration %in% x)
 
 ggplot() +
   geom_hline(yintercept = 0.5, lty=2)+
-  geom_line(data = plot_model_prag_noise_line, aes(x=age+2,y = pred, col = factor(chain), group = interaction(chain,iteration)),size = .2, alpha = .05)+
-  geom_smooth(data = data_comb_plot, aes(x = age_num, y = correct), col = "black", method = "loess", se = T, alpha = .5, span = 2)+
+  geom_line(data = plot_model_prag__line, aes(x=age+2,y = pred, col = alignment, group = interaction(chain,iteration)),size = .2, alpha = .05)+
+  geom_smooth(data = data_comb_plot, aes(x = age_num, y = correct), col = "black", method = "glm", method.args = list(family = "binomial"), se = T, alpha = .5, span = 2)+
   labs(x="Age",y="Mutual Exclusivity effect")+
   facet_grid(alignment~item)+
   theme_few() +
@@ -910,9 +906,9 @@ binnned_data <- data_comb%>%
   select(-a,-b,-n,-k)
 
 
-cor_prag_free <- model_pred_prag_free%>%
-  mutate(model = paste(model, parameter, sep = "_"))%>%
-  mutate(age = as.numeric(age) + min(me_data$age_num),
+cor_prag <- model_pred%>%
+  filter(model == "pragmatic")%>%
+  mutate(age = as.numeric(age) + min(data_comb$age_num),
          age = cut(age, 
                       breaks = c(2,3,4,5),
                       labels = c(2,3,4)))%>%
@@ -921,12 +917,9 @@ cor_prag_free <- model_pred_prag_free%>%
             model_ci_lower = hdi_lower(pred),
             model_ci_upper = hdi_upper(pred))
 
-saveRDS(cor_prag_free, "../saves/cor_prag_free.rds")
-cor_prag_free <- readRDS( "../saves/cor_prag_free.rds")
-
-cor_prag_noise <- model_pred_prag_noise%>%
-  mutate(model = paste(model, parameter, sep = "_"))%>%
-  mutate(age = as.numeric(age) + min(me_data$age_num),
+cor_global <- model_pred%>%
+  filter(model == "global")%>%
+  mutate(age = as.numeric(age) + min(data_comb$age_num),
          age = cut(age, 
                       breaks = c(2,3,4,5),
                       labels = c(2,3,4)))%>%
@@ -935,12 +928,9 @@ cor_prag_noise <- model_pred_prag_noise%>%
             model_ci_lower = hdi_lower(pred),
             model_ci_upper = hdi_upper(pred))
 
-saveRDS(cor_prag_noise, "../saves/cor_prag_noise.rds")
-cor_prag_noise <- readRDS( "../saves/cor_prag_noise.rds")
-
-cor_global_free <- model_pred_global_free%>%
-  mutate(model = paste(model, parameter, sep = "_"))%>%
-  mutate(age = as.numeric(age) + min(me_data$age_num),
+cor_flat <- model_pred%>%
+  filter(model == "flat")%>%
+  mutate(age = as.numeric(age) + min(data_comb$age_num),
          age = cut(age, 
                       breaks = c(2,3,4,5),
                       labels = c(2,3,4)))%>%
@@ -949,9 +939,9 @@ cor_global_free <- model_pred_global_free%>%
             model_ci_lower = hdi_lower(pred),
             model_ci_upper = hdi_upper(pred))
 
-cor_global_noise <- model_global_noise%>%
-  mutate(model = paste(model, parameter, sep = "_"))%>%
-  mutate(age = as.numeric(age) + min(me_data$age_num),
+cor_prior <- model_pred%>%
+  filter(model == "prior")%>%
+  mutate(age = as.numeric(age) + min(data_comb$age_num),
          age = cut(age, 
                       breaks = c(2,3,4,5),
                       labels = c(2,3,4)))%>%
@@ -961,32 +951,32 @@ cor_global_noise <- model_global_noise%>%
             model_ci_upper = hdi_upper(pred))
 
 cor_model_pred <- bind_rows(
-  cor_prag_free,
-  cor_prag_noise
- # cor_global_free,
-#  cor_global_noise
+  cor_prag,
+  cor_global,
+  cor_flat,
+  cor_prior
 )
 
 
 plot_cor_model_pred <- cor_model_pred %>%
   left_join(
     bind_rows(
-      #binnned_data%>%mutate(model = "globalPrag_free"),
-      #binnned_data%>%mutate(model = "globalPrag_noise"),
-      binnned_data%>%mutate(model = "pragmatic_free"),
-      binnned_data%>%mutate(model = "pragmatic_noise")
+      binnned_data%>%mutate(model = "pragmatic"),
+      binnned_data%>%mutate(model = "global"),
+      binnned_data%>%mutate(model = "flat"),
+      binnned_data%>%mutate(model = "prior")
       )
   )
 
-saveRDS(plot_cor_model_pred, "../saves/model_cor.rds")
-plot_cor_model_pred <- readRDS( "../saves/model_cor.rds")
+# saveRDS(plot_cor_model_pred, "../saves/model_cor.rds")
+# plot_cor_model_pred <- readRDS( "../saves/model_cor.rds")
 
 
-ggplot(data = plot_cor_model_pred,aes(x = model_mean, y = data_mean, col = item)) +
+ggplot(data = plot_cor_model_pred,aes(x = model_mean, y = data_mean, col = alignment)) +
   geom_abline(intercept = 0, slope = 1, lty = 2, alpha = 1, size = .5)+
-  geom_errorbar(aes(ymin = data_ci_lower, ymax = data_ci_upper),width = 0,size = .7)+
-  geom_errorbarh(aes(xmin = model_ci_lower, xmax = model_ci_upper), height = 0,size = .7)+
-  geom_point(size = 1.5, stroke = 1)+
+  geom_errorbar(aes(ymin = data_ci_lower, ymax = data_ci_upper),width = 0,size = .5, alpha = .7)+
+  geom_errorbarh(aes(xmin = model_ci_lower, xmax = model_ci_upper), height = 0,size = .5, alpha = .7)+
+  geom_point(size = 1.5, stroke = 1, pch = 5)+
   coord_fixed()+
  stat_cor(method = "pearson", label.x = 0.01, label.y = 0.99, aes(x = model_mean, y = data_mean), inherit.aes = F, size = 3)+
   xlim(0,1)+ylim(0,1)+
@@ -994,7 +984,7 @@ ggplot(data = plot_cor_model_pred,aes(x = model_mean, y = data_mean, col = item)
   ylab("Data")+
   facet_grid(model~age)+
   theme_few() + 
-  scale_colour_viridis_d(name ="Item")
+  scale_colour_ptol(name ="Alignment")
 ```
 
 ```{r}

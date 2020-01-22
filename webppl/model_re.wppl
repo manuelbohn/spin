@@ -1,4 +1,4 @@
-// example call: time webppl model.wppl --require webppl-json --require webppl-sample-writer 1
+// example call: time webppl model_re.wppl --require webppl-json --require webppl-sample-writer 1
 // ~/webppl-github/webppl model.wppl --require webppl-json --require webppl-sample-writer $SLURM_ARRAY_TASK_ID
 var chain = last(process.argv) // load index as last command line index
 
@@ -80,7 +80,7 @@ var priorSubjectsAges = sort(levels(priorData, "age_month"))
 var familiars = levels(meData, "item")
 var familiarsAges = sort(levels(meData, "age_month"))
 // var meDataAges = levels
-var subjects = levels(meData, "subid")
+var meSubjects = levels(meData, "subid")
 var combDataAges = sort(levels(combData, "age_month"))
 
 var priorProbs = [.5, .5]
@@ -92,42 +92,44 @@ var model  = function(){
 
 ////////////// Prior ////////////////////////
 
-  var prior_slope = uniformDrift({a: -2, b: 2, width: 0.4})
-  var prior_int = uniformDrift({a: -2, b: 2, width: 0.4})
+var prior_slope = uniformDrift({a: -2, b: 2, width: 0.4})
+var prior_int = uniformDrift({a: -2, b: 2, width: 0.4})
 
+var prior_subject_sigma = uniformDrift({a: 0, b:3, width: 0.2})
 
-  // random slopes
-  // var prior_subject_sigma = uniformDrift({a: 0, b:3, width: 0.2})
-  // var priorSampleSub = function(age){
-  //   return gaussianDrift({ mu: age, sigma: prior_subject_sigma, width: 0.1 })
-  // }
+var priorSampleSub = function(age_month){
+  return gaussianDrift({ mu: age_month, sigma: prior_subject_sigma, width: 0.1 })
+}
 
-  foreach(function(age_month){
-      var priorSubjectDataByAge = _.filter(priorData, {age_month: age_month})
-      // display(age_month + ' n data points = ' + priorSubjectDataByAge.length)
-      var subj_age = priorSubjectDataByAge[0].age_month
-      var priorSubjectDataByAge_correct = _.map(priorSubjectDataByAge, "correct")
+foreach(function(subid){
+  var priorSubjectData = _.filter(priorData, {subid: subid})
 
-      // random slopes (should be: by-subject...)
-      // var subjectPrior = priorSampleSub(subj_age)
+  //display(subjects)
 
-      var priorReg = logistic(prior_int + prior_slope * subj_age)
-      var prior = [priorReg, 1 - priorReg]
-      var modelPredictions = Infer({method: "enumerate", model: function(){
-        var obj = sample( Categorical({vs: all_objects, ps: prior}));
-        return obj.shape == "novel_object" ? 1 : 0
-      }})
+  var subj_age = priorSubjectData[0].age_month
 
-      mapData({data: priorSubjectDataByAge_correct}, function(d){
-        // display(modelPredictions.score(d))
-        observe(modelPredictions, d);
-      })
+  var subjectPrior = priorSampleSub(subj_age)
 
-  }, priorSubjectsAges)
+  foreach(function(row){
+
+    var priorReg = logistic(prior_int + prior_slope * subjectPrior)
+
+    var prior = [priorReg, 1-priorReg]
+
+    var modelPredictions = Infer({method: "enumerate", model: function(){
+      var obj = sample( Categorical({vs: all_objects, ps: prior}));
+      return obj.shape == "novel_object" ? 1 : 0
+    }})
+
+    observe(modelPredictions, row.correct)
+
+  }, priorSubjectData)
+
+}, priorSubjects)
 
   query.add(["parameter","parameters", "prior", "intercept", "NA", "NA"], prior_int)
   query.add(["parameter","parameters", "prior", "slope", "NA", "NA"], prior_slope)
-  // query.add(["parameter","sigma", "prior", "NA", "NA", "NA"], ["NA", prior_subject_sigma])
+  query.add(["parameter","sigma", "prior", "NA", "NA", "NA"], [prior_subject_sigma])
 
 
 //////////////// Semantic knowledge and speaker optimality ////////////////////////
@@ -169,32 +171,27 @@ var model  = function(){
   // {papaya: {int, slope}, bread: {int, slope}, ... }
   var all_item_parameters = _.fromPairs(map(sampleItemParameters, familiars))
 
-    // want something that favors smaller values
+  // want something that favors smaller values
   var subject_sigma = uniformDrift({a: 0, b:1, width: 0.1})
 
   var sampleLinguisticCompetence = function(age){
     return gaussianDrift({ mu: age, sigma: subject_sigma, width: 0.1 })
   }
 
-  foreach(function(age_month){
-    //display(age_month)
-      var subjectData_byAge = _.filter(meData, {age_month: age_month})
+  foreach(function(subid){
+    var meSubjectData = _.filter(meData, {subid: subid})
+    var subj_age = meSubjectData[0].age_month
+    var subj_linguistic_competence = sampleLinguisticCompetence(subj_age)
 
-      var subj_age = subjectData_byAge[0].age_month
-      var subj_linguistic_competence = subj_age//sampleLinguisticCompetence(subj_age)
-      // display("age = " + subj_age + " ... intercept = " + subj_linguistic_competence)
-      // question: should we use age here instead of the random intercept? or a different random intercept?
-      var speakerOptimality = speakerOptimalityParameters.intercept  + speakerOptimalityParameters.slope * subj_age
+    var speakerOptimality = speakerOptimalityParameters.intercept  + speakerOptimalityParameters.slope * subj_age
 
-      foreach(function(item){
-        var subjectData_byAgeItem = _.filter(subjectData_byAge, {item: item})
-        var subjectDataByAgeItem_correct = _.map(subjectData_byAgeItem, "correct")
-        // display(age_month + ', item = ' + item +' n data points = ' + subjectData_byAgeItem.length)
+    // each row is a different item
+    foreach(function(row){
 
-        var itemLineParameters = all_item_parameters[item]
+      var itemLineParameters = all_item_parameters[row.item]
 
-        var sem_knowledge = logistic(itemLineParameters.intercept +
-            itemLineParameters.slope * subj_linguistic_competence)
+      var sem_knowledge = logistic(itemLineParameters.intercept +
+        itemLineParameters.slope * subj_linguistic_competence)
 
         var literalListener = cache(function(utterance){
           Infer({method: "enumerate", model: function(){
@@ -206,56 +203,33 @@ var model  = function(){
               condition(truthValue)
             }
             return obj.shape
-        }})}, 10000)
+          }})}, 10000)
 
-        var speaker = cache(function(obj, lexiconName){
-          Infer({method: "enumerate", model: function(){
-            var utterance = utterancePrior();
-            var L0 = literalListener(utterance);
-            factor(speakerOptimality * L0.score(obj.shape))
-            return utterance
-        }})}, 10000)
+          var speaker = cache(function(obj, lexiconName){
+            Infer({method: "enumerate", model: function(){
+              var utterance = utterancePrior();
+              var L0 = literalListener(utterance);
+              factor(speakerOptimality * L0.score(obj.shape))
+              return utterance
+            }})}, 10000)
 
-        var pragmaticListener = function(utterance){
-          Infer({method: "enumerate", model: function(){
-            // display('inside RSA = ' + sem_knowledge)
-            var lexiconName = sample(LexiconPrior);
-            var obj = sample( Categorical({vs: all_objects, ps: [.5,.5]}));
-            var S1 = speaker(obj, lexiconName);
-            observe(S1, utterance)
-            return obj.shape == "novel_object" ? 1 : 0
-          }})}
+            var pragmaticListener = function(utterance){
+              Infer({method: "enumerate", model: function(){
+                // display('inside RSA = ' + sem_knowledge)
+                var lexiconName = sample(LexiconPrior);
+                var obj = sample( Categorical({vs: all_objects, ps: [.5,.5]}));
+                var S1 = speaker(obj, lexiconName);
+                observe(S1, utterance)
+                return obj.shape == "novel_object" ? 1 : 0
+              }})}
 
-        var modelPredictions = pragmaticListener({label: "novel_word"})
+              var modelPredictions = pragmaticListener({label: "novel_word"})
 
-        mapData({data: subjectDataByAgeItem_correct}, function(d){
-          observe(modelPredictions, d)
-        })
+              observe(modelPredictions, row.correct)
 
-      }, familiars)
+            }, meSubjectData)
 
-      // each row is a different item
-      // foreach(function(row){
-
-        // var itemLineParameters = all_item_parameters[row.item]
-
-
-            // display('outside RSA = ' + sem_knowledge
-        // display(sem_knowledge)
-
-        // display(modelPredictions.score(row.correct))
-
-
-        // if you want to save predictions, make sure to record subid because these predictions are for this particular subid
-        // query.add(["modelPrediction", cndtn, age], [age, Math.exp(modelPredictions.score(1))])
-
-      // }, subjectData)
-
-    // comment out to save memory
-  //  query.add(["parameter","subj_intercept", subid], [subjectData[0].age, subj_linguistic_competence])
-
-  }, familiarsAges)
-
+          }, meSubjects)
 
 //////////////// Model predictions and combination ////////////////////////
 
@@ -437,7 +411,7 @@ foreach(function(age_month) {
   query.add(["parameter","parameters", "global_sem", "slope", "NA", "NA"], globalLineParameters.slope)
   query.add(["parameter","sigma", "global_sem_sigmas", "intercept", "NA", "NA"], itemVariability.intercept)
   query.add(["parameter","sigma", "global_sem_sigmas", "slope", "NA", "NA"], itemVariability.slope)
-  // query.add(["parameter","sigma", "global_subject_sigmas", "NA", "NA", "NA"], ["NA", subject_sigma])
+  query.add(["parameter","sigma", "global_subject_sigmas", "NA", "NA", "NA"], [subject_sigma])
 
   return query
 }
@@ -454,7 +428,7 @@ var totalIterations = 10
 var samples = totalIterations
 var burn = 0
 var lag = 0
-var output_file = 'output/samples-reFactor-noRandomEffects_mcmc-'+ totalIterations+'_burn'+burn+'_lag'+lag+'_chain'+chain+'.csv'
+var output_file = 'output/samples-reFactor-RE_mcmc-'+ totalIterations+'_burn'+burn+'_lag'+lag+'_chain'+chain+'.csv'
 var callback = webpplSampleWriter.streamQueryCSV(output_file, header);
 
 var output  = Infer({model,
