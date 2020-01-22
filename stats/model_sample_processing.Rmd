@@ -41,8 +41,7 @@ hdi_lower<- function(s){
 ```{r}
 
 model <- bind_rows(
-  read_csv("../webppl/output/model/samples-reFactor-noRandomEffects_mcmc-50000_burn25000_lag5_chain1.csv")%>%mutate(chain = 1),
-  read_csv("../saves/model/samples-reFactor-noRandomEffects_mcmc-50000_burn25000_lag5_chain2.csv")%>%mutate(chain = 2)
+  read_csv("../webppl/output/samples-reFactor-RE_mcmc-10_burn0_lag0_chain1.csv")%>%mutate(chain = 1)
 )
 
 ```
@@ -85,13 +84,23 @@ global_params <- model %>%
 
 saveRDS(global_params, "../saves/global_params.rds")
 
-global_sigma<- model %>%
-  filter(b == "sigma")%>%
+item_sigma<- model %>%
+  filter(b == "sigma",
+         c == "global_sem_sigmas")%>%
   select(-a,-b, -e,-f,-h)%>%
     rename(parameter = c,
          type = d,
          value = g)
 
-saveRDS(global_sigma, "../saves/global_sigma.rds")
+saveRDS(item_sigma, "../saves/item_sigma.rds")
+
+subject_sigma<- model %>%
+  filter(b == "sigma", 
+         c != "global_sem_sigmas")%>%
+  select(-a,-b, -e,-f,-h, -d)%>%
+    rename(parameter = c,
+         value = g)
+
+saveRDS(subject_sigma, "../saves/subject_sigma.rds")
 ```
 

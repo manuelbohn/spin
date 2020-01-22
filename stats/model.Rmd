@@ -605,13 +605,6 @@ plot_global_params <- ggplot(global_params, aes(x = value, fill = factor(chain))
   theme_few()
 
 plot_global_params
-
-
-plot_global_params %>%
-  group_by(parameter, type)%>%
-  summarise(mode = estimate_mode(value),
-            uci = hdi_upper(value),
-            lci = hdi_lower(value))
 ```
 
 ### Global sigmas
@@ -620,7 +613,7 @@ plot_global_params %>%
 plot_global_sigma <- ggplot(global_sigma, aes(x = value, fill = factor(chain)))+
   geom_density(alpha = 0.3)+
   xlab("Sigma")+
-  facet_grid(~parameter, scales = 'free')+
+  facet_grid(type~parameter, scales = 'free')+
   theme_few()
 
 plot_global_sigma
