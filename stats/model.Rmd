@@ -559,18 +559,50 @@ item_params <- readRDS("../saves/item_params.rds")
 
 global_params <- readRDS("../saves/global_params.rds")
 
-global_sigma <- readRDS("../saves/global_sigma.rds")
+item_sigma <- readRDS("../saves/item_sigma.rds")
+
+subject_sigma <- readRDS("../saves/subject_sigma_re.rds")
+
+
+item_params <- bind_rows(
+  readRDS("../saves/item_params.rds")%>%mutate(run = "no re"),
+  readRDS("../saves/item_params_re.rds")%>%mutate(run = "re")
+)
+
+global_params <- bind_rows(
+  readRDS("../saves/global_params.rds")%>%mutate(run = "no re"),
+  readRDS("../saves/global_params_re.rds")%>%mutate(run = "re")
+)
+
+
+item_sigma <- bind_rows(
+  readRDS("../saves/item_sigmas.rds")%>%mutate(run = "no re"),
+  readRDS("../saves/item_sigma_re.rds")%>%mutate(run = "re")
+)
+
+
+model_pred <- bind_rows(
+    readRDS("../saves/model_pred.rds")%>%mutate(run = "no re")%>%filter(model == "pragmatic"),
+    readRDS("../saves/model_pred_re.rds")%>%mutate(run = "re")%>%filter(model == "pragmatic")
+)
 
 #### summaries
 item_params_summary <- item_params %>%
-  group_by(item, parameter)%>%
+  group_by(run, item, parameter)%>%
   summarise(mode = estimate_mode(value),
             uci = hdi_upper(value),
             lci = hdi_lower(value))
 
 
 global_params_summary <- global_params %>%
-  group_by (parameter,type)%>%
+  group_by (run,parameter,type)%>%
+  summarise(mode = estimate_mode(value),
+            uci = hdi_upper(value),
+            lci = hdi_lower(value))
+
+
+subject_sigma_summary <- subject_sigma %>%
+  group_by (parameter)%>%
   summarise(mode = estimate_mode(value),
             uci = hdi_upper(value),
             lci = hdi_lower(value))
@@ -584,7 +616,7 @@ global_params_summary <- global_params %>%
 plot_item_params <- ggplot(item_params, aes(x = value, fill = factor(chain)))+
   geom_density(alpha = 0.3)+
   xlab("Parameter")+
-  facet_grid(parameter~item, scales = 'free')+
+  facet_grid(run ~parameter + item, scales = 'free')+
   theme_few()
 
 plot_item_params
@@ -601,7 +633,7 @@ plot_item_params
 plot_global_params <- ggplot(global_params, aes(x = value, fill = factor(chain)))+
   geom_density(alpha = 0.3)+
   xlab("Parameter")+
-  facet_grid(type~parameter, scales = 'free')+
+  facet_grid(run~type + parameter, scales = 'free')+
   theme_few()
 
 plot_global_params
@@ -610,18 +642,18 @@ plot_global_params
 ### Global sigmas
 
 ```{r}
-plot_global_sigma <- ggplot(global_sigma, aes(x = value, fill = factor(chain)))+
+plot_item_sigma <- ggplot(item_sigma, aes(x = value, fill = factor(chain)))+
   geom_density(alpha = 0.3)+
   xlab("Sigma")+
-  facet_grid(type~parameter, scales = 'free')+
+  facet_grid(run ~type + parameter, scales = 'free')+
   theme_few()
 
-plot_global_sigma
+plot_item_sigma
 ```
 
 
 ```{r}
-plotg_subj_sigma <- ggplot(subj_sigma, aes(x = sigma, fill = factor(Chain)))+
+plotg_subj_sigma <- ggplot(subject_sigma, aes(x = value, fill = factor(chain)))+
   geom_density(alpha = 0.3)+
   xlab("Subject Sigma")+
   theme_few()
@@ -698,16 +730,17 @@ ggplot(plot_sem_know, aes(x = age+2, y= sem_know, col = item, group = item))+
 ```{r}
 
 plot_model_pred <- model_pred%>%
-  group_by(model, alignment, item, age)%>%
+  filter(model == "pragmatic")%>%
+  group_by(run, model, alignment, item, age)%>%
   summarise(mean = estimate_mode(pred),
             ci_lower = hdi_lower(pred),
             ci_upper = hdi_upper(pred))
 
 ggplot() +
   geom_hline(yintercept = 0.5, lty=2)+
-  geom_smooth(data = data_comb_plot, aes(x = age_num, y = correct), col = "black", method = "loess", se = T, alpha = .5, span = 2)+
-  geom_line(data = plot_model_pred, aes(x=age+2,y = mean, col = model), size = 1)+
-  geom_ribbon(data = plot_model_pred, aes(x = age+2, ymin = ci_lower, ymax = ci_upper, fill = model), alpha = .4) +
+  #geom_smooth(data = data_comb_plot, aes(x = age_num, y = correct), col = "black", method = "loess", se = T, alpha = .5, span = 2)+
+  geom_line(data = plot_model_pred, aes(x=age+2,y = mean, col = run), size = 1)+
+  geom_ribbon(data = plot_model_pred, aes(x = age+2, ymin = ci_lower, ymax = ci_upper, fill = run), alpha = .4) +
   labs(x="Age",y="Mutual Exclusivity effect")+
   facet_grid(alignment~item)+
   theme_few() +
@@ -900,12 +933,26 @@ binnned_data <- data_comb%>%
 
 
 cor_prag <- model_pred%>%
-  filter(model == "pragmatic")%>%
+  filter(model == "pragmatic",
+         run == "no re")%>%
   mutate(age = as.numeric(age) + min(data_comb$age_num),
          age = cut(age, 
                       breaks = c(2,3,4,5),
                       labels = c(2,3,4)))%>%
-  group_by(model, alignment, item, age)%>%
+  group_by(run, alignment, item, age)%>%
+  summarise(model_mean = estimate_mode(pred),
+            model_ci_lower = hdi_lower(pred),
+            model_ci_upper = hdi_upper(pred))
+
+
+cor_prag_re <- model_pred%>%
+  filter(model == "pragmatic",
+         run == "re")%>%
+  mutate(age = as.numeric(age) + min(data_comb$age_num),
+         age = cut(age, 
+                      breaks = c(2,3,4,5),
+                      labels = c(2,3,4)))%>%
+  group_by(run, alignment, item, age)%>%
   summarise(model_mean = estimate_mode(pred),
             model_ci_lower = hdi_lower(pred),
             model_ci_upper = hdi_upper(pred))
@@ -945,19 +992,20 @@ cor_prior <- model_pred%>%
 
 cor_model_pred <- bind_rows(
   cor_prag,
-  cor_global,
-  cor_flat,
-  cor_prior
+  cor_prag_re,
+  #cor_global,
+  #cor_flat,
+  #cor_prior
 )
 
 
 plot_cor_model_pred <- cor_model_pred %>%
   left_join(
     bind_rows(
-      binnned_data%>%mutate(model = "pragmatic"),
-      binnned_data%>%mutate(model = "global"),
-      binnned_data%>%mutate(model = "flat"),
-      binnned_data%>%mutate(model = "prior")
+      binnned_data%>%mutate(run = "no re"),
+      binnned_data%>%mutate(run = "re"),
+      # binnned_data%>%mutate(model = "flat"),
+      # binnned_data%>%mutate(model = "prior")
       )
   )
 
@@ -975,7 +1023,7 @@ ggplot(data = plot_cor_model_pred,aes(x = model_mean, y = data_mean, col = align
   xlim(0,1)+ylim(0,1)+
   xlab("Model")+
   ylab("Data")+
-  facet_grid(model~age)+
+  facet_grid(run~age)+
   theme_few() + 
   scale_colour_ptol(name ="Alignment")
 ```

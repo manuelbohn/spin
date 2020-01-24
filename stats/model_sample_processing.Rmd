@@ -41,8 +41,12 @@ hdi_lower<- function(s){
 ```{r}
 
 model <- bind_rows(
-  read_csv("../webppl/output/samples-reFactor-RE_mcmc-50000_burn25000_lag5_chain1.csv")%>%mutate(chain = 1),
-  read_csv("../webppl/output/samples-reFactor-RE_mcmc-50000_burn25000_lag5_chain2.csv")%>%mutate(chain = 2)
+  read_csv("../webppl/output/samples-reFactor-RE_mcmc-200000_burn25000_lag5_chain1.csv")%>%mutate(chain = 1),
+  read_csv("../webppl/output/samples-reFactor-RE_mcmc-50000_burn25000_lag5_chain2.csv")%>%mutate(chain = 2),
+  read_csv("../webppl/output/samples-reFactor-RE_mcmc-50000_burn25000_lag5_chain3.csv")%>%mutate(chain = 3),
+  read_csv("../webppl/output/samples-reFactor-RE_mcmc-50000_burn25000_lag5_chain4.csv")%>%mutate(chain = 4),
+  read_csv("../webppl/output/samples-reFactor-RE_mcmc-50000_burn25000_lag5_chain4.csv")%>%mutate(chain = 5),
+  read_csv("../webppl/output/samples-reFactor-RE_mcmc-50000_burn25000_lag5_chain4.csv")%>%mutate(chain = 6)
 )
 
 ```
@@ -60,7 +64,7 @@ model_pred <- model %>%
          age = f, 
          pred = g)
 
-saveRDS(model_pred, "../saves/model_pred_re.rds")
+saveRDS(model_pred, "../saves/model_pred.rds")
 
 ```
 
@@ -74,7 +78,7 @@ item_params <-  model %>%
          parameter = d,
          value = g)
 
-saveRDS(item_params, "../saves/item_params_re.rds")
+saveRDS(item_params, "../saves/item_params.rds")
 
 global_params <- model %>%
   filter(b == "parameters")%>%
@@ -83,7 +87,7 @@ global_params <- model %>%
          type = d,
          value = g)
 
-saveRDS(global_params, "../saves/global_params_re.rds")
+saveRDS(global_params, "../saves/global_params.rds")
 
 item_sigma<- model %>%
   filter(b == "sigma",
@@ -102,6 +106,6 @@ subject_sigma<- model %>%
     rename(parameter = c,
          value = g)
 
-saveRDS(subject_sigma, "../saves/subject_sigma_re.rds")
+saveRDS(subject_sigma, "../saves/subject_sigma.rds")
 ```
 
