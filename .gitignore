@@ -14,3 +14,7 @@ stats/kids_novelty_files
 webppl/output/
 
 saves/model_pred.rds
+saves/model_pred_prag.rds
+saves/model_pred_flat.rds
+saves/model_pred_prior.rds
+saves/model_pred_global.rds
