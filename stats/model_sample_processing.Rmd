@@ -40,22 +40,41 @@ hdi_lower<- function(s){
 
 ```{r}
 
+
+  m1 <-read_csv("../webppl/output/samples-reFactor-RE_mcmc-200000_burn100000_lag10_chain1.csv")%>%mutate(chain = 1)
+  m2 <-read_csv("../webppl/output/samples-reFactor-RE_mcmc-200000_burn100000_lag10_chain2.csv")%>%mutate(chain = 2)
+  m3 <-read_csv("../webppl/output/samples-reFactor-RE_mcmc-200000_burn100000_lag10_chain3.csv")%>%mutate(chain = 3)
+  m4 <-read_csv("../webppl/output/samples-reFactor-RE_mcmc-200000_burn100000_lag10_chain4.csv")%>%mutate(chain = 4)
+  m5 <-read_csv("../webppl/output/samples-reFactor-RE_mcmc-200000_burn100000_lag10_chain5.csv")%>%mutate(chain = 5)
+  m6 <-read_csv("../webppl/output/samples-reFactor-RE_mcmc-200000_burn100000_lag10_chain6.csv")%>%mutate(chain = 6)
+
+  
 model <- bind_rows(
-  read_csv("../webppl/output/samples-reFactor-RE_mcmc-200000_burn25000_lag5_chain1.csv")%>%mutate(chain = 1),
-  read_csv("../webppl/output/samples-reFactor-RE_mcmc-50000_burn25000_lag5_chain2.csv")%>%mutate(chain = 2),
-  read_csv("../webppl/output/samples-reFactor-RE_mcmc-50000_burn25000_lag5_chain3.csv")%>%mutate(chain = 3),
-  read_csv("../webppl/output/samples-reFactor-RE_mcmc-50000_burn25000_lag5_chain4.csv")%>%mutate(chain = 4),
-  read_csv("../webppl/output/samples-reFactor-RE_mcmc-50000_burn25000_lag5_chain4.csv")%>%mutate(chain = 5),
-  read_csv("../webppl/output/samples-reFactor-RE_mcmc-50000_burn25000_lag5_chain4.csv")%>%mutate(chain = 6)
+  m1,m2,m3,m4,m5,m6
 )
+
+
+saveRDS(m6, "../saves/m6.rds")
+
+
+model <- bind_rows(
+  readRDS("../saves/m1.rds"),
+  readRDS("../saves/m2.rds"),
+  readRDS("../saves/m3.rds"),
+  readRDS("../saves/m4.rds"),
+  readRDS("../saves/m5.rds"),
+  readRDS("../saves/m6.rds")
+)
+
 
 ```
 
 # Model predictions
 
 ```{r}
-model_pred <- model %>%
-  filter(a == "modelPrediction")%>%
+model_pred_prag <- model %>%
+  filter(a == "modelPrediction",
+         b == "pragmatic")%>%
   select(-a, -h)%>%
   rename(model = b, 
          parameter = c,
@@ -64,7 +83,47 @@ model_pred <- model %>%
          age = f, 
          pred = g)
 
-saveRDS(model_pred, "../saves/model_pred.rds")
+saveRDS(model_pred_prag, "../saves/model_pred_prag.rds")
+
+model_pred <- model %>%
+  filter(a == "modelPrediction",
+         b == "global")%>%
+  select(-a, -h)%>%
+  rename(model = b, 
+         parameter = c,
+         alignment = d,
+         item = e,
+         age = f, 
+         pred = g)
+
+saveRDS(model_pred, "../saves/model_pred_global.rds")
+
+model_pred_flat <- model %>%
+  filter(a == "modelPrediction",
+         b == "flat")%>%
+  select(-a, -h)%>%
+  rename(model = b, 
+         parameter = c,
+         alignment = d,
+         item = e,
+         age = f, 
+         pred = g)
+
+saveRDS(model_pred_flat, "../saves/model_pred_flat.rds")
+
+model_pred_prior <- model %>%
+  filter(a == "modelPrediction",
+         b == "prior")%>%
+  select(-a, -h)%>%
+  rename(model = b, 
+         parameter = c,
+         alignment = d,
+         item = e,
+         age = f, 
+         pred = g)
+
+saveRDS(model_pred_prior, "../saves/model_pred_prior.rds")
+
 
 ```
 
