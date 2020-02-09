@@ -13,8 +13,8 @@ stats/kids_novelty_files
 *.DS_Store
 webppl/output/
 
-saves/model_pred.rds
+saves_old/*
+
+
 saves/model_pred_prag.rds
 saves/model_pred_flat.rds
-saves/model_pred_prior.rds
-saves/model_pred_global.rds

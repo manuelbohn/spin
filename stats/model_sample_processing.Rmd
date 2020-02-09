@@ -7,16 +7,16 @@ output: html_document
 
 ```{r}
 library(tidyverse)
-library(rwebppl)
-library(brms)
-library(coda)
-library(ggthemes)
+#library(rwebppl)
+#library(brms)
+#library(coda)
+#library(ggthemes)
 library(readxl)
-library(ggpubr)
+#library(ggpubr)
 library(stringr)
 library(matrixStats)
 library(data.table)
-library(bigmemory)
+#library(bigmemory)
 
 estimate_mode <- function(s) {
   d <- density(s)
@@ -40,38 +40,55 @@ hdi_lower<- function(s){
 
 ```{r}
 
-
-  m1 <-read_csv("../webppl/output/samples-reFactor-RE_mcmc-200000_burn100000_lag10_chain1.csv")%>%mutate(chain = 1)
-  m2 <-read_csv("../webppl/output/samples-reFactor-RE_mcmc-200000_burn100000_lag10_chain2.csv")%>%mutate(chain = 2)
-  m3 <-read_csv("../webppl/output/samples-reFactor-RE_mcmc-200000_burn100000_lag10_chain3.csv")%>%mutate(chain = 3)
-  m4 <-read_csv("../webppl/output/samples-reFactor-RE_mcmc-200000_burn100000_lag10_chain4.csv")%>%mutate(chain = 4)
-  m5 <-read_csv("../webppl/output/samples-reFactor-RE_mcmc-200000_burn100000_lag10_chain5.csv")%>%mutate(chain = 5)
-  m6 <-read_csv("../webppl/output/samples-reFactor-RE_mcmc-200000_burn100000_lag10_chain6.csv")%>%mutate(chain = 6)
-
-  
 model <- bind_rows(
-  m1,m2,m3,m4,m5,m6
+ fread("../webppl/output/samples-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain4.csv",header = T)%>%mutate(chain = 4),
+ fread("../webppl/output/samples-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain5.csv",header = T)%>%mutate(chain = 5),
+ fread("../webppl/output/samples-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain6.csv",header = T)%>%mutate(chain = 6)
 )
 
-
-saveRDS(m6, "../saves/m6.rds")
-
-
-model <- bind_rows(
-  readRDS("../saves/m1.rds"),
-  readRDS("../saves/m2.rds"),
-  readRDS("../saves/m3.rds"),
-  readRDS("../saves/m4.rds"),
-  readRDS("../saves/m5.rds"),
-  readRDS("../saves/m6.rds")
-)
+# Model Parameters 
 
 
-```
+item_params <-  model %>%
+  filter(b == "items")%>%
+  select(-a,-b, -e, -f, -h)%>%
+    rename(item = c,
+         parameter = d,
+         value = g)
+
+saveRDS(item_params, "../saves/item_params_2.rds")
+
+global_params <- model %>%
+  filter(b == "parameters")%>%
+  select(-a,-b, -e,-f, -h)%>%
+    rename(parameter = c,
+         type = d,
+         value = g)
+
+saveRDS(global_params, "../saves/global_params_2.rds")
+
+item_sigma<- model %>%
+  filter(b == "sigma",
+         c == "global_sem_sigmas")%>%
+  select(-a,-b, -e,-f,-h)%>%
+    rename(parameter = c,
+         type = d,
+         value = g)
+
+saveRDS(item_sigma, "../saves/item_sigma_2.rds")
+
+#subject_sigma<- model %>%
+#  filter(b == "sigma", 
+#         c != "global_sem_sigmas")%>%
+#  select(-a,-b, -e,-f,-h, -d)%>%
+#    rename(parameter = c,
+#         value = g)
+
+#saveRDS(subject_sigma, "../saves/subject_sigma.rds")
 
 # Model predictions
 
-```{r}
+
 model_pred_prag <- model %>%
   filter(a == "modelPrediction",
          b == "pragmatic")%>%
@@ -83,7 +100,7 @@ model_pred_prag <- model %>%
          age = f, 
          pred = g)
 
-saveRDS(model_pred_prag, "../saves/model_pred_prag.rds")
+saveRDS(model_pred_prag, "../saves/model_pred_prag_2.rds")
 
 model_pred <- model %>%
   filter(a == "modelPrediction",
@@ -96,7 +113,7 @@ model_pred <- model %>%
          age = f, 
          pred = g)
 
-saveRDS(model_pred, "../saves/model_pred_global.rds")
+saveRDS(model_pred, "../saves/model_pred_global_2.rds")
 
 model_pred_flat <- model %>%
   filter(a == "modelPrediction",
@@ -109,7 +126,7 @@ model_pred_flat <- model %>%
          age = f, 
          pred = g)
 
-saveRDS(model_pred_flat, "../saves/model_pred_flat.rds")
+saveRDS(model_pred_flat, "../saves/model_pred_flat_2.rds")
 
 model_pred_prior <- model %>%
   filter(a == "modelPrediction",
@@ -122,49 +139,56 @@ model_pred_prior <- model %>%
          age = f, 
          pred = g)
 
-saveRDS(model_pred_prior, "../saves/model_pred_prior.rds")
+saveRDS(model_pred_prior, "../saves/model_pred_prior_2.rds")
 
 
 ```
 
-# Model Parameters 
-
 ```{r}
-item_params <-  model %>%
-  filter(b == "items")%>%
-  select(-a,-b, -e, -f, -h)%>%
-    rename(item = c,
-         parameter = d,
-         value = g)
+bind_rows(
+  readRDS("../saves/item_params_1.rds"),
+  readRDS("../saves/item_params_2.rds")
+)%>%
+  saveRDS(., "../saves/item_params.rds")
 
-saveRDS(item_params, "../saves/item_params.rds")
+bind_rows(
+  readRDS("../saves/global_params_1.rds"),
+  readRDS("../saves/global_params_2.rds")
+)%>%
+  saveRDS(., "../saves/global_params.rds")
 
-global_params <- model %>%
-  filter(b == "parameters")%>%
-  select(-a,-b, -e,-f, -h)%>%
-    rename(parameter = c,
-         type = d,
-         value = g)
+bind_rows(
+  readRDS("../saves/item_sigma_1.rds"),
+  readRDS("../saves/item_sigma_2.rds")
+)%>%
+  saveRDS(., "../saves/item_sigma.rds")
 
-saveRDS(global_params, "../saves/global_params.rds")
 
-item_sigma<- model %>%
-  filter(b == "sigma",
-         c == "global_sem_sigmas")%>%
-  select(-a,-b, -e,-f,-h)%>%
-    rename(parameter = c,
-         type = d,
-         value = g)
+bind_rows(
+  readRDS("../saves/model_pred_prag_1.rds"),
+  readRDS("../saves/model_pred_prag_2.rds")
+)%>%
+  saveRDS(., "../saves/model_pred_prag.rds")
 
-saveRDS(item_sigma, "../saves/item_sigma_re.rds")
 
-subject_sigma<- model %>%
-  filter(b == "sigma", 
-         c != "global_sem_sigmas")%>%
-  select(-a,-b, -e,-f,-h, -d)%>%
-    rename(parameter = c,
-         value = g)
+bind_rows(
+  readRDS("../saves/model_pred_global_1.rds"),
+  readRDS("../saves/model_pred_global_2.rds")
+)%>%
+  saveRDS(., "../saves/model_pred_global.rds")
 
-saveRDS(subject_sigma, "../saves/subject_sigma.rds")
+
+bind_rows(
+  readRDS("../saves/model_pred_flat_1.rds"),
+  readRDS("../saves/model_pred_flat_2.rds")
+)%>%
+  saveRDS(., "../saves/model_pred_flat.rds")
+
+
+bind_rows(
+  readRDS("../saves/model_pred_prior_1.rds"),
+  readRDS("../saves/model_pred_prior_2.rds")
+)%>%
+  saveRDS(., "../saves/model_pred_prior.rds")
 ```
 
