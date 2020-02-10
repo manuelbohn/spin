@@ -490,15 +490,15 @@ ggsave("../graphs/like_talk_free.png", width = 4, height = 2.5, scale = 1.5)
 
 ```{r}
 
-model_pred <- readRDS("../saves/model_pred.rds")
 
 item_params <- readRDS("../saves/item_params.rds")
 
-global_params <- readRDS("../saves/global_params.rds")
+global_params <- readRDS("../saves/global_params.rds")%>%
+  filter(chain != 6)
 
 item_sigma <- readRDS("../saves/item_sigma.rds")
 
-subject_sigma <- readRDS("../saves/subject_sigma_re.rds")
+#subject_sigma <- readRDS("../saves/subject_sigma.rds")
 
 
 item_params <- bind_rows(
@@ -574,8 +574,9 @@ subject_sigma_summary <- subject_sigma %>%
 plot_item_params <- ggplot(item_params, aes(x = value, fill = factor(chain)))+
   geom_density(alpha = 0.3)+
   xlab("Parameter")+
-  facet_grid(run ~parameter + item, scales = 'free')+
-  theme_few()
+  facet_grid(parameter ~ item, scales = 'free')+
+  theme_few()+
+  theme(legend.position = "bottom")
 
 plot_item_params
 ```
@@ -591,8 +592,9 @@ plot_item_params
 plot_global_params <- ggplot(global_params, aes(x = value, fill = factor(chain)))+
   geom_density(alpha = 0.3)+
   xlab("Parameter")+
-  facet_grid(run~type + parameter, scales = 'free')+
-  theme_few()
+  facet_grid(type ~ parameter, scales = 'free')+
+  theme_few()+
+  theme(legend.position = "bottom")
 
 plot_global_params
 ```
@@ -603,7 +605,7 @@ plot_global_params
 plot_item_sigma <- ggplot(item_sigma, aes(x = value, fill = factor(chain)))+
   geom_density(alpha = 0.3)+
   xlab("Sigma")+
-  facet_grid(run ~type + parameter, scales = 'free')+
+  facet_grid(type ~ parameter, scales = 'free')+
   theme_few()
 
 plot_item_sigma
@@ -614,6 +616,7 @@ plot_item_sigma
 plotg_subj_sigma <- ggplot(subject_sigma, aes(x = value, fill = factor(chain)))+
   geom_density(alpha = 0.3)+
   xlab("Subject Sigma")+
+  facet_grid(~parameter)+
   theme_few()
 
 plotg_subj_sigma
@@ -789,15 +792,17 @@ cor_prag <- model_pred_prag%>%
             model_ci_upper = hdi_upper(pred))
 
 
-# cor_prag_chain <- model_pred_prag%>%
-#   mutate(age = as.numeric(age) + min(data_comb$age_num),
-#          age = cut(age, 
-#                       breaks = c(2,3,4,5),
-#                       labels = c(2,3,4)))%>%
-#   group_by(chain, alignment, item, age)%>%
-#   summarise(model_mean = estimate_mode(pred),
-#             model_ci_lower = hdi_lower(pred),
-#             model_ci_upper = hdi_upper(pred))
+cor_prag_chain <- model_pred_prag%>%
+  mutate(age = as.numeric(age) + min(data_comb$age_num),
+         age = cut(age,
+                      breaks = c(2,3,4,5),
+                      labels = c(2,3,4)))%>%
+  group_by(chain, alignment, item, age)%>%
+  summarise(model_mean = estimate_mode(pred),
+            model_ci_lower = hdi_lower(pred),
+            model_ci_upper = hdi_upper(pred))
+
+model_pred_global<- readRDS("../saves/model_pred_global.rds")
 
 cor_global <- model_pred_global%>%
   mutate(age = as.numeric(age) + min(data_comb$age_num),
@@ -823,38 +828,38 @@ cor_flat <- model_pred_flat%>%
 
 model_pred_prior<- readRDS("../saves/model_pred_prior.rds")
 
-# cor_prior <- model_pred_prior%>%
-#   mutate(age = as.numeric(age) + min(data_comb$age_num),
-#          age = cut(age, 
-#                       breaks = c(2,3,4,5),
-#                       labels = c(2,3,4)))%>%
-#   group_by(model, alignment, item, age)%>%
-#   summarise(model_mean = estimate_mode(pred),
-#             model_ci_lower = hdi_lower(pred),
-#             model_ci_upper = hdi_upper(pred))
+cor_prior <- model_pred_prior%>%
+  mutate(age = as.numeric(age) + min(data_comb$age_num),
+         age = cut(age,
+                      breaks = c(2,3,4,5),
+                      labels = c(2,3,4)))%>%
+  group_by(model, alignment, item, age)%>%
+  summarise(model_mean = estimate_mode(pred),
+            model_ci_lower = hdi_lower(pred),
+            model_ci_upper = hdi_upper(pred))
 
 cor_model_pred <- bind_rows(
-  #cor_prag_chain,
-  cor_prag,
-  cor_global,
-  cor_flat,
-  cor_prior
+  cor_prag_chain,
+  # cor_prag,
+  # cor_global,
+  # cor_flat,
+  # cor_prior
 )
 
 
 plot_cor_model_pred <- cor_model_pred %>%
   left_join(
     bind_rows(
-      # binnned_data%>%mutate(model = "pragmatic", chain = 1),
-      # binnned_data%>%mutate(model = "pragmatic", chain = 2),
-      # binnned_data%>%mutate(model = "pragmatic", chain = 3),
-      # binnned_data%>%mutate(model = "pragmatic", chain = 4),
-      # binnned_data%>%mutate(model = "pragmatic", chain = 5),
-      # binnned_data%>%mutate(model = "pragmatic", chain = 6)
-      binnned_data%>%mutate(model = "pragmatic"),
-      binnned_data%>%mutate(model = "global"),
-      binnned_data%>%mutate(model = "flat"),
-      binnned_data%>%mutate(model = "prior")
+      binnned_data%>%mutate(model = "pragmatic", chain = 1),
+      binnned_data%>%mutate(model = "pragmatic", chain = 2),
+      binnned_data%>%mutate(model = "pragmatic", chain = 3),
+      binnned_data%>%mutate(model = "pragmatic", chain = 4),
+      binnned_data%>%mutate(model = "pragmatic", chain = 5),
+      binnned_data%>%mutate(model = "pragmatic", chain = 6)
+      # binnned_data%>%mutate(model = "pragmatic"),
+      # binnned_data%>%mutate(model = "global"),
+      # binnned_data%>%mutate(model = "flat"),
+      # binnned_data%>%mutate(model = "prior")
       )
   )
 
@@ -872,7 +877,7 @@ ggplot(data = plot_cor_model_pred,aes(x = model_mean, y = data_mean, col = align
   xlim(0,1)+ylim(0,1)+
   xlab("Model")+
   ylab("Data")+
-  facet_grid(model~age)+
+  facet_grid(chain~age)+
   theme_few() + 
   scale_colour_ptol(name ="Alignment")+
   guides(col = F)
@@ -893,29 +898,33 @@ plot_model_pred_flat <- model_pred_flat%>%
             ci_upper = hdi_upper(pred))
 
 
-log_like_prag <- data_comb %>%
+data_comb %>%
   select(-age)%>%
-  mutate(age = age_month)%>%
-  left_join(plot_model_pred_prag)%>%
-  mutate(like = ifelse(correct == 1, mean, 1 - mean),
+  mutate(age = age_month,
+         item = as.character(item))%>%
+  left_join(model_pred_prag)%>%
+  mutate(like = ifelse(correct == 1, pred, 1 - pred),
          log_like_prag = log(like))%>%
-  select(age, alignment,item,log_like_prag)
+  select(chain, iteration, age, alignment,item,log_like_prag)%>%
+  saveRDS(.,"../saves/log_like_prag")
 
 log_like_global <- data_comb %>%
   select(-age)%>%
-  mutate(age = age_month)%>%
-  left_join(plot_model_pred_global)%>%
-  mutate(like = ifelse(correct == 1, mean, 1 - mean),
+  mutate(age = age_month,
+         item = as.character(item))%>%
+  left_join(model_pred_global)%>%
+  mutate(like = ifelse(correct == 1, pred, 1 - pred),
          log_like_global = log(like))%>%
-  select(age, alignment,item,log_like_global)
+  select(chain,iteration, age, alignment,item,log_like_global)
 
 log_like_flat <- data_comb %>%
   select(-age)%>%
-  mutate(age = age_month)%>%
-  left_join(plot_model_pred_flat)%>%
-  mutate(like = ifelse(correct == 1, mean, 1 - mean),
+  mutate(age = age_month,
+         item = as.character(item))%>%
+  left_join(model_pred_flat)%>%
+  mutate(like = ifelse(correct == 1, pred, 1 - pred),
          log_like_flat = log(like))%>%
-  select(age, alignment,item,log_like_flat)
+  select(chain,iteration,age, alignment,item,log_like_flat)
 
 
 model_comp <- log_like_prag%>%
