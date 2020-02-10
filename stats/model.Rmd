@@ -8,7 +8,7 @@ output: html_document
 ```{r}
 library(tidyverse)
 library(rwebppl)
-library(brms)
+#library(brms)
 library(coda)
 library(ggthemes)
 library(readxl)
@@ -17,7 +17,7 @@ library(stringr)
 library(matrixStats)
 library(data.table)
 library(bigmemory)
-library(langcog)
+#library(langcog)
 
 estimate_mode <- function(s) {
   d <- density(s)
@@ -890,51 +890,73 @@ ggsave("../graphs/cor_model_data.pdf", width = 8, height = 3.5, scale = 1)
 ## Model comparison
 
 ```{r}
-
-plot_model_pred_flat <- model_pred_flat%>%
-  group_by(alignment, item, age)%>%
-  summarise(mean = estimate_mode(pred),
-            ci_lower = hdi_lower(pred),
-            ci_upper = hdi_upper(pred))
-
-
-data_comb %>%
+log_like_prag <- data_comb %>%
   select(-age)%>%
   mutate(age = age_month,
          item = as.character(item))%>%
-  left_join(model_pred_prag)%>%
+  left_join(readRDS("../saves/model_pred_prag.rds"))%>%
   mutate(like = ifelse(correct == 1, pred, 1 - pred),
-         log_like_prag = log(like))%>%
-  select(chain, iteration, age, alignment,item,log_like_prag)%>%
-  saveRDS(.,"../saves/log_like_prag")
+         log_like = log(like),
+         model = "prag",
+         id = 1:length(log_like))%>%
+  select(id, model,chain, iteration, age, alignment,item,log_like)
+
+
+gc()
 
 log_like_global <- data_comb %>%
   select(-age)%>%
   mutate(age = age_month,
          item = as.character(item))%>%
-  left_join(model_pred_global)%>%
+  left_join(readRDS("../saves/model_pred_global.rds"))%>%
   mutate(like = ifelse(correct == 1, pred, 1 - pred),
-         log_like_global = log(like))%>%
-  select(chain,iteration, age, alignment,item,log_like_global)
+         log_like = log(like),
+         model = "global",
+         id = 1:length(log_like))%>%
+  select(id, model,chain,iteration, age, alignment,item,log_like)
+
+gc()
+
+saveRDS(log_like_global, "../saves/log_like_global.rds")
+
+
+comp <- bind_rows(
+  readRDS("../saves/log_like_prag.rds")%>%mutate(id = 1:length(log_like)), 
+  readRDS("../saves/log_like_global.rds")%>%mutate(id = 1:length(log_like))
+)%>%
+  spread(model, log_like)%>%
+  mutate(prag_vs_global = prag - global)
+
+
 
 log_like_flat <- data_comb %>%
   select(-age)%>%
   mutate(age = age_month,
          item = as.character(item))%>%
-  left_join(model_pred_flat)%>%
+  left_join(readRDS("../saves/model_pred_flat.rds"))%>%
   mutate(like = ifelse(correct == 1, pred, 1 - pred),
          log_like_flat = log(like))%>%
   select(chain,iteration,age, alignment,item,log_like_flat)
 
+gc()
 
-model_comp <- log_like_prag%>%
+log_like_prior <- data_comb %>%
+  select(-age)%>%
+  mutate(age = age_month,
+         item = as.character(item))%>%
+  left_join(readRDS("../saves/model_pred_prior.rds"))%>%
+  mutate(like = ifelse(correct == 1, pred, 1 - pred),
+         log_like_prior = log(like))%>%
+  select(chain,iteration,age, alignment,item,log_like_prior)
+
+gc()
+
+prag_vs_global <- log_like_prag%>%
   left_join(log_like_global)%>%
-  left_join(log_like_flat)%>%
-  mutate(prag_vs_global = log_like_prag - log_like_global,
-         prag_vs_flat = log_like_prag - log_like_flat)%>%
-  na.omit(prag_vs_global,prag_vs_flat)%>%
-  summarize(prag_vs_global = logSumExp(prag_vs_global),
-            prag_vs_flat = logSumExp(prag_vs_flat))
+  mutate(prag_vs_global = log_like_prag - log_like_global)%>%
+  na.omit(prag_vs_global)%>%
+  summarize(prag_vs_global = logSumExp(prag_vs_global))%>%
+  saveRDS(.,"../saves/model_comp_prag_vs_global.rds")
 
 
 
@@ -991,7 +1013,48 @@ model_comp <- log_like_2%>%
 
 log_like_model_2_free <- log_like_model_2%>%
   filter(noise == "parameter_free")
-  
+ 
+
+xx %>%
+  spread(model, log_like)
+
+
+comp <- comp%>%
+  na.omit(prag_vs_global)
+
+
+p_g_comp <- comp %>%
+  summarize(prag_vs_global = logSumExp(prag_vs_global))
+
+
+model_pred_prag
+
+bind_rows(
+
+  data_comb %>%
+    mutate(age = age_month,
+    item = as.character(item))%>%
+    left_join(model_pred_prag)%>%
+    mutate(like = ifelse(correct == 1, pred, 1 - pred),
+         log_like = log(like),
+         model = "prag",
+         id = 1:length(log_like))%>%
+  select(id, model,chain,iteration, age, alignment,item,log_like),
+
+
+  data_comb %>%
+    left_join(model_pred_prag)%>%
+    mutate(like = ifelse(correct == 1, pred, 1 - pred),
+         log_like = log(like),
+         model = "global")
+)%>%
+  spread(model, log_like)%>%
+  mutate(prag_vs_global = prag - global)
+
+
+%>%
+  summarise(logBF = logSumExp(prag_vs_global))
+
 
 ```
 

@@ -34,6 +34,45 @@ hdi_lower<- function(s){
   return(m["var1","lower"])
 }
 ```
+```{r}
+
+```
+
+# remove chain 6
+
+```{r}
+readRDS("../saves/item_params.rds")%>%
+  filter(chain != 6)%>%
+  saveRDS(., "../saves/item_params.rds")
+
+readRDS("../saves/global_params.rds")%>%
+  filter(chain != 6)%>%
+  saveRDS(., "../saves/global_params.rds")
+
+readRDS("../saves/item_sigma.rds")%>%
+  filter(chain != 6)%>%
+  saveRDS(., "../saves/item_sigma.rds")
+
+readRDS("../saves/model_pred_prag.rds")%>%
+  filter(chain != 6)%>%
+  saveRDS(., "../saves/model_pred_prag.rds")
+
+readRDS("../saves/model_pred_global.rds")%>%
+  filter(chain != 6)%>%
+  saveRDS(., "../saves/model_pred_global.rds")
+
+readRDS("../saves/model_pred_flat.rds")%>%
+  filter(chain != 6)%>%
+  saveRDS(., "../saves/model_pred_flat.rds")
+
+readRDS("../saves/model_pred_prior.rds")%>%
+  filter(chain != 6)%>%
+  saveRDS(., "../saves/model_pred_prior.rds")
+
+
+
+```
+
 
 
 # Read in raw file
@@ -41,9 +80,11 @@ hdi_lower<- function(s){
 ```{r}
 
 model <- bind_rows(
- fread("../webppl/output/samples-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain4.csv",header = T)%>%mutate(chain = 4),
- fread("../webppl/output/samples-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain5.csv",header = T)%>%mutate(chain = 5),
- fread("../webppl/output/samples-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain6.csv",header = T)%>%mutate(chain = 6)
+ fread("../webppl/output/samples-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain4.csv",header = T)%>%mutate(chain = 1),
+fread("../webppl/output/samples-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain4.csv",header = T)%>%mutate(chain = 2), 
+fread("../webppl/output/samples-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain4.csv",header = T)%>%mutate(chain = 3),
+ fread("../webppl/output/samples-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain5.csv",header = T)%>%mutate(chain = 4),
+ fread("../webppl/output/samples-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain6.csv",header = T)%>%mutate(chain = 5)
 )
 
 # Model Parameters 
@@ -56,7 +97,7 @@ item_params <-  model %>%
          parameter = d,
          value = g)
 
-saveRDS(item_params, "../saves/item_params_2.rds")
+saveRDS(item_params, "../saves/item_params.rds")
 
 global_params <- model %>%
   filter(b == "parameters")%>%

@@ -1,0 +1,165 @@
+---
+title: "Model Comparison"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+#library(rwebppl)
+#library(brms)
+#library(coda)
+#library(ggthemes)
+library(readxl)
+#library(ggpubr)
+library(matrixStats)
+library(data.table)
+#library(bigmemory)
+
+estimate_mode <- function(s) {
+  d <- density(s)
+  return(d$x[which.max(d$y)])
+}
+
+
+hdi_upper<- function(s){
+  m <- HPDinterval(mcmc(s))
+  return(m["var1","upper"])
+}
+
+hdi_lower<- function(s){
+  m <- HPDinterval(mcmc(s))
+  return(m["var1","lower"])
+}
+```
+# Data 
+
+```{r}
+data_comb_pre <- read_csv("../data/combination.csv") 
+
+aoa_ratings_all <- read_xlsx(path = "../data/words_aoa_ratings.xlsx", sheet = 1)
+
+aoa_ratings <- aoa_ratings_all %>%
+  filter(Word %in% data_comb_pre$item )%>%
+  mutate(mean_aoa = as.numeric(Rating.Mean),
+         item = Word)%>%
+  select(item,mean_aoa)
+
+data_comb <- data_comb_pre%>%
+  left_join(aoa_ratings)%>%
+  ungroup()%>%
+  mutate(item = fct_reorder(factor(item), mean_aoa), 
+         source = "Data")
+```
+
+
+# Model comparison
+
+# Pragmatic vs Global
+
+```{r}
+prag_global <- bind_rows(
+
+  data_comb %>%
+    select(-age)%>%
+    mutate(age = age_month,
+           item = as.character(item))%>%
+    left_join(readRDS("../saves/model_pred_prag.rds"))%>%
+    mutate(like = ifelse(correct == 1, pred, 1 - pred),
+           log_like = log(like),
+           model = "prag",
+           id = 1:length(log_like))%>%
+  select(id, model,chain,iteration, age, alignment,item,log_like),
+
+  data_comb %>%
+    select(-age)%>%
+    mutate(age = age_month,
+           item = as.character(item))%>%
+    left_join(readRDS("../saves/model_pred_global.rds"))%>%
+    mutate(like = ifelse(correct == 1, pred, 1 - pred),
+           log_like = log(like),
+           model = "global",
+           id = 1:length(log_like))%>%
+  select(id, model,chain,iteration, age, alignment,item,log_like),
+  
+)%>%
+  spread(model, log_like)%>%
+  mutate(prag_vs_global = prag - global) %>%
+  na.omit(prag_vs_global) %>%
+  summarise(prag_vs_global = logSumExp(prag_vs_global))
+```
+
+
+# Pragmatic vs Flat
+
+```{r}
+
+comp <- bind_rows(
+
+  data_comb %>%
+    select(-age)%>%
+    mutate(age = age_month,
+           item = as.character(item))%>%
+    left_join(readRDS("../saves/model_pred_prag.rds"))%>%
+    mutate(like = ifelse(correct == 1, pred, 1 - pred),
+           log_like = log(like),
+           model = "prag",
+           id = 1:length(log_like))%>%
+  select(id, model,chain,iteration, age, alignment,item,log_like),
+  
+  data_comb %>%
+    select(-age)%>%
+    mutate(age = age_month,
+           item = as.character(item))%>%
+    left_join(readRDS("../saves/model_pred_flat.rds"))%>%
+    mutate(like = ifelse(correct == 1, pred, 1 - pred),
+           log_like = log(like),
+           model = "flat",
+           id = 1:length(log_like))%>%
+  select(id, model,chain,iteration, age, alignment,item,log_like)
+)%>%
+  spread(model, log_like)%>%
+  mutate(prag_vs_flat = prag - flat)
+
+
+
+```
+
+
+# Pragmatic vs prior
+
+```{r}
+
+comp <- bind_rows(
+
+  data_comb %>%
+    select(-age)%>%
+    mutate(age = age_month,
+           item = as.character(item))%>%
+    left_join(readRDS("../saves/model_pred_prag.rds"))%>%
+    mutate(like = ifelse(correct == 1, pred, 1 - pred),
+           log_like = log(like),
+           model = "prag",
+           id = 1:length(log_like))%>%
+  select(id, model,chain,iteration, age, alignment,item,log_like),
+  
+  data_comb %>%
+    select(-age)%>%
+    mutate(age = age_month,
+           item = as.character(item))%>%
+    left_join(readRDS("../saves/model_pred_prior.rds"))%>%
+    mutate(like = ifelse(correct == 1, pred, 1 - pred),
+           log_like = log(like),
+           model = "prior",
+           id = 1:length(log_like))%>%
+  select(id, model,chain,iteration, age, alignment,item,log_like),
+  
+)%>%
+  spread(model, log_like)%>%
+  mutate(prag_vs_prior = prag - prior)
+
+
+
+```
+
+
+
