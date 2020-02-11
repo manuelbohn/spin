@@ -66,35 +66,43 @@ test_prag <- readRDS("../saves/test_prag.rds")
 test_global <- readRDS("../saves/test_global.rds")
 test_flat <- readRDS("../saves/test_flat.rds")
 
+d_model_comp.summarized <- d_model_comp %>% 
+  group_by(alignment, item, age) %>% 
+  summarize(n=n(), k = sum(correct))
+
+
 # join predictions with the data 
 
 bind_rows(
   
   test_prag %>%
-    right_join(d_model_comp)%>%
+    right_join(d_model_comp.summarized) %>%
     mutate(id = 1:length(pred))%>%
-    select(id, model,chain,iteration, age, alignment,item,pred, correct),
+    select(id, model,chain,iteration, age, alignment,item,pred, n, k),
    
   test_global %>%
-    right_join(d_model_comp)%>%
+    right_join(d_model_comp.summarized)%>%
     mutate(id = 1:length(pred))%>%
-    select(id, model,chain,iteration, age, alignment,item,pred, correct),
+    select(id, model,chain,iteration, age, alignment,item,pred, n, k),
   
    test_flat %>%
-    right_join(d_model_comp)%>%
+    right_join(d_model_comp.summarized)%>%
     mutate(id = 1:length(pred))%>%
-    select(id, model,chain,iteration, age, alignment,item,pred, correct)
-)%>%
-  mutate(log_like = log(ifelse(correct == 1, pred, 1 - pred)))%>% # calculate log likelihood
-  select(-pred, - correct)%>%
-  spread(model, log_like)%>%
+    select(id, model,chain,iteration, age, alignment,item,pred, n, k)
+) %>%
+  mutate(
+    log_like = dbinom(x = k, size = n, prob = pred, log = TRUE)
+  ) %>%
+  group_by(chain, model, iteration) %>%
+  summarize(total_likelihood_sample = sum(log_like)) %>%
+  group_by(chain, model) %>%
+  summarize(marginal_likelihood = matrixStats::logSumExp(total_likelihood_sample)) %>%
+  spread(model, marginal_likelihood) %>%
   mutate(prag_vs_global = pragmatic - global, # subtract likelihood for each predictions and model
          prag_vs_flat= pragmatic - flat,
          global_vs_flat = global - flat) %>%
-  summarise(prag_vs_global = sum(prag_vs_global), # sum up likelihood difference to get log Bayes factor
-            prag_vs_flat = sum(prag_vs_flat),
-            global_vs_flat = sum(global_vs_flat))%>%
-  gather(model, logBF)
+  select(-pragmatic, -global, -flat) %>%
+  gather(model, logBF, -chain)
 
 
 ```
