@@ -63,7 +63,9 @@ d_model_comp <- data_comb%>%
 
 # load model predicitons
 test_prag <- readRDS("../saves/test_prag.rds")
+
 test_global <- readRDS("../saves/test_global.rds")
+
 test_flat <- readRDS("../saves/test_flat.rds")
 
 d_model_comp.summarized <- d_model_comp %>% 
@@ -77,18 +79,15 @@ bind_rows(
   
   test_prag %>%
     right_join(d_model_comp.summarized) %>%
-    mutate(id = 1:length(pred))%>%
-    select(id, model,chain,iteration, age, alignment,item,pred, n, k),
+    select(model,chain,iteration, age, alignment,item,pred, n, k),
    
   test_global %>%
     right_join(d_model_comp.summarized)%>%
-    mutate(id = 1:length(pred))%>%
-    select(id, model,chain,iteration, age, alignment,item,pred, n, k),
+    select(model,chain,iteration, age, alignment,item,pred, n, k),
   
    test_flat %>%
     right_join(d_model_comp.summarized)%>%
-    mutate(id = 1:length(pred))%>%
-    select(id, model,chain,iteration, age, alignment,item,pred, n, k)
+    select(model,chain,iteration, age, alignment,item,pred, n, k)
 ) %>%
   mutate(
     log_like = dbinom(x = k, size = n, prob = pred, log = TRUE)
