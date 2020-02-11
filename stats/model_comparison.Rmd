@@ -55,18 +55,8 @@ d_model_comp <- data_comb%>%
 
 # Model comparison
 
-## Dummy example for MH
 
 ```{r}
-# Model prediction files are very large - can't put them on github as is 
-# files below contain the two iterations for each model (1286 & 7185)
-
-# load model predicitons
-test_prag <- readRDS("../saves/test_prag.rds")
-
-test_global <- readRDS("../saves/test_global.rds")
-
-test_flat <- readRDS("../saves/test_flat.rds")
 
 d_model_comp.summarized <- d_model_comp %>% 
   group_by(alignment, item, age) %>% 
@@ -75,17 +65,21 @@ d_model_comp.summarized <- d_model_comp %>%
 
 # join predictions with the data 
 
-bind_rows(
+model_comp <- bind_rows(
   
-  test_prag %>%
+  readRDS("../saves/model_pred_prag.rds") %>%
     right_join(d_model_comp.summarized) %>%
     select(model,chain,iteration, age, alignment,item,pred, n, k),
    
-  test_global %>%
+  readRDS("../saves/model_pred_global.rds") %>%
     right_join(d_model_comp.summarized)%>%
     select(model,chain,iteration, age, alignment,item,pred, n, k),
   
-   test_flat %>%
+   readRDS("../saves/model_pred_flat.rds") %>%
+    right_join(d_model_comp.summarized)%>%
+    select(model,chain,iteration, age, alignment,item,pred, n, k),
+  
+  readRDS("../saves/model_pred_prior.rds") %>%
     right_join(d_model_comp.summarized)%>%
     select(model,chain,iteration, age, alignment,item,pred, n, k)
 ) %>%
@@ -96,13 +90,15 @@ bind_rows(
   summarize(total_likelihood_sample = sum(log_like)) %>%
   group_by(chain, model) %>%
   summarize(marginal_likelihood = matrixStats::logSumExp(total_likelihood_sample)) %>%
-  spread(model, marginal_likelihood) %>%
+  spread(model, marginal_likelihood)%>%
   mutate(prag_vs_global = pragmatic - global, # subtract likelihood for each predictions and model
          prag_vs_flat= pragmatic - flat,
-         global_vs_flat = global - flat) %>%
-  select(-pragmatic, -global, -flat) %>%
+         prag_vs_prior= pragmatic - prior,
+         global_vs_flat = global - flat,
+         global_vs_prior = global - prior,
+         flat_vs_prior = flat - prior) %>%
+  select(-pragmatic, -global, -flat, - prior) %>%
   gather(model, logBF, -chain)
-
 
 ```
 

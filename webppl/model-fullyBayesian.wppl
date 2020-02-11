@@ -506,14 +506,14 @@ var header = "iteration,a,b,c,d,e,f,g,h"
 
 // var randomNumberForFile = Math.round(uniform(0, 1000))
 
+var totalIterations = 10000, lag =  10;
 // var totalIterations = 50000, lag =  5;
-// var totalIterations = 50000, lag =  5;
-// var samples = totalIterations/lag, burn = totalIterations / 2;
+var samples = totalIterations/lag, burn = totalIterations / 2;
 
-var totalIterations = 100
-var samples = totalIterations
-var burn = 0
-var lag = 0z
+//var totalIterations = 100
+//var samples = totalIterations
+//var burn = 0
+//var lag = 0
 var output_file = 'output/samples-fullyBayesian-pragmatic-reFactor-noRandomEffects_mcmc-' + totalIterations + '_burn' + burn + '_lag' + lag + '_chain' + chain + '.csv'
 var callback = webpplSampleWriter.streamQueryCSV(output_file, header);
 
