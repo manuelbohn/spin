@@ -63,34 +63,25 @@ d_model_comp <- data_comb%>%
 
 # load model predicitons
 test_prag <- readRDS("../saves/test_prag.rds")
+
 test_global <- readRDS("../saves/test_global.rds")
+
 test_flat <- readRDS("../saves/test_flat.rds")
 
-# join predictions with the data 
 
 bind_rows(
-  
-  test_prag %>%
-    right_join(d_model_comp)%>%
-    mutate(id = 1:length(pred))%>%
-    select(id, model,chain,iteration, age, alignment,item,pred, correct),
-   
-  test_global %>%
-    right_join(d_model_comp)%>%
-    mutate(id = 1:length(pred))%>%
-    select(id, model,chain,iteration, age, alignment,item,pred, correct),
-  
-   test_flat %>%
-    right_join(d_model_comp)%>%
-    mutate(id = 1:length(pred))%>%
-    select(id, model,chain,iteration, age, alignment,item,pred, correct)
+  test_prag, 
+  test_global, 
+  test_flat
 )%>%
-  mutate(log_like = log(ifelse(correct == 1, pred, 1 - pred)))%>% # calculate log likelihood
-  select(-pred, - correct)%>%
-  spread(model, log_like)%>%
-  mutate(prag_vs_global = pragmatic - global, # subtract likelihood for each predictions and model
-         prag_vs_flat= pragmatic - flat,
-         global_vs_flat = global - flat) %>%
+  spread(model, pred)%>%
+  right_join(d_model_comp)%>%
+  mutate(log_like_prag = log(ifelse(correct == 1, pragmatic, 1 - pragmatic)),
+         log_like_global = log(ifelse(correct == 1, global, 1 - global)),
+         log_like_flat = log(ifelse(correct == 1, flat, 1 - flat)))%>%
+  mutate(prag_vs_global = log_like_prag - log_like_global, # subtract likelihood for each predictions and model
+         prag_vs_flat= log_like_prag - log_like_flat,
+         global_vs_flat = log_like_global - log_like_flat) %>%
   summarise(prag_vs_global = sum(prag_vs_global), # sum up likelihood difference to get log Bayes factor
             prag_vs_flat = sum(prag_vs_flat),
             global_vs_flat = sum(global_vs_flat))%>%
