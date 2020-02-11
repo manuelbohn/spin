@@ -3,7 +3,7 @@ title: "Model"
 output: html_document
 ---
 
-# Model utilities
+# Packages & data
 
 ```{r}
 library(tidyverse)
@@ -65,502 +65,28 @@ data_comb_plot<-data_comb%>%
 
 ```
 
-```{r rsaUtils}
-rsaUtils <- '
-var all_objects = [
-{ shape: "novel_object"},  
-{ shape: "familiar_object"}
-]
-
-var labels = ["novel_word","familiar_word"]
-
-
-var lexicon1 = function(utterance, obj, sem_knowledge){
-  utterance.label == "novel_word" ? obj.shape == "novel_object" :
-  utterance.label == "familiar_word" ? flip(sem_knowledge) ? 
-    obj.shape == "familiar_object" :  
-  flip() ? obj.shape == "familiar_object" : obj.shape == "novel_object" : 
-  true
-}
-
-var lexicon2 = function(utterance, obj, sem_knowledge){
-  utterance.label == "novel_word" ? obj.shape == "familiar_object" :
-  utterance.label == "familiar_word" ? flip(sem_knowledge) ? 
-    obj.shape == "familiar_object" : 
-  flip() ? obj.shape == "familiar_object" : obj.shape == "novel_object" : 
-  true
-}
-
-var lexiconObjects = {
-"novel_word = novel_object": {
-novel_object: "novel_word", familiar_object: "familiar_word"
-},
-"novel_word = familiar_object": {
-novel_object: "familiar_word", familiar_object: "familiar_word"
-},
-}
-
-var lexiconObject = {
-"novel_word = novel_object": lexicon1,
-"novel_word = familiar_object" : lexicon2
-}
-
-var utterancePrior = function(){ return uniformDraw([ {label: "novel_word"}, {label: "familiar_word"}]) }
-
-var LexiconPrior = Categorical({vs: ["novel_word = novel_object","novel_word = familiar_object" ], ps: [1, 1]})
-
-var addNoise = function(dist, noiseParam){
-   Infer({model: function(){ 
-      return flip(noiseParam) ? uniformDraw([0, 1]) : sample(dist)
-    }
-   })
-}
-
-
-var foreach = function(fn, lst) {
-    var foreach_ = function(i) {
-        if (i < lst.length) {
-            fn(lst[i]);
-            foreach_(i + 1);
-        }
-    };
-    foreach_(0);
-};
-
-var logistic = function(x) {1 / (1 + Math.exp(-x))}
-
-var levels = function(df, label){
-  return _.uniq(_.map(df, label));
-}
-'
-```
-
-```{r rsa model}
-rsaModel <- '
-var literalListener = cache(function(utterance, priorProbs, sem_knowledge){
-  Infer({method: "enumerate", model: function(){
-    var lexiconName = sample(LexiconPrior); 
-    var lexicon = lexiconObject[lexiconName];
-    var obj = sample( Categorical({vs: all_objects, ps: [.5,.5]}));
-    if ("label" in utterance) {
-      var truthValue = lexicon(utterance, obj, sem_knowledge);
-      condition(truthValue)
-    }
-    return obj.shape 
-  }})
-}, 10000)
-
-var speaker = cache(function(obj, lexiconName, priorProbs, speakerOptimality, sem_knowledge){
-  Infer({method: "enumerate", model: function(){
-    var utterance = utterancePrior();
-    var L0 = literalListener(utterance, priorProbs, sem_knowledge);
-    factor(speakerOptimality * L0.score(obj.shape))
-    return utterance
-  }})
-}, 10000)
-
-var pragmaticListener = cache(function(utterance, priorProbs, speakerOptimality, sem_knowledge){
-  Infer({method: "enumerate", model: function(){
-    var lexiconName = sample(LexiconPrior);
-    var obj = sample( Categorical({vs: all_objects, ps: priorProbs}));
-    var S1 = speaker(obj, lexiconName, priorProbs, speakerOptimality, sem_knowledge);
-    observe(S1, utterance)
-    return obj.shape == "novel_object" ? 1 : 0
-  }})
-}, 10000)
-
-'
-```
-
-# Model
-
-## Combination Model
-
-```{r work in progress}
-sem_subj_str <- '
-
-var data = dataFromR.data
-var priorData = dataFromR.data
-
-var priorProbs = [.5,.5]
-
-var familiars = levels(data, "item")
-var subjects = levels(data, "subid")
-var priorSubjects = levels(priorData, "subid")
-
-var model  = function(){
-
-
-//////////////// Prior ////////////////////////
-
- var prior_slope = uniformDrift({a: -2, b: 2, width: 0.4})
-  var prior_int = uniformDrift({a: -2, b: 2, width: 0.4})
-
-  var prior_subject_sigma = uniformDrift({a: 0, b:3, width: 0.2}) 
-
-  var priorSampleSub = function(age){
-    return gaussianDrift({ mu: age, sigma: prior_subject_sigma, width: 0.1 })
-  }
-
-  foreach(function(subid){
-      var priorSubjectData = _.filter(priorData, {subid: subid})
-
-      //display(subjects)
-
-      var subj_age = priorSubjectData[0].age
-
-      var subjectPrior = priorSampleSub(subj_age)
-
-    foreach(function(row){
-  
-      var priorReg = logistic(prior_int + prior_slope * subjectPrior)
-
-      var prior = [priorReg, 1-priorReg]
-
-      var modelPredictions = Infer({method: "enumerate", model: function(){
-      var obj = sample( Categorical({vs: all_objects, ps: prior}));
-      return obj.shape == "novel_object" ? 1 : 0
-       }})
-    
-     observe(modelPredictions, row.correct)
-
-    }, priorSubjectData)
-
-  }, priorSubjects)
-
-  query.add(["parameter","parameters", "prior"], [prior_int, prior_slope])
-  query.add(["parameter","sigma", "prior"], ["NA", prior_subject_sigma])
-
-
-
-//////////////// Semantic knowledge and speaker optimality ////////////////////////
-
-  var speakerOptimalityParameters = {
-    intercept: uniformDrift({a: -3, b: 3, width: 0.5}),
-    slope: uniformDrift({a: 0, b: 4, width: 0.5})
-  }
-
-  var globalLineParameters = {
-    intercept: uniformDrift({a: -3, b: 3, width: 0.5}),
-    slope: uniformDrift({a: 0, b: 2, width: 0.5})
-  }
-
-  var itemVariability = {
-    intercept: uniformDrift({a: 0, b: 2, width: 0.2}),
-    slope: uniformDrift({a: 0, b: 1, width: 0.2})
-  }
-
-  // conceptually it might not make sense to have two sigmas, but maybe it does
-  // intercept sigma probably will be smaller than slope sigma
-  // var item_int_sigma = uniformDrift({a: 0, b: 3, width: 0.2})
-  
-  var sampleItemParameters = function(itemName) { 
-    return [itemName, {
-        intercept: gaussianDrift({
-          mu: globalLineParameters.intercept, 
-          sigma: itemVariability.intercept, 
-          width: 0.5
-        }),
-        slope: gaussianDrift({
-          mu: globalLineParameters.slope, 
-          sigma: itemVariability.slope, 
-          width: 0.5
-        })
-      }]
-  }
-
-  // {papaya: {int, slope}, bread: {int, slope}, ... }
-  var all_item_parameters = _.fromPairs(map(sampleItemParameters, familiars))
-  
-  // want something that favors smaller values
-  var subject_sigma = uniformDrift({a: 0, b:1, width: 0.1}) 
-  
-  var sampleLinguisticCompetence = function(age){
-    return gaussianDrift({ mu: age, sigma: subject_sigma, width: 0.1 })
-  }
-
-  foreach(function(subid){
-      var subjectData = _.filter(data, {subid: subid})
-      var subj_age = subjectData[0].age
-      var subj_linguistic_competence = sampleLinguisticCompetence(subj_age)
-      
-     // display("age = " + subj_age + " ... intercept = " + subj_linguistic_competence)
-  
-      // question: should we use age here instead of the random intercept? or a different random intercept?
-    
-  var speakerOptimality = speakerOptimalityParameters.intercept  + speakerOptimalityParameters.slope * subj_age
-      
-      // each row is a different item
-      foreach(function(row){
-
-        var itemLineParameters = all_item_parameters[row.item]
-        
-        var sem_knowledge = logistic(itemLineParameters.intercept + 
-            itemLineParameters.slope * subj_linguistic_competence)
-  
-        var modelPredictions = pragmaticListener({label: "novel_word"}, 
-              priorProbs, speakerOptimality, sem_knowledge)
-        // display(modelPredictions.score(row.correct))
-        
-        observe(modelPredictions, row.correct)
-        
-        // if you want to save predictions, make sure to record subid because these predictions are for this particular subid
-        // query.add(["modelPrediction", cndtn, age], [age, Math.exp(modelPredictions.score(1))])
-
-      }, subjectData)
-    
-    // comment out to save memory
-  //  query.add(["parameter","subj_intercept", subid], [subjectData[0].age, subj_linguistic_competence])
-      
-  }, subjects)
-
-
-//////////////// Model predictions and combination ////////////////////////
-
-
-var noise = uniformDrift({a: 0, b:1, width: 0.1})
- 
-var all_log_likes = map(function(row) { 
-  
-  var priorReg = logistic(prior_int + prior_slope * row.age)
-
-  var cond = row.condition
-
-  var prior = function(cnd){
-    var cndPrior = cnd == "congruent" ? [priorReg, 1-priorReg] : [1-priorReg, priorReg] ;
-    return cndPrior
-  }
-
-  var priorComb = prior(cond)
-
-  var itemLineParameters = all_item_parameters[row.item]
-
-  var sem_knowledge = logistic(itemLineParameters.intercept + 
-                               itemLineParameters.slope * row.age)
-
-  var global_sem_knowledge = logistic(globalLineParameters.intercept + 
-                               globalLineParameters.slope * row.age)
-
-  var speakerOptimality = speakerOptimalityParameters.intercept  + 
-      speakerOptimalityParameters.slope * row.age
-
-  var pragModelPredictions = pragmaticListener({label: "novel_word"}, 
-                                               priorComb, speakerOptimality, 
-                                               sem_knowledge)
-
-  var noisyPragModelPredictions = addNoise(pragModelPredictions, noise)
-  
-
-
-  var globalPragModelPredictions = pragmaticListener({label: "novel_word"}, 
-                                               priorComb, speakerOptimality, 
-                                               global_sem_knowledge)
-
-   var noisyGlobalPragModelPredictions = addNoise(globalPragModelPredictions, noise)
-  
-
-   var flatModelPredictions = pragmaticListener({label: "novel_word"}, 
-                                               [.5, .5], speakerOptimality, 
-                                               sem_knowledge)
-
-   var noisyFlatModelPredictions = addNoise(flatModelPredictions, noise)
-
-  
-  var priorOnlyModelPredictions = Infer({method: "enumerate", model: function(){
-      var obj = sample( Categorical({vs: all_objects, ps: priorComb}));
-      return obj.shape == "novel_object" ? 1 : 0
-       }})
-   
-  var noisyPriorOnlyModelPredictions = addNoise(priorOnlyModelPredictions, noise) 
-
-  query.add(["modelPrediction","pragmatic","free", row.alignment, row.item, row.subid], [row.age, Math.exp(pragModelPredictions.score(1))])  
-
-//  query.add(["modelPrediction","globalPrag","free", row.alignment, row.item, row.subid], [row.age, Math.exp(globalPragModelPredictions.score(1))])  
-
-  return {
-    prag: pragModelPredictions.score(row.correct),
-    noisePrag: noisyPragModelPredictions.score(row.correct),
-    
-    globalPrag: globalPragModelPredictions.score(row.correct),
-    noiseGlobalPrag: noisyGlobalPragModelPredictions.score(row.correct),
-    
-    flat: flatModelPredictions.score(row.correct),
-    noiseFlat: noisyFlatModelPredictions.score(row.correct),
-    
-    priorOnly: priorOnlyModelPredictions.score(row.correct),
-    noisePriorOnly: noisyPriorOnlyModelPredictions.score(row.correct)
-  }
-
-}, dataFromR.comb_data)
-
-
-var log_likelihood_prag = sum(_.map(all_log_likes, "prag"))
-var log_likelihood_prag_noise = sum(_.map(all_log_likes, "noisePrag"))
-
-var log_likelihood_prag_global = sum(_.map(all_log_likes, "globalPrag"))
-var log_likelihood_prag_global_noise = sum(_.map(all_log_likes, "noiseGlobalPrag"))
-
-var log_likelihood_flat = sum(_.map(all_log_likes, "flat"))
-var log_likelihood_flat_noise = sum(_.map(all_log_likes, "noiseFlat"))
-
-var log_likelihood_prior_only = sum(_.map(all_log_likes, "priorOnly"))
-var log_likelihood_prior_only_noise = sum(_.map(all_log_likes, "noisePriorOnly"))
-
-query.add(["log_like", "pragmatics", "parameter_free"], ["NA", log_likelihood_prag])
-query.add(["log_like", "pragmatics", "noise"], ["NA", log_likelihood_prag_noise])
-
-query.add(["log_like", "pragmatics_global", "parameter_free"], ["NA", log_likelihood_prag_global])
-query.add(["log_like", "pragmatics_global", "noise"], ["NA", log_likelihood_prag_global_noise])
-
-query.add(["log_like", "flat_prior", "parameter_free"], ["NA", log_likelihood_flat])
-query.add(["log_like", "flat_prior", "noise"], ["NA", log_likelihood_flat_noise])
-
-query.add(["log_like", "prior_only", "parameter_free"], ["NA", log_likelihood_prior_only])
-query.add(["log_like", "prior_only", "noise"], ["NA", log_likelihood_prior_only_noise])
-
-
-  foreach(function(item){
-    var itemLineParameters = all_item_parameters[item]
-    query.add(["parameter","items", item], [itemLineParameters.intercept, itemLineParameters.slope])
-  }, familiars)
-
-  query.add(["parameter","parameters","speaker_optimality"], [speakerOptimalityParameters.intercept, speakerOptimalityParameters.slope])
-  query.add(["parameter","parameters", "global_sem"], [globalLineParameters.intercept, globalLineParameters.slope])
-  query.add(["parameter","sigma", "global_sem_sigmas"], [itemVariability.intercept, itemVariability.slope])
-  query.add(["parameter","sigma", "global_subject_sigmas"], ["NA", subject_sigma])
- 
-  return query 
-}
-
-
-var header = "iteration,a,b,c,d,e,f,g,h"
-
-var randomNumberForFile = Math.round(uniform(0, 1000))
-
-var callback = webpplSampleWriter.streamQueryCSV("../saves/model/samples"+randomNumberForFile+".csv", header);
-
-Infer({model,
-      samples: 10,
-      burn: 10,
-      verbose: T,
-      lag: 1,
-      verboseLag: 1000,
-      method: "incrementalMH",
-      onlyMAP: true,
-      callbacks: [callback]});
-'
-```
-
-## Model run
+# Model parameters
 
 ```{r}
-sem_know_model<- webppl(
-  program_code = paste(rsaUtils, rsaModel, sem_subj_str , sep='\n'),
-  data = list(data = me_model_data, comb_data = data_comb, prior_data = prior_model_data),
-  data_var = "dataFromR",
-  model_var = "model",
-  chains = 2,
-  cores = 2,
-  packages = c("webppl_packages/webppl-sample-writer")
-)
-```
-
-```{r}
-ggplot(log_like_model_2_free, aes(x = model, y = logP, col = model))+
-  geom_segment( aes(x=model, xend=model, y=-1150, yend=logP), col = "black", size = 1)+
-  geom_point(size = 7)+
-  theme_few()+ 
-  xlab("")+
-  ylab("Log-likelihood")+
-  theme(axis.text.x=element_text(angle = 45, vjust = 1, hjust = 1))+
-  #facet_grid(~parameter)+
-  #ylim(-1750,-1150)+
-  scale_color_ptol(breaks=c("pragmatics","pragmatics_global","prior_only","flat_prior"),
-                     labels=c("Pragmatic", "Pragmatic global","Prior only","Flat prior"))+
-    theme(axis.text.x=element_blank(), 
-        axis.ticks.x=element_blank())
-```
-
-```{r}
-ggsave("../graphs/like_talk_free.png", width = 4, height = 2.5, scale = 1.5)
-```
-
-
-## Summarizing parameters
-
-```{r}
-
 
 item_params <- readRDS("../saves/item_params.rds")
 
-global_params <- readRDS("../saves/global_params.rds")%>%
-  filter(chain != 6)
+global_params <- readRDS("../saves/global_params.rds")
 
 item_sigma <- readRDS("../saves/item_sigma.rds")
 
-#subject_sigma <- readRDS("../saves/subject_sigma.rds")
 
-
-item_params <- bind_rows(
-  readRDS("../saves/item_params.rds")%>%mutate(run = "no re"),
-  readRDS("../saves/item_params_re.rds")%>%mutate(run = "re")
-)
-
-global_params <- bind_rows(
-  readRDS("../saves/global_params.rds")%>%mutate(run = "no re"),
-  readRDS("../saves/global_params_re.rds")%>%mutate(run = "re")
-)
-
-
-item_sigma <- bind_rows(
-  readRDS("../saves/item_sigmas.rds")%>%mutate(run = "no re"),
-  readRDS("../saves/item_sigma_re.rds")%>%mutate(run = "re")
-)
-
-
-model_pred <- bind_rows(
-    readRDS("../saves/model_pred.rds")%>%mutate(run = "no re")%>%filter(model == "pragmatic"),
-    readRDS("../saves/model_pred_re.rds")%>%mutate(run = "re")%>%filter(model == "pragmatic")
-)
-
-
-x <- readRDS("../saves/sem_know_model_variant3_200k_model_comparison_noise.rds")
-
-xx <- x %>%
-  filter(!(Parameter %in% c("noise"))) %>%
-  separate(Parameter, into = c("alignment","item", "age"), sep="/")%>%
-  mutate(model = "prior_only_noise")%>%
-  group_by(model,age,item, alignment) %>%
-  summarise(mean = estimate_mode(value), 
-            ci_lower = hdi_lower(value), 
-            ci_upper =hdi_upper(value))%>%
-  ungroup()%>%
-  mutate(age = as.numeric(age))%>%
-  left_join(aoa_ratings)%>%
-  ungroup()%>%
-  mutate(item = fct_reorder(factor(item), mean_aoa),
-         source = "Model")
-   
- 
- 
  
 #### summaries
 item_params_summary <- item_params %>%
-  group_by(run, item, parameter)%>%
+  group_by(item, parameter)%>%
   summarise(mode = estimate_mode(value),
             uci = hdi_upper(value),
             lci = hdi_lower(value))
 
 
 global_params_summary <- global_params %>%
-  group_by (run,parameter,type)%>%
-  summarise(mode = estimate_mode(value),
-            uci = hdi_upper(value),
-            lci = hdi_lower(value))
-
-
-subject_sigma_summary <- subject_sigma %>%
-  group_by (parameter)%>%
+  group_by (parameter,type)%>%
   summarise(mode = estimate_mode(value),
             uci = hdi_upper(value),
             lci = hdi_lower(value))
@@ -612,65 +138,16 @@ plot_item_sigma
 ```
 
 
-```{r}
-plotg_subj_sigma <- ggplot(subject_sigma, aes(x = value, fill = factor(chain)))+
-  geom_density(alpha = 0.3)+
-  xlab("Subject Sigma")+
-  facet_grid(~parameter)+
-  theme_few()
-
-plotg_subj_sigma
-```
-
-
-```{r}
-
-select_id <- me_model_data %>%
-  filter(age < 1.3,
-         age >1)%>%
-  group_by(age,subid)%>%
-  summarise(mean = mean(correct))%>%
-  mutate(id = subid)
-
-
-subject_params <- subject_params %>%
-  left_join(select_id)%>%
-  filter(mean != "NA")%>%
-  ungroup()
-
-
-ggplot(subject_params, aes(x = int, fill = factor(Chain)))+
-  geom_density(alpha = 0.3)+
-  geom_vline(aes(xintercept = age), size = 1.5)+
-  #geom_vline(aes(xintercept = mean), size = 1.5, col = "red")+
-  facet_grid(id+ round(mean,2)~.)+
-  xlab("Subject Intercept")+
-  theme_few()
-
-
-
-#ggsave("../graphs/subj_intercept.pdf", width = 5, height = 8, scale = 1.5)
-
-```
-
 ## Plotting semantic knowledge
 
 ```{r}
-aoa_ratings_all <- read_xlsx(path = "../data/words_aoa_ratings.xlsx", sheet = 1)
-
-aoa_ratings <- aoa_ratings_all %>%
-  filter(Word %in% item_params_summary$item )%>%
-  mutate(mean_aoa = as.numeric(Rating.Mean),
-         item = Word)%>%
-  select(item,mean_aoa)
-
 plot_sem_know <- item_params_summary%>%
   select(-uci,-lci)%>%
   spread(parameter, -item) %>%
   left_join(expand.grid(
       age = unique(me_model_data$age),
-      item = unique(me_model_data$familiar)), .) %>%
-  mutate(sem_know = plogis(int + slope * age)) %>%
+      item = unique(me_model_data$item)), .) %>%
+  mutate(sem_know = plogis(intercept + slope * age)) %>%
   left_join(aoa_ratings) %>%
   ungroup()%>%
   mutate(item = fct_reorder(factor(item), mean_aoa))
@@ -689,7 +166,6 @@ ggplot(plot_sem_know, aes(x = age+2, y= sem_know, col = item, group = item))+
 ### Pragmatic model
 
 ```{r}
-
 model_pred_prag <- readRDS("../saves/model_pred_prag.rds")
 
 plot_model_pred_prag <- model_pred_prag%>%
@@ -712,159 +188,109 @@ ggplot() +
   scale_colour_ptol()+
   scale_fill_ptol()
 
-x <- sample(1:length(unique(model_pred_prag$iteration)), 100)
+x <- sample(1:length(unique(model_pred_prag$iteration)), 200)
 
 plot_model_prag_line <- model_pred_prag%>%
-  filter(iteration %in% x)
+  filter(iteration %in% x)%>%
+  left_join(aoa_ratings) %>%
+  ungroup()%>%
+  mutate(item = fct_reorder(factor(item), mean_aoa))
 
 ggplot() +
   geom_hline(yintercept = 0.5, lty=2)+
-  geom_line(data = plot_model_prag_line, aes(x=age+2,y = pred, col = alignment, group = interaction(chain,iteration)),size = .2, alpha = .05)+
-  geom_smooth(data = data_comb_plot, aes(x = age_num, y = correct), col = "black", method = "glm", method.args = list(family = "binomial"), se = T, alpha = .5, span = 2)+
+  geom_line(data = plot_model_prag_line, aes(x=age+2,y = pred, col = alignment, group = interaction(chain,iteration)),size = .2, alpha = .1)+
+  geom_smooth(data = data_comb_plot, aes(x = age_num, y = correct), col = "black", method = "glm", method.args = list(family = "binomial"), se = T, alpha = .5, span = 1)+
   labs(x="Age",y="Mutual Exclusivity effect")+
   facet_grid(alignment~item)+
   theme_few() +
   ylim(-0.05,1.05)+
   xlim(2,5)+
-  guides(alpha = F, fill = F)+ 
+  guides(alpha = F, fill = F, col = F)+ 
   scale_colour_ptol(name = NULL)
 
 ```
 
 ```{r}
-ggsave("../graphs/pred_model_data.pdf", width = 10, height = 4, scale = 1)
+ggsave("../graphs/pred_model_data.pdf", width = 10, height = 3, scale = 1)
 ```
-
-### Global pragmatic model
-
-```{r}
-
-model_pred_global<- readRDS("../saves/model_pred_global.rds")
-
-plot_model_pred_global <- model_pred_global%>%
-  group_by(alignment, item, age)%>%
-  summarise(mean = estimate_mode(pred),
-            ci_lower = hdi_lower(pred),
-            ci_upper = hdi_upper(pred))
-
-
-ggplot() +
-  geom_hline(yintercept = 0.5, lty=2)+
-  geom_smooth(data = data_comb_plot, aes(x = age_num, y = correct), col = "black", method = "loess", se = T, alpha = .5, span = 2)+
-  geom_line(data = plot_model_pred_global, aes(x=age+2,y = mean, col = alignment), size = 1)+
-  geom_ribbon(data = plot_model_pred_global, aes(x = age+2, ymin = ci_lower, ymax = ci_upper, fill = alignment), alpha = .4) +
-  labs(x="Age",y="Mutual Exclusivity effect")+
-  facet_grid(alignment~item)+
-  theme_few() +
-  ylim(-0.05,1.05)+
-  xlim(2,5)+
-  guides(alpha = F, fill = F)+ 
-  scale_colour_ptol()+
-  scale_fill_ptol()
-```
-
-
 
 ## Correlate model predictions and data 
 
 ```{r}
-binnned_data <- data_comb%>%
-  group_by(subage, alignment, item)%>%
-  summarize(k = sum(correct), n = n())%>%
-  ungroup() %>%
-  mutate(a = 1 + k,
-         b = 1 + n - k,
-         data_mean = (a-1)/(a+b-2),
-         data_ci_lower  = qbeta(.025, a, b),
-         data_ci_upper = qbeta(.975, a, b),
-         age = factor(subage))%>%
-  select(-a,-b,-n,-k)
+# binnned_data <- data_comb%>%
+#   group_by(subage, alignment, item)%>%
+#   summarize(k = sum(correct), n = n())%>%
+#   ungroup() %>%
+#   mutate(a = 1 + k,
+#          b = 1 + n - k,
+#          data_mean = (a-1)/(a+b-2),
+#          data_ci_lower  = qbeta(.025, a, b),
+#          data_ci_upper = qbeta(.975, a, b),
+#          age = factor(subage))%>%
+#   select(-a,-b,-n,-k)
+# 
+# 
+# cor_prag <- readRDS("../saves/model_pred_prag.rds")%>%
+#   mutate(age = as.numeric(age) + min(data_comb$age_num),
+#          age = cut(age, 
+#                       breaks = c(2,3,4,5),
+#                       labels = c(2,3,4)))%>%
+#   group_by(model,alignment, item, age)%>%
+#   summarise(model_mean = estimate_mode(pred),
+#             model_ci_lower = hdi_lower(pred),
+#             model_ci_upper = hdi_upper(pred))
+# 
+# cor_global <- readRDS("../saves/model_pred_global.rds")%>%
+#   mutate(age = as.numeric(age) + min(data_comb$age_num),
+#          age = cut(age, 
+#                       breaks = c(2,3,4,5),
+#                       labels = c(2,3,4)))%>%
+#   group_by(model, alignment, item, age)%>%
+#   summarise(model_mean = estimate_mode(pred),
+#             model_ci_lower = hdi_lower(pred),
+#             model_ci_upper = hdi_upper(pred))
+# 
+# cor_flat <- readRDS("../saves/model_pred_flat.rds")%>%
+#   mutate(age = as.numeric(age) + min(data_comb$age_num),
+#          age = cut(age, 
+#                       breaks = c(2,3,4,5),
+#                       labels = c(2,3,4)))%>%
+#   group_by(model, alignment, item, age)%>%
+#   summarise(model_mean = estimate_mode(pred),
+#             model_ci_lower = hdi_lower(pred),
+#             model_ci_upper = hdi_upper(pred))
+# 
+# cor_prior <- readRDS("../saves/model_pred_prior.rds")%>%
+#   mutate(age = as.numeric(age) + min(data_comb$age_num),
+#          age = cut(age,
+#                       breaks = c(2,3,4,5),
+#                       labels = c(2,3,4)))%>%
+#   group_by(model, alignment, item, age)%>%
+#   summarise(model_mean = estimate_mode(pred),
+#             model_ci_lower = hdi_lower(pred),
+#             model_ci_upper = hdi_upper(pred))
+# 
+# cor_model_pred <- bind_rows(
+#    cor_prag,
+#    cor_global,
+#    cor_flat,
+#    cor_prior
+# )
+# 
+# 
+# plot_cor_model_pred <- cor_model_pred %>%
+#   left_join(
+#     bind_rows(
+#        binnned_data%>%mutate(model = "pragmatic"),
+#        binnned_data%>%mutate(model = "global"),
+#        binnned_data%>%mutate(model = "flat"),
+#        binnned_data%>%mutate(model = "prior")
+#       )
+#   )
 
+# saveRDS(plot_cor_model_pred, "../saves/corr_model_data.rds")
 
-cor_prag <- model_pred_prag%>%
-  mutate(age = as.numeric(age) + min(data_comb$age_num),
-         age = cut(age, 
-                      breaks = c(2,3,4,5),
-                      labels = c(2,3,4)))%>%
-  group_by(model,alignment, item, age)%>%
-  summarise(model_mean = estimate_mode(pred),
-            model_ci_lower = hdi_lower(pred),
-            model_ci_upper = hdi_upper(pred))
-
-
-cor_prag_chain <- model_pred_prag%>%
-  mutate(age = as.numeric(age) + min(data_comb$age_num),
-         age = cut(age,
-                      breaks = c(2,3,4,5),
-                      labels = c(2,3,4)))%>%
-  group_by(chain, alignment, item, age)%>%
-  summarise(model_mean = estimate_mode(pred),
-            model_ci_lower = hdi_lower(pred),
-            model_ci_upper = hdi_upper(pred))
-
-model_pred_global<- readRDS("../saves/model_pred_global.rds")
-
-cor_global <- model_pred_global%>%
-  mutate(age = as.numeric(age) + min(data_comb$age_num),
-         age = cut(age, 
-                      breaks = c(2,3,4,5),
-                      labels = c(2,3,4)))%>%
-  group_by(model, alignment, item, age)%>%
-  summarise(model_mean = estimate_mode(pred),
-            model_ci_lower = hdi_lower(pred),
-            model_ci_upper = hdi_upper(pred))
-
-model_pred_flat<- readRDS("../saves/model_pred_flat.rds")
-
-cor_flat <- model_pred_flat%>%
-  mutate(age = as.numeric(age) + min(data_comb$age_num),
-         age = cut(age, 
-                      breaks = c(2,3,4,5),
-                      labels = c(2,3,4)))%>%
-  group_by(model, alignment, item, age)%>%
-  summarise(model_mean = estimate_mode(pred),
-            model_ci_lower = hdi_lower(pred),
-            model_ci_upper = hdi_upper(pred))
-
-model_pred_prior<- readRDS("../saves/model_pred_prior.rds")
-
-cor_prior <- model_pred_prior%>%
-  mutate(age = as.numeric(age) + min(data_comb$age_num),
-         age = cut(age,
-                      breaks = c(2,3,4,5),
-                      labels = c(2,3,4)))%>%
-  group_by(model, alignment, item, age)%>%
-  summarise(model_mean = estimate_mode(pred),
-            model_ci_lower = hdi_lower(pred),
-            model_ci_upper = hdi_upper(pred))
-
-cor_model_pred <- bind_rows(
-  cor_prag_chain,
-  # cor_prag,
-  # cor_global,
-  # cor_flat,
-  # cor_prior
-)
-
-
-plot_cor_model_pred <- cor_model_pred %>%
-  left_join(
-    bind_rows(
-      binnned_data%>%mutate(model = "pragmatic", chain = 1),
-      binnned_data%>%mutate(model = "pragmatic", chain = 2),
-      binnned_data%>%mutate(model = "pragmatic", chain = 3),
-      binnned_data%>%mutate(model = "pragmatic", chain = 4),
-      binnned_data%>%mutate(model = "pragmatic", chain = 5),
-      binnned_data%>%mutate(model = "pragmatic", chain = 6)
-      # binnned_data%>%mutate(model = "pragmatic"),
-      # binnned_data%>%mutate(model = "global"),
-      # binnned_data%>%mutate(model = "flat"),
-      # binnned_data%>%mutate(model = "prior")
-      )
-  )
-
-# saveRDS(plot_cor_model_pred, "../saves/model_cor.rds")
-# plot_cor_model_pred <- readRDS( "../saves/model_cor.rds")
+ plot_cor_model_pred <- readRDS( "../saves/model_cor.rds")
 
 
 ggplot(data = plot_cor_model_pred,aes(x = model_mean, y = data_mean, col = alignment)) +
@@ -877,7 +303,7 @@ ggplot(data = plot_cor_model_pred,aes(x = model_mean, y = data_mean, col = align
   xlim(0,1)+ylim(0,1)+
   xlab("Model")+
   ylab("Data")+
-  facet_grid(chain~age)+
+  facet_grid(model~age)+
   theme_few() + 
   scale_colour_ptol(name ="Alignment")+
   guides(col = F)
@@ -890,170 +316,73 @@ ggsave("../graphs/cor_model_data.pdf", width = 8, height = 3.5, scale = 1)
 ## Model comparison
 
 ```{r}
-log_like_prag <- data_comb %>%
+d_model_comp <- data_comb%>%
   select(-age)%>%
-  mutate(age = age_month,
+  mutate(age = round(age_month,2),
          item = as.character(item))%>%
-  left_join(readRDS("../saves/model_pred_prag.rds"))%>%
-  mutate(like = ifelse(correct == 1, pred, 1 - pred),
-         log_like = log(like),
-         model = "prag",
-         id = 1:length(log_like))%>%
-  select(id, model,chain, iteration, age, alignment,item,log_like)
+  select(alignment, item, age, correct)
 
 
-gc()
+test_prag <- readRDS("../saves/model_pred_prag.rds")%>%
+  filter(iteration == 1286 | iteration == 7185)%>%
+  mutate(age = round(age,2))
 
-log_like_global <- data_comb %>%
+saveRDS(test_prag,"../saves/test_prag.rds")
+
+test_global <- readRDS("../saves/model_pred_global.rds")%>%
+  filter(iteration == 1286 | iteration == 7185)%>%
+  mutate(age = round(age,2))
+
+saveRDS(test_global,"../saves/test_global.rds")
+
+
+test_flat <- readRDS("../saves/model_pred_flat.rds")%>%
+  filter(iteration == 1286 | iteration == 7185)%>%
+  mutate(age = round(age,2))
+
+saveRDS(test_flat,"../saves/test_flat.rds")
+
+
+d_model_comp <- data_comb%>%
   select(-age)%>%
-  mutate(age = age_month,
+  mutate(age = round(age_month,2),
          item = as.character(item))%>%
-  left_join(readRDS("../saves/model_pred_global.rds"))%>%
-  mutate(like = ifelse(correct == 1, pred, 1 - pred),
-         log_like = log(like),
-         model = "global",
-         id = 1:length(log_like))%>%
-  select(id, model,chain,iteration, age, alignment,item,log_like)
+  select(alignment, item, age, correct)
 
-gc()
+xxg <- xxg %>%
+  mutate(age = round(age,2))
 
-saveRDS(log_like_global, "../saves/log_like_global.rds")
+sort(unique(d_model_comp$age))
 
+sort(unique(xx$age))
 
-comp <- bind_rows(
-  readRDS("../saves/log_like_prag.rds")%>%mutate(id = 1:length(log_like)), 
-  readRDS("../saves/log_like_global.rds")%>%mutate(id = 1:length(log_like))
-)%>%
-  spread(model, log_like)%>%
-  mutate(prag_vs_global = prag - global)
+y <- xx %>%
+  right_join(d_model_comp)
 
-
-
-log_like_flat <- data_comb %>%
-  select(-age)%>%
-  mutate(age = age_month,
-         item = as.character(item))%>%
-  left_join(readRDS("../saves/model_pred_flat.rds"))%>%
-  mutate(like = ifelse(correct == 1, pred, 1 - pred),
-         log_like_flat = log(like))%>%
-  select(chain,iteration,age, alignment,item,log_like_flat)
-
-gc()
-
-log_like_prior <- data_comb %>%
-  select(-age)%>%
-  mutate(age = age_month,
-         item = as.character(item))%>%
-  left_join(readRDS("../saves/model_pred_prior.rds"))%>%
-  mutate(like = ifelse(correct == 1, pred, 1 - pred),
-         log_like_prior = log(like))%>%
-  select(chain,iteration,age, alignment,item,log_like_prior)
-
-gc()
-
-prag_vs_global <- log_like_prag%>%
-  left_join(log_like_global)%>%
-  mutate(prag_vs_global = log_like_prag - log_like_global)%>%
-  na.omit(prag_vs_global)%>%
-  summarize(prag_vs_global = logSumExp(prag_vs_global))%>%
-  saveRDS(.,"../saves/model_comp_prag_vs_global.rds")
-
-
-
-log_like <- bind_rows(
-  readRDS("../saves/log_like_chain1.rds")%>%mutate(chain = 1),
-  readRDS("../saves/log_like_chain2.rds")%>%mutate(chain = 2),
-  readRDS("../saves/log_like_chain3.rds")%>%mutate(chain = 3),
-  readRDS("../saves/log_like_chain4.rds")%>%mutate(chain = 4),
-  readRDS("../saves/log_like_chain5.rds")%>%mutate(chain = 5)
-)
-
-log_like_model<- log_like %>%
-  group_by(model,parameter)%>%
-  summarize(logP = logSumExp(log_like))%>%
-  spread(parameter, logP)
-
-log_like_chain<- log_like %>%
-  group_by(chain, model,parameter)%>%
-  summarize(logP = logSumExp(log_like))%>%
-  spread(parameter, logP)
-
-log_like_chain %>%
-  group_by(model)%>%
-  mutate(noise = round(noise,2),
-         parameter_free = round(parameter_free,2))%>%
-  summarise(range_param_free = paste(range(parameter_free)[1],range(parameter_free)[2], sep = " / "),
-            range_noise = paste(range(noise)[1],range(noise)[2], sep = " / "))
-
-
-
-log_like_2 <-  readRDS("../saves/sem_know_model_variant3_200k_model_comparison_noise.rds")%>%
-  separate(Parameter, into = c("parameter", "model","noise","alignment"), sep = ",")%>%
-  filter(parameter == "log_like")%>%
-  separate(value, into = c("na", "log_like"),sep = ",")%>%
-  select(-na, -alignment)%>%
-  mutate(log_like =as.numeric(str_remove(log_like,"[)]")))
-
-log_like_model_2 <- log_like_2%>%
-  group_by(model,noise)%>%
-  summarize(logP = logSumExp(log_like))
-
-
-model_comp <- log_like_2%>%
-  spread(model,log_like)%>%
-  mutate(prag_vs_prag_global = pragmatics - pragmatics_global,
-         prag_vs_flat_prior = pragmatics - flat_prior,
-         prag_vs_prior_only = pragmatics - prior_only)%>%
-  group_by(noise)%>%
-  summarize(prag_vs_prag_global = logSumExp(prag_vs_prag_global),
-            prag_vs_flat_prior = logSumExp(prag_vs_flat_prior),
-            prag_vs_prior_only = logSumExp(prag_vs_prior_only))%>%
-  gather(model,logP,-noise)
-  
-
-log_like_model_2_free <- log_like_model_2%>%
-  filter(noise == "parameter_free")
- 
-
-xx %>%
-  spread(model, log_like)
-
-
-comp <- comp%>%
-  na.omit(prag_vs_global)
-
-
-p_g_comp <- comp %>%
-  summarize(prag_vs_global = logSumExp(prag_vs_global))
-
-
-model_pred_prag
+tail(y)
 
 bind_rows(
 
-  data_comb %>%
-    mutate(age = age_month,
-    item = as.character(item))%>%
-    left_join(model_pred_prag)%>%
+  xx %>%
+    right_join(d_model_comp)%>%
     mutate(like = ifelse(correct == 1, pred, 1 - pred),
-         log_like = log(like),
-         model = "prag",
-         id = 1:length(log_like))%>%
+           log_like = log(like),
+           model = "prag",
+           id = 1:length(log_like))%>%
   select(id, model,chain,iteration, age, alignment,item,log_like),
 
-
-  data_comb %>%
-    left_join(model_pred_prag)%>%
+xxf %>%
+    right_join(d_model_comp)%>%
     mutate(like = ifelse(correct == 1, pred, 1 - pred),
-         log_like = log(like),
-         model = "global")
+           log_like = log(like),
+           model = "global",
+           id = 1:length(log_like))%>%
+  select(id, model,chain,iteration, age, alignment,item,log_like)
+  
 )%>%
   spread(model, log_like)%>%
-  mutate(prag_vs_global = prag - global)
-
-
-%>%
-  summarise(logBF = logSumExp(prag_vs_global))
+  mutate(prag_vs_global = prag - global) %>%
+  summarise(prag_vs_global = sum(prag_vs_global))
 
 
 ```
@@ -1287,7 +616,7 @@ novel_data <- read_csv("../data/novelty.csv")%>%
 # 
 # saveRDS(novel_bm, "../saves/novelty_model.rds")
 
-novel_bm <- readRDS("../saves/novelty_model.rds")
+novel_bm <- readRDS("../saves_old/novelty_model.rds")
 
 summary(novel_bm)
 

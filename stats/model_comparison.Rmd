@@ -5,15 +5,10 @@ output: html_document
 
 ```{r}
 library(tidyverse)
-#library(rwebppl)
-#library(brms)
-#library(coda)
-#library(ggthemes)
 library(readxl)
-#library(ggpubr)
 library(matrixStats)
 library(data.table)
-#library(bigmemory)
+
 
 estimate_mode <- function(s) {
   d <- density(s)
@@ -49,117 +44,61 @@ data_comb <- data_comb_pre%>%
   ungroup()%>%
   mutate(item = fct_reorder(factor(item), mean_aoa), 
          source = "Data")
-```
 
+d_model_comp <- data_comb%>%
+  select(-age)%>%
+  mutate(age = round(age_month,2),
+         item = as.character(item))%>%
+  select(alignment, item, age, correct)
+
+```
 
 # Model comparison
 
-# Pragmatic vs Global
+## Dummy example for MH
 
 ```{r}
-prag_global <- bind_rows(
+# Model prediction files are very large - can't put them on github as is 
+# files below contain the two iterations for each model (1286 & 7185)
 
-  data_comb %>%
-    select(-age)%>%
-    mutate(age = age_month,
-           item = as.character(item))%>%
-    left_join(readRDS("../saves/model_pred_prag.rds"))%>%
-    mutate(like = ifelse(correct == 1, pred, 1 - pred),
-           log_like = log(like),
-           model = "prag",
-           id = 1:length(log_like))%>%
-  select(id, model,chain,iteration, age, alignment,item,log_like),
+# load model predicitons
+test_prag <- readRDS("../saves/test_prag.rds")
+test_global <- readRDS("../saves/test_global.rds")
+test_flat <- readRDS("../saves/test_flat.rds")
 
-  data_comb %>%
-    select(-age)%>%
-    mutate(age = age_month,
-           item = as.character(item))%>%
-    left_join(readRDS("../saves/model_pred_global.rds"))%>%
-    mutate(like = ifelse(correct == 1, pred, 1 - pred),
-           log_like = log(like),
-           model = "global",
-           id = 1:length(log_like))%>%
-  select(id, model,chain,iteration, age, alignment,item,log_like),
+# join predictions with the data 
+
+bind_rows(
   
-)%>%
-  spread(model, log_like)%>%
-  mutate(prag_vs_global = prag - global) %>%
-  na.omit(prag_vs_global) %>%
-  summarise(prag_vs_global = logSumExp(prag_vs_global))
-```
-
-
-# Pragmatic vs Flat
-
-```{r}
-
-comp <- bind_rows(
-
-  data_comb %>%
-    select(-age)%>%
-    mutate(age = age_month,
-           item = as.character(item))%>%
-    left_join(readRDS("../saves/model_pred_prag.rds"))%>%
-    mutate(like = ifelse(correct == 1, pred, 1 - pred),
-           log_like = log(like),
-           model = "prag",
-           id = 1:length(log_like))%>%
-  select(id, model,chain,iteration, age, alignment,item,log_like),
+  test_prag %>%
+    right_join(d_model_comp)%>%
+    mutate(id = 1:length(pred))%>%
+    select(id, model,chain,iteration, age, alignment,item,pred, correct),
+   
+  test_global %>%
+    right_join(d_model_comp)%>%
+    mutate(id = 1:length(pred))%>%
+    select(id, model,chain,iteration, age, alignment,item,pred, correct),
   
-  data_comb %>%
-    select(-age)%>%
-    mutate(age = age_month,
-           item = as.character(item))%>%
-    left_join(readRDS("../saves/model_pred_flat.rds"))%>%
-    mutate(like = ifelse(correct == 1, pred, 1 - pred),
-           log_like = log(like),
-           model = "flat",
-           id = 1:length(log_like))%>%
-  select(id, model,chain,iteration, age, alignment,item,log_like)
+   test_flat %>%
+    right_join(d_model_comp)%>%
+    mutate(id = 1:length(pred))%>%
+    select(id, model,chain,iteration, age, alignment,item,pred, correct)
 )%>%
+  mutate(log_like = log(ifelse(correct == 1, pred, 1 - pred)))%>% # calculate log likelihood
+  select(-pred, - correct)%>%
   spread(model, log_like)%>%
-  mutate(prag_vs_flat = prag - flat)
-
+  mutate(prag_vs_global = pragmatic - global, # subtract likelihood for each predictions and model
+         prag_vs_flat= pragmatic - flat,
+         global_vs_flat = global - flat) %>%
+  summarise(prag_vs_global = sum(prag_vs_global), # sum up likelihood difference to get log Bayes factor
+            prag_vs_flat = sum(prag_vs_flat),
+            global_vs_flat = sum(global_vs_flat))%>%
+  gather(model, logBF)
 
 
 ```
 
-
-# Pragmatic vs prior
-
-```{r}
-
-comp <- bind_rows(
-
-  data_comb %>%
-    select(-age)%>%
-    mutate(age = age_month,
-           item = as.character(item))%>%
-    left_join(readRDS("../saves/model_pred_prag.rds"))%>%
-    mutate(like = ifelse(correct == 1, pred, 1 - pred),
-           log_like = log(like),
-           model = "prag",
-           id = 1:length(log_like))%>%
-  select(id, model,chain,iteration, age, alignment,item,log_like),
-  
-  data_comb %>%
-    select(-age)%>%
-    mutate(age = age_month,
-           item = as.character(item))%>%
-    left_join(readRDS("../saves/model_pred_prior.rds"))%>%
-    mutate(like = ifelse(correct == 1, pred, 1 - pred),
-           log_like = log(like),
-           model = "prior",
-           id = 1:length(log_like))%>%
-  select(id, model,chain,iteration, age, alignment,item,log_like),
-  
-)%>%
-  spread(model, log_like)%>%
-  mutate(prag_vs_prior = prag - prior)
-
-
-
-```
 
 
 
