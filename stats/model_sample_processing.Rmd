@@ -80,11 +80,12 @@ readRDS("../saves/model_pred_prior.rds")%>%
 ```{r}
 
 model <- bind_rows(
- fread("../webppl/output/samples-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain4.csv",header = T)%>%mutate(chain = 1),
-fread("../webppl/output/samples-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain4.csv",header = T)%>%mutate(chain = 2), 
-fread("../webppl/output/samples-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain4.csv",header = T)%>%mutate(chain = 3),
- fread("../webppl/output/samples-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain5.csv",header = T)%>%mutate(chain = 4),
- fread("../webppl/output/samples-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain6.csv",header = T)%>%mutate(chain = 5)
+ fread("../webppl/output/samples-fullyBayesian-pragmatic-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain1.csv",header = T)%>%mutate(chain = 1),
+ fread("../webppl/output/samples-fullyBayesian-pragmatic-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain2.csv",header = T)%>%mutate(chain = 2),
+ read("../webppl/output/samples-fullyBayesian-pragmatic-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain3.csv",header = T)%>%mutate(chain = 3),
+  fread("../webppl/output/samples-fullyBayesian-pragmatic-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain4.csv",header = T)%>%mutate(chain = 4),
+  fread("../webppl/output/samples-fullyBayesian-pragmatic-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain5.csv",header = T)%>%mutate(chain = 5),
+  fread("../webppl/output/samples-fullyBayesian-pragmatic-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain6.csv",header = T)%>%mutate(chain = 6)
 )
 
 # Model Parameters 
@@ -97,7 +98,7 @@ item_params <-  model %>%
          parameter = d,
          value = g)
 
-saveRDS(item_params, "../saves/item_params.rds")
+saveRDS(item_params, "../saves/item_params_fb.rds")
 
 global_params <- model %>%
   filter(b == "parameters")%>%
@@ -106,7 +107,7 @@ global_params <- model %>%
          type = d,
          value = g)
 
-saveRDS(global_params, "../saves/global_params_2.rds")
+saveRDS(global_params, "../saves/global_params_fb.rds")
 
 item_sigma<- model %>%
   filter(b == "sigma",
@@ -116,7 +117,7 @@ item_sigma<- model %>%
          type = d,
          value = g)
 
-saveRDS(item_sigma, "../saves/item_sigma_2.rds")
+saveRDS(item_sigma, "../saves/item_sigma_fb.rds")
 
 #subject_sigma<- model %>%
 #  filter(b == "sigma", 
@@ -141,46 +142,46 @@ model_pred_prag <- model %>%
          age = f, 
          pred = g)
 
-saveRDS(model_pred_prag, "../saves/model_pred_prag_2.rds")
+saveRDS(model_pred_prag, "../saves/model_pred_prag_fb.rds")
 
-model_pred <- model %>%
-  filter(a == "modelPrediction",
-         b == "global")%>%
-  select(-a, -h)%>%
-  rename(model = b, 
-         parameter = c,
-         alignment = d,
-         item = e,
-         age = f, 
-         pred = g)
-
-saveRDS(model_pred, "../saves/model_pred_global_2.rds")
-
-model_pred_flat <- model %>%
-  filter(a == "modelPrediction",
-         b == "flat")%>%
-  select(-a, -h)%>%
-  rename(model = b, 
-         parameter = c,
-         alignment = d,
-         item = e,
-         age = f, 
-         pred = g)
-
-saveRDS(model_pred_flat, "../saves/model_pred_flat_2.rds")
-
-model_pred_prior <- model %>%
-  filter(a == "modelPrediction",
-         b == "prior")%>%
-  select(-a, -h)%>%
-  rename(model = b, 
-         parameter = c,
-         alignment = d,
-         item = e,
-         age = f, 
-         pred = g)
-
-saveRDS(model_pred_prior, "../saves/model_pred_prior_2.rds")
+# model_pred <- model %>%
+#   filter(a == "modelPrediction",
+#          b == "global")%>%
+#   select(-a, -h)%>%
+#   rename(model = b, 
+#          parameter = c,
+#          alignment = d,
+#          item = e,
+#          age = f, 
+#          pred = g)
+# 
+# saveRDS(model_pred, "../saves/model_pred_global_2.rds")
+# 
+# model_pred_flat <- model %>%
+#   filter(a == "modelPrediction",
+#          b == "flat")%>%
+#   select(-a, -h)%>%
+#   rename(model = b, 
+#          parameter = c,
+#          alignment = d,
+#          item = e,
+#          age = f, 
+#          pred = g)
+# 
+# saveRDS(model_pred_flat, "../saves/model_pred_flat_2.rds")
+# 
+# model_pred_prior <- model %>%
+#   filter(a == "modelPrediction",
+#          b == "prior")%>%
+#   select(-a, -h)%>%
+#   rename(model = b, 
+#          parameter = c,
+#          alignment = d,
+#          item = e,
+#          age = f, 
+#          pred = g)
+# 
+# saveRDS(model_pred_prior, "../saves/model_pred_prior_2.rds")
 
 
 ```
