@@ -186,6 +186,8 @@ saveRDS(model_pred_prag, "../saves/model_pred_prag_fb.rds")
 
 ```
 
+# combine chains into one file
+
 ```{r}
 bind_rows(
   readRDS("../saves/item_params_1.rds"),
@@ -232,5 +234,72 @@ bind_rows(
   readRDS("../saves/model_pred_prior_2.rds")
 )%>%
   saveRDS(., "../saves/model_pred_prior.rds")
+```
+
+# mixture model
+
+
+```{r}
+
+model <- bind_rows(
+ fread("../webppl/output/samples-fullBayes-mixtureModel-reFactor-noRandomEffects_mcmc-1000_burn500_lag5_chain1.csv",header = T)%>%mutate(chain = 1)
+)
+
+# Model Parameters 
+
+
+item_params <-  model %>%
+  filter(b == "items")%>%
+  select(-a,-b, -e, -f, -h)%>%
+    rename(item = c,
+         parameter = d,
+         value = g)
+
+saveRDS(item_params, "../saves/item_params_mm.rds")
+
+global_params <- model %>%
+  filter(b == "parameters")%>%
+  select(-a,-b, -e,-f, -h)%>%
+    rename(parameter = c,
+         type = d,
+         value = g)
+
+saveRDS(global_params, "../saves/global_params_mm.rds")
+
+item_sigma<- model %>%
+  filter(b == "sigma",
+         c == "global_sem_sigmas")%>%
+  select(-a,-b, -e,-f,-h)%>%
+    rename(parameter = c,
+         type = d,
+         value = g)
+
+saveRDS(item_sigma, "../saves/item_sigma_mm.rds")
+
+mixture<- model %>%
+  filter(b == "mixtureComponent")%>%
+  select(b,g,chain)%>%
+    rename(parameter = b,
+         p_informative = g)
+
+saveRDS(mixture, "../saves/mixture_mm.rds")
+
+
+model_pred_prag <- model %>%
+  filter(a == "modelPrediction",
+         b == "mixtureModel")%>%
+  select(-a, -h, -c)%>%
+  rename(model = b, 
+         alignment = d,
+         item = e,
+         age = f, 
+         pred = g)
+
+saveRDS(model_pred_prag, "../saves/model_pred_mm.rds")
+
+
+
+
+
 ```
 

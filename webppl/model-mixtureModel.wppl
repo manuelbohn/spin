@@ -480,7 +480,7 @@ var model = function() {
           var combinationData_byAge_byItem_byCondition_responses = _.map(combinationData_byAge_byItem_byCondition, "correct")
 
           if (fullBayesFlag) {
-            display('full bayes updating...')
+            //display('full bayes updating...')
             mapData({
               data: combinationData_byAge_byItem_byCondition_responses
             }, function(d) {
@@ -493,7 +493,7 @@ var model = function() {
 
           // display(expectation(modelPredictions))
           // display(expectation(noisyModelPredictions))
-          query.add(["modelPrediction",model_type, fullBayes, alignment_condition, item, age_month], Math.exp(modelPredictions.score(1)))
+          query.add(["modelPrediction",model_type, fullBayes, alignment_condition, item, age_month], Math.exp(mixtureModel.score(1)))
 
 
           // query.add(["modelPrediction",model_type,"noise", alignment_condition, item, "NA"], [age_month, Math.exp(noisyModelPredictions.score(1))])
@@ -539,13 +539,11 @@ var header = "iteration,a,b,c,d,e,f,g,h"
 
 // var randomNumberForFile = Math.round(uniform(0, 1000))
 
-// var totalIterations = 50000, lag =  5;
-var totalIterations = 50000,
-  lag = 5;
+var totalIterations = 1000, lag =  5;
 var samples = totalIterations / lag,
   burn = totalIterations / 2;
 
-// var totalIterations = 100
+// var totalIterations = 1
 // var samples = totalIterations
 // var burn = 0
 // var lag = 0
