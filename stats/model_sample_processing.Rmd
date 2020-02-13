@@ -140,7 +140,8 @@ model_pred_prag <- model %>%
          alignment = d,
          item = e,
          age = f, 
-         pred = g)
+         pred = g,
+         model = "fullBayes")
 
 saveRDS(model_pred_prag, "../saves/model_pred_prag_fb.rds")
 

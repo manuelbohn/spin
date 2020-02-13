@@ -53,7 +53,7 @@ d_model_comp <- data_comb%>%
 
 ```
 
-# Model comparison
+# Model comparison prediction
 
 
 ```{r}
@@ -102,6 +102,60 @@ model_comp <- bind_rows(
 
 ```
 
+# Model comparison explanation
 
+
+```{r}
+
+d_model_comp.summarized <- d_model_comp %>% 
+  group_by(alignment, item, age) %>% 
+  summarize(n=n(), k = sum(correct))
+
+
+model_like <- bind_rows(
+  
+  readRDS("../saves/model_pred_prag.rds") %>%
+    right_join(d_model_comp.summarized) %>%
+    select(model,chain,iteration, age, alignment,item,pred, n, k),
+   
+  readRDS("../saves/model_pred_prag_fb.rds") %>%
+    mutate(model = "fullBayes")%>%
+    right_join(d_model_comp.summarized)%>%
+    select(model,chain,iteration, age, alignment,item,pred, n, k)
+  
+    # ,readRDS("../saves/model_pred_mm.rds") %>%
+    # mutate(model = "mixture")%>%
+    # right_join(d_model_comp.summarized)%>%
+    # select(model,chain,iteration, age, alignment,item,pred, n, k)
+) %>%
+  mutate(
+    log_like = dbinom(x = k, size = n, prob = pred, log = TRUE)
+  ) %>%
+  group_by(chain, model, iteration) %>%
+  summarize(total_likelihood_sample = sum(log_like))
+
+
+# variation across chains
+
+model_by_chain <- model_like %>%
+  na.omit(chain)%>%
+  group_by(model, chain) %>%
+  summarize(marginal_likelihood = matrixStats::logSumExp(total_likelihood_sample)) %>%
+  spread(model, marginal_likelihood)
+
+# compare models
+model_comp <- model_like %>%
+  na.omit(chain)%>%
+  group_by(model) %>%
+  summarize(marginal_likelihood = matrixStats::logSumExp(total_likelihood_sample)) %>%
+  spread(model, marginal_likelihood)%>%
+  mutate(fb_vs_free = fullBayes - pragmatic
+         # ,fb_vs_mixture= fullBayes - mixture,
+         # free_vs_mixture = pragmatic - mixture
+         ) %>%
+  select(-pragmatic, -fullBayes, -mixture) %>%
+  gather(model, logBF)
+
+```
 
 
