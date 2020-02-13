@@ -539,7 +539,7 @@ var header = "iteration,a,b,c,d,e,f,g,h"
 
 // var randomNumberForFile = Math.round(uniform(0, 1000))
 
-var totalIterations = 1000, lag =  5;
+var totalIterations = 100000, lag =  5;
 var samples = totalIterations / lag,
   burn = totalIterations / 2;
 
