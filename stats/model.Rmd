@@ -186,7 +186,7 @@ ggplot() +
   scale_colour_ptol()+
   scale_fill_ptol()
 
-x <- sample(1:length(unique(model_pred_prag$iteration)), 200)
+x <- sample(1:length(unique(model_pred_prag$iteration)), 120)
 
 plot_model_prag_line <- model_pred_prag%>%
   filter(iteration %in% x)%>%
@@ -435,7 +435,7 @@ ggplot() +
   scale_colour_ptol()+
   scale_fill_ptol()
 
-x_fb <- sample(1:length(unique(model_pred_prag_fb$iteration)), 200)
+x_fb <- sample(1:length(unique(model_pred_prag_fb$iteration)), 100)
 
 plot_model_prag_line_fb <- model_pred_prag_fb%>%
   filter(iteration %in% x_fb)%>%
@@ -458,7 +458,7 @@ ggplot() +
 ```
 
 ```{r}
-ggsave("../graphs/pred_model_data.pdf", width = 10, height = 3, scale = 1)
+ggsave("../graphs/pred_.pdf", width = 10, height = 3, scale = 1)
 ```
 
 ## Correlate model predictions and data 
@@ -725,4 +725,76 @@ ggplot(data = plot_cor_model_pred_mm,aes(x = model_mean, y = data_mean, col = al
 
 ```{r}
 ggsave("../graphs/cor_model_data.pdf", width = 8, height = 3.5, scale = 1)
+```
+
+# Comparing models 
+
+## Parameters
+
+### Semantic knowledge
+
+```{r}
+
+com_item_params <- bind_rows(
+  item_params%>%mutate(model="pragmatic"),
+  item_params_fb%>%mutate(model="fullBayes")
+)
+
+ggplot(com_item_params, aes(x = value, fill = model, group = paste(model,chain)))+
+  geom_density(alpha = 0.3)+
+  xlab("Parameter")+
+  facet_grid(parameter ~ item, scales = 'free')+
+  theme_few()+
+  theme(legend.position = "bottom")
+
+```
+
+### Global parameters
+
+```{r}
+
+com_global_params <- bind_rows(
+  global_params%>%mutate(model="pragmatic"),
+  global_params_fb%>%mutate(model="fullBayes")
+)
+
+ggplot(com_global_params, aes(x = value, fill = model, group = paste(model,chain)))+
+  geom_density(alpha = 0.3)+
+  xlab("Parameter")+
+  facet_grid(type ~ parameter, scales = 'free')+
+  theme_few()+
+  theme(legend.position = "bottom")
+
+```
+
+```{r}
+ggsave("../graphs/item_params_by_model.pdf", width = 8, height = 3, scale = 1.5)
+```
+
+## Model predictions
+
+```{r}
+plot_model_comp <- bind_rows(
+plot_model_prag_line,
+plot_model_prag_line_fb
+)
+
+
+ggplot() +
+  geom_hline(yintercept = 0.5, lty=2)+
+  geom_line(data = plot_model_comp, aes(x=age+2,y = pred, col = model, group = interaction(chain,iteration)),size = .2, alpha = .1)+
+  geom_smooth(data = data_comb_plot, aes(x = age_num, y = correct), col = "black", method = "glm", method.args = list(family = "binomial"), se = T, alpha = .3, span = 1, size = .5)+
+  labs(x="Age",y="Mutual Exclusivity effect")+
+  facet_grid(alignment~item)+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F, fill = F)+ 
+  scale_colour_ptol()+
+  theme(legend.position = "bottom")
+```
+
+
+```{r}
+ggsave("../graphs/predictions_by_model.pdf", width = 8, height = 3, scale = 1.5)
 ```
