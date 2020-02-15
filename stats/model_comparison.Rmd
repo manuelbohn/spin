@@ -123,10 +123,10 @@ model_like <- bind_rows(
     right_join(d_model_comp.summarized)%>%
     select(model,chain,iteration, age, alignment,item,pred, n, k)
   
-    # ,readRDS("../saves/model_pred_mm.rds") %>%
-    # mutate(model = "mixture")%>%
-    # right_join(d_model_comp.summarized)%>%
-    # select(model,chain,iteration, age, alignment,item,pred, n, k)
+    ,readRDS("../saves/model_pred_mm.rds") %>%
+    mutate(model = "mixture")%>%
+    right_join(d_model_comp.summarized)%>%
+    select(model,chain,iteration, age, alignment,item,pred, n, k)
 ) %>%
   mutate(
     log_like = dbinom(x = k, size = n, prob = pred, log = TRUE)
@@ -143,6 +143,8 @@ model_by_chain <- model_like %>%
   summarize(marginal_likelihood = matrixStats::logSumExp(total_likelihood_sample)) %>%
   spread(model, marginal_likelihood)
 
+saveRDS(model_by_chain, "../saves/expl_model_likelihood_chain")
+
 # compare models
 model_comp <- model_like %>%
   na.omit(chain)%>%
@@ -150,11 +152,13 @@ model_comp <- model_like %>%
   summarize(marginal_likelihood = matrixStats::logSumExp(total_likelihood_sample)) %>%
   spread(model, marginal_likelihood)%>%
   mutate(fb_vs_free = fullBayes - pragmatic
-         # ,fb_vs_mixture= fullBayes - mixture,
-         # free_vs_mixture = pragmatic - mixture
+          ,fb_vs_mixture= fullBayes - mixture,
+          free_vs_mixture = pragmatic - mixture
          ) %>%
   select(-pragmatic, -fullBayes, -mixture) %>%
   gather(model, logBF)
+
+saveRDS(model_comp, "../saves/expl_model_comparison")
 
 ```
 

@@ -243,7 +243,12 @@ bind_rows(
 ```{r}
 
 model <- bind_rows(
- fread("../webppl/output/samples-fullBayes-mixtureModel-reFactor-noRandomEffects_mcmc-1000_burn500_lag5_chain1.csv",header = T)%>%mutate(chain = 1)
+ fread("../webppl/output/samples-webppl-sample-writer-mixtureModel-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain1.csv",header = T)%>%mutate(chain = 1),
+ fread("../webppl/output/samples-webppl-sample-writer-mixtureModel-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain2.csv",header = T)%>%mutate(chain = 2),
+ fread("../webppl/output/samples-webppl-sample-writer-mixtureModel-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain3.csv",header = T)%>%mutate(chain = 3),
+ fread("../webppl/output/samples-webppl-sample-writer-mixtureModel-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain4.csv",header = T)%>%mutate(chain = 4),
+ fread("../webppl/output/samples-webppl-sample-writer-mixtureModel-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain5.csv",header = T)%>%mutate(chain = 5),
+ fread("../webppl/output/samples-webppl-sample-writer-mixtureModel-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain6.csv",header = T)%>%mutate(chain = 6),
 )
 
 # Model Parameters 
