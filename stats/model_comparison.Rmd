@@ -143,7 +143,7 @@ model_by_chain <- model_like %>%
   summarize(marginal_likelihood = matrixStats::logSumExp(total_likelihood_sample)) %>%
   spread(model, marginal_likelihood)
 
-saveRDS(model_by_chain, "../saves/expl_model_likelihood_chain")
+saveRDS(model_by_chain, "../saves/expl_model_likelihood_chain.rds")
 
 # compare models
 model_comp <- model_like %>%
@@ -158,7 +158,7 @@ model_comp <- model_like %>%
   select(-pragmatic, -fullBayes, -mixture) %>%
   gather(model, logBF)
 
-saveRDS(model_comp, "../saves/expl_model_comparison")
+saveRDS(model_comp, "../saves/expl_model_comparison.rds")
 
 ```
 
