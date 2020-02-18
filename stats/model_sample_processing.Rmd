@@ -309,3 +309,75 @@ saveRDS(model_pred_prag, "../saves/model_pred_mm.rds")
 
 ```
 
+# developmental mixture model
+
+
+```{r}
+
+model <- bind_rows(
+ fread("../webppl/output/samples-fullBayes-devMixtureModel-reFactor-noRandomEffects_mcmc-200_burn100_lag1_chain1.csv",header = T)%>%mutate(chain = 1),
+ # fread("../webppl/output/samples-fullBayes-mixtureModel-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain2.csv",header = T)%>%mutate(chain = 2),
+ # fread("../webppl/output/samples-fullBayes-mixtureModel-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain3.csv",header = T)%>%mutate(chain = 3),
+ # fread("../webppl/output/samples-fullBayes-mixtureModel-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain4.csv",header = T)%>%mutate(chain = 4),
+ # fread("../webppl/output/samples-fullBayes-mixtureModel-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain5.csv",header = T)%>%mutate(chain = 5),
+ # fread("../webppl/output/samples-fullBayes-mixtureModel-reFactor-noRandomEffects_mcmc-100000_burn50000_lag5_chain6.csv",header = T)%>%mutate(chain = 6)
+)
+
+# Model Parameters 
+
+
+item_params <-  model %>%
+  filter(b == "items")%>%
+  select(-a,-b, -e, -f, -h)%>%
+    rename(item = c,
+         parameter = d,
+         value = g)
+
+saveRDS(item_params, "../saves/item_params_dmm.rds")
+
+global_params <- model %>%
+  filter(b == "parameters")%>%
+  select(-a,-b, -e,-f, -h)%>%
+    rename(parameter = c,
+         type = d,
+         value = g)
+
+saveRDS(global_params, "../saves/global_params_dmm.rds")
+
+item_sigma<- model %>%
+  filter(b == "sigma",
+         c == "global_sem_sigmas")%>%
+  select(-a,-b, -e,-f,-h)%>%
+    rename(parameter = c,
+         type = d,
+         value = g)
+
+saveRDS(item_sigma, "../saves/item_sigma_dmm.rds")
+
+mixture<- model %>%
+  filter(b == "mixtureComponent")%>%
+  select(b,c,g,chain)%>%
+    rename(parameter = b,
+           type = c,
+         value = g)
+
+saveRDS(mixture, "../saves/mixture_dmm.rds")
+
+
+model_pred_prag <- model %>%
+  filter(a == "modelPrediction",
+         b == "devMixtureModel")%>%
+  select(-a, -h, -c)%>%
+  rename(model = b, 
+         alignment = d,
+         item = e,
+         age = f, 
+         pred = g)
+
+saveRDS(model_pred_prag, "../saves/model_pred_dmm.rds")
+
+
+
+
+
+```

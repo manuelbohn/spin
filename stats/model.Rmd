@@ -651,10 +651,10 @@ ggplot() +
   scale_colour_ptol()+
   scale_fill_ptol()
 
-x_fb <- sample(1:length(unique(model_pred_prag_fb$iteration)), 200)
+x_mm <- sample(1:length(unique(model_pred_mm$iteration)), 200)
 
-plot_model_prag_line_fb <- model_pred_prag_fb%>%
-  filter(iteration %in% x_fb)%>%
+model_pred_mm_line_mm <- model_pred_mm%>%
+  filter(iteration %in% x_mm)%>%
   left_join(aoa_ratings) %>%
   ungroup()%>%
   mutate(item = fct_reorder(factor(item), mean_aoa))
@@ -674,7 +674,7 @@ ggplot() +
 ```
 
 ```{r}
-ggsave("../graphs/pred_model_data.pdf", width = 10, height = 3, scale = 1)
+ggsave("../graphs/pred_mm_model_data.pdf", width = 10, height = 3, scale = 1)
 ```
 
 ## Correlate model predictions and data 
@@ -724,7 +724,221 @@ ggplot(data = plot_cor_model_pred_mm,aes(x = model_mean, y = data_mean, col = al
 ```
 
 ```{r}
-ggsave("../graphs/cor_model_data.pdf", width = 8, height = 3.5, scale = 1)
+ggsave("../graphs/cor_model_data_mm.pdf", width = 8, height = 3.5, scale = 1)
+```
+
+# Developmental Mixture model
+
+
+```{r}
+
+item_params_dmm <- readRDS("../saves/item_params_dmm.rds")
+
+global_params_dmm <- readRDS("../saves/global_params_dmm.rds")
+
+item_sigma_dmm <- readRDS("../saves/item_sigma_dmm.rds")
+
+mixture_dmm <- readRDS("../saves/mixture_dmm.rds")
+
+
+ 
+#### summaries
+item_params_summary_dmm <- item_params_dmm %>%
+  group_by(item, parameter)%>%
+  summarise(mode = estimate_mode(value),
+            uci = hdi_upper(value),
+            lci = hdi_lower(value))
+
+
+global_params_summary_dmm <- global_params_dmm %>%
+  group_by (parameter,type)%>%
+  summarise(mode = estimate_mode(value),
+            uci = hdi_upper(value),
+            lci = hdi_lower(value))
+
+```
+## Plotting model parameters
+
+### Semantic knowledge
+
+```{r}
+plot_item_params_dmm <- ggplot(item_params_dmm, aes(x = value, fill = factor(chain)))+
+  geom_density(alpha = 0.3)+
+  xlab("Parameter")+
+  facet_grid(parameter ~ item, scales = 'free')+
+  theme_few()+
+  theme(legend.position = "bottom")
+
+plot_item_params_dmm
+```
+
+```{r}
+#ggsave("../graphs/item_params_by_chain.pdf", width = 8, height = 3, scale = 1.5)
+```
+
+### Global parameters
+
+```{r}
+
+plot_global_params_dmm <- ggplot(global_params_dmm, aes(x = value, fill = factor(chain)))+
+  geom_density(alpha = 0.3)+
+  xlab("Parameter")+
+  facet_grid(type ~ parameter, scales = 'free')+
+  theme_few()+
+  theme(legend.position = "bottom")
+
+plot_global_params_dmm
+```
+
+### Global sigmas
+
+```{r}
+plot_item_sigma_dmm <- ggplot(item_sigma_dmm, aes(x = value, fill = factor(chain)))+
+  geom_density(alpha = 0.3)+
+  xlab("Sigma")+
+  facet_grid(type ~ parameter, scales = 'free')+
+  theme_few()
+
+plot_item_sigma_dmm
+```
+
+### Mixture
+
+```{r}
+plot_mixture_dmm <- ggplot(mixture_dmm, aes(x = value, fill = factor(chain)))+
+  geom_density(alpha = 0.3)+
+  xlab("value")+
+  facet_grid(~type)+
+  xlim(0,1)+
+  theme_few()
+
+plot_mixture_dmm
+```
+
+## Plotting semantic knowledge
+
+```{r}
+plot_sem_know_dmm <- item_params_summary_dmm%>%
+  select(-uci,-lci)%>%
+  spread(parameter, -item) %>%
+  left_join(expand.grid(
+      age = unique(me_model_data$age),
+      item = unique(me_model_data$item)), .) %>%
+  mutate(sem_know = plogis(intercept + slope * age)) %>%
+  left_join(aoa_ratings) %>%
+  ungroup()%>%
+  mutate(item = fct_reorder(factor(item), mean_aoa))
+
+ggplot(plot_sem_know_dmm, aes(x = age+2, y= sem_know, col = item, group = item))+
+  geom_line(size = 1)+
+  ylab("Semantic knowledge")+
+  xlab("Age")+
+  ylim(0,1)+
+  theme_few()+
+  scale_colour_viridis_d(name = "familiar object")
+```
+
+## Plotting model predictions
+
+
+
+```{r}
+model_pred_dmm <- readRDS("../saves/model_pred_dmm.rds")
+
+plot_model_pred_dmm <- model_pred_dmm%>%
+  group_by(alignment, item, age)%>%
+  summarise(mean = estimate_mode(pred),
+            ci_lower = hdi_lower(pred),
+            ci_upper = hdi_upper(pred))
+
+ggplot() +
+  geom_hline(yintercept = 0.5, lty=2)+
+  geom_smooth(data = data_comb_plot, aes(x = age_num, y = correct), col = "black", method = "loess", se = T, alpha = .5, span = 2)+
+  geom_line(data = plot_model_pred_dmm, aes(x=age+2,y = mean, col = alignment), size = 1)+
+  geom_ribbon(data = plot_model_pred_dmm, aes(x = age+2, ymin = ci_lower, ymax = ci_upper, fill = alignment), alpha = .4) +
+  labs(x="Age",y="Mutual Exclusivity effect")+
+  facet_grid(alignment~item)+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F, fill = F)+ 
+  scale_colour_ptol()+
+  scale_fill_ptol()
+
+x_dmm <- sample(1:length(unique(model_pred_dmm$iteration)), 200)
+
+model_pred_line_dmm <- model_pred_dmm%>%
+  filter(iteration %in% x_dmm)%>%
+  left_join(aoa_ratings) %>%
+  ungroup()%>%
+  mutate(item = fct_reorder(factor(item), mean_aoa))
+
+ggplot() +
+  geom_hline(yintercept = 0.5, lty=2)+
+  geom_line(data = model_pred_line_dmm, aes(x=age+2,y = pred, col = alignment, group = interaction(chain,iteration)),size = .2, alpha = .1)+
+  geom_smooth(data = data_comb_plot, aes(x = age_num, y = correct), col = "black", method = "glm", method.args = list(family = "binomial"), se = T, alpha = .5, span = 1)+
+  labs(x="Age",y="Mutual Exclusivity effect")+
+  facet_grid(alignment~item)+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F, fill = F, col = F)+ 
+  scale_colour_ptol(name = NULL)
+
+```
+
+```{r}
+ggsave("../graphs/pred_mm_model_data.pdf", width = 10, height = 3, scale = 1)
+```
+
+## Correlate model predictions and data 
+
+```{r}
+binnned_data <- data_comb%>%
+  group_by(subage, alignment, item)%>%
+  summarize(k = sum(correct), n = n())%>%
+  ungroup() %>%
+  mutate(a = 1 + k,
+         b = 1 + n - k,
+         data_mean = (a-1)/(a+b-2),
+         data_ci_lower  = qbeta(.025, a, b),
+         data_ci_upper = qbeta(.975, a, b),
+         age = factor(subage))%>%
+  select(-a,-b,-n,-k)
+
+
+cor_mix_dmm <- readRDS("../saves/model_pred_dmm.rds")%>%
+  mutate(age = as.numeric(age) + min(data_comb$age_num),
+         age = cut(age,
+                      breaks = c(2,3,4,5),
+                      labels = c(2,3,4)))%>%
+  group_by(model,alignment, item, age)%>%
+  summarise(model_mean = estimate_mode(pred),
+            model_ci_lower = hdi_lower(pred),
+            model_ci_upper = hdi_upper(pred))
+
+
+plot_cor_model_pred_dmm <- cor_mix_dmm %>%
+  left_join(binnned_data)
+
+ggplot(data = plot_cor_model_pred_dmm,aes(x = model_mean, y = data_mean, col = alignment)) +
+  geom_abline(intercept = 0, slope = 1, lty = 2, alpha = 1, size = .5)+
+  geom_errorbar(aes(ymin = data_ci_lower, ymax = data_ci_upper),width = 0,size = .5, alpha = .7)+
+  geom_errorbarh(aes(xmin = model_ci_lower, xmax = model_ci_upper), height = 0,size = .5, alpha = .7)+
+  geom_point(size = 1.5, stroke = 1, pch = 5)+
+  coord_fixed()+
+ stat_cor(method = "pearson", label.x = 0.01, label.y = 0.99, aes(x = model_mean, y = data_mean), inherit.aes = F, size = 3)+
+  xlim(0,1)+ylim(0,1)+
+  xlab("Model")+
+  ylab("Data")+
+  facet_grid(~age)+
+  theme_few() + 
+  scale_colour_ptol(name ="Alignment")+
+  guides(col = F)
+```
+
+```{r}
+ggsave("../graphs/cor_model_data_mm.pdf", width = 8, height = 3.5, scale = 1)
 ```
 
 # Comparing models 
@@ -755,7 +969,8 @@ ggplot(com_item_params, aes(x = value, fill = model, group = paste(model,chain))
 
 com_global_params <- bind_rows(
   global_params%>%mutate(model="pragmatic"),
-  global_params_fb%>%mutate(model="fullBayes")
+  global_params_fb%>%mutate(model="fullBayes"),
+  global_params_mm%>%mutate(model="mixture")
 )
 
 ggplot(com_global_params, aes(x = value, fill = model, group = paste(model,chain)))+
@@ -776,7 +991,8 @@ ggsave("../graphs/item_params_by_model.pdf", width = 8, height = 3, scale = 1.5)
 ```{r}
 plot_model_comp <- bind_rows(
 plot_model_prag_line,
-plot_model_prag_line_fb
+plot_model_prag_line_fb,
+plot_model_prag_line_mm
 )
 
 
