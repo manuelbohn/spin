@@ -809,11 +809,30 @@ plot_mixture_dmm <- ggplot(mixture_dmm, aes(x = value, fill = factor(chain)))+
   geom_density(alpha = 0.3)+
   xlab("value")+
   facet_grid(~type)+
-  xlim(0,1)+
   theme_few()
 
 plot_mixture_dmm
 ```
+
+```{r}
+
+x_dmm <- sample(1:length(unique(mixture_dmm$iteration)), 200)
+
+plot_mixture_line <- mixture_dmm%>%
+  filter(iteration %in% x_dmm) %>%
+  spread(type, value) %>%
+  expand_grid(.,age = unique(data_comb$age)) %>%
+  mutate(mixture = plogis(intercept + slope * age))
+
+ggplot() +
+  geom_line(data = plot_mixture_line, aes(x=age+2,y = mixture, col = factor(chain), group = interaction(chain,iteration)),size = .2, alpha = .1)+
+  labs(x="Age",y="Mixture (proportion me inference)")+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F, fill = F)
+```
+
 
 ## Plotting semantic knowledge
 
@@ -839,8 +858,6 @@ ggplot(plot_sem_know_dmm, aes(x = age+2, y= sem_know, col = item, group = item))
 ```
 
 ## Plotting model predictions
-
-
 
 ```{r}
 model_pred_dmm <- readRDS("../saves/model_pred_dmm.rds")
@@ -943,6 +960,16 @@ ggsave("../graphs/cor_model_data_mm.pdf", width = 8, height = 3.5, scale = 1)
 
 # Comparing models 
 
+## Likelihood
+
+```{r}
+like_chain <- readRDS("../saves/expl_model_likelihood_chain.rds")
+
+model_comp <- readRDS("../saves/expl_model_comparison.rds")%>%
+  mutate(BF = format(round(exp(logBF)),scientific=F))
+```
+
+
 ## Parameters
 
 ### Semantic knowledge
@@ -970,7 +997,8 @@ ggplot(com_item_params, aes(x = value, fill = model, group = paste(model,chain))
 com_global_params <- bind_rows(
   global_params%>%mutate(model="pragmatic"),
   global_params_fb%>%mutate(model="fullBayes"),
-  global_params_mm%>%mutate(model="mixture")
+  global_params_mm%>%mutate(model="mixture"),
+  global_params_dmm%>%mutate(model="mixture_dev")
 )
 
 ggplot(com_global_params, aes(x = value, fill = model, group = paste(model,chain)))+
@@ -978,13 +1006,40 @@ ggplot(com_global_params, aes(x = value, fill = model, group = paste(model,chain
   xlab("Parameter")+
   facet_grid(type ~ parameter, scales = 'free')+
   theme_few()+
-  theme(legend.position = "bottom")
+  theme(legend.position = "bottom")+
+  scale_fill_ptol()
 
 ```
 
 ```{r}
-ggsave("../graphs/item_params_by_model.pdf", width = 8, height = 3, scale = 1.5)
+ggsave("../graphs/global_params_by_model.pdf", width = 8, height = 3, scale = 1.5)
 ```
+
+
+### Prior parameters
+
+```{r}
+
+x_prior <- sample(1:length(unique(com_global_params$iteration)), 200)
+
+plot_prior_line <- com_global_params%>%
+  filter(parameter == "prior")%>%
+  filter(iteration %in% x_prior) %>%
+  spread(type, value) %>%
+  expand_grid(.,age = unique(data_comb$age)) %>%
+  mutate(prior = plogis(intercept + slope * age))
+
+ggplot() +
+  geom_line(data = plot_prior_line, aes(x=age+2,y = prior, col = model, group = interaction(chain,iteration)),size = .2, alpha = .1)+
+  labs(x="Age",y="Prior")+
+  theme_few() +
+  facet_grid(~model)+
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  scale_color_ptol()+
+  guides(alpha = F, fill = F, col = F)
+```
+
 
 ## Model predictions
 
