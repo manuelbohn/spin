@@ -127,6 +127,11 @@ model_like <- bind_rows(
     mutate(model = "mixture")%>%
     right_join(d_model_comp.summarized)%>%
     select(model,chain,iteration, age, alignment,item,pred, n, k)
+  
+      ,readRDS("../saves/model_pred_dmm.rds") %>%
+    mutate(model = "dev_mixture")%>%
+    right_join(d_model_comp.summarized)%>%
+    select(model,chain,iteration, age, alignment,item,pred, n, k)
 ) %>%
   mutate(
     log_like = dbinom(x = k, size = n, prob = pred, log = TRUE)
@@ -151,11 +156,14 @@ model_comp <- model_like %>%
   group_by(model) %>%
   summarize(marginal_likelihood = matrixStats::logSumExp(total_likelihood_sample)) %>%
   spread(model, marginal_likelihood)%>%
-  mutate(fb_vs_free = fullBayes - pragmatic
-          ,fb_vs_mixture= fullBayes - mixture,
-          free_vs_mixture = pragmatic - mixture
+  mutate(fb_vs_free = fullBayes - pragmatic,
+          fb_vs_mixture= fullBayes - mixture,
+         fb_vs_dev_mixture= fullBayes - dev_mixture,
+          free_vs_mixture = pragmatic - mixture,
+         free_vs_dev_mixture = pragmatic - dev_mixture,
+         dev_mixture_vs_mixture = dev_mixture - mixture
          ) %>%
-  select(-pragmatic, -fullBayes, -mixture) %>%
+  select(-pragmatic, -fullBayes, -mixture, -dev_mixture) %>%
   gather(model, logBF)
 
 saveRDS(model_comp, "../saves/expl_model_comparison.rds")
