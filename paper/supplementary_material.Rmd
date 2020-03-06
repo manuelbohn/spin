@@ -117,8 +117,8 @@ As a first step, we evaluated whether children made a mutual exclusivity inferen
 
 ```{r}
 
-prior_me <- c(prior(normal(0, 10), class = Intercept),
-           prior(normal(0, 10), class = b),
+prior_me <- c(prior(normal(0, 5), class = Intercept),
+           prior(normal(0, 5), class = b),
            prior(cauchy(0, 1), class = sd))
 
 
@@ -126,7 +126,7 @@ bm_me <- brm(correct ~ age + (1|subid) + (age | item) + (age | agent),
                     data = me_data, family = bernoulli(),
           control = list(adapt_delta = 0.99, max_treedepth = 20),
           sample_prior = F,
-          prior = prior,
+          prior = prior_me,
           cores = 4,
           chains = 4,
           iter = 5000)%>%
@@ -215,14 +215,20 @@ knitr::kable(chance_prior, caption = "Proportion of children choosing the object
 Table \@ref(tab:table2) compares children's correct responses to a level expected by chance (50%). We found evidence that, as a group, 3- and 4-year-olds, but not 2-year-olds, inferred that the novel word referred to the object that was new to the speaker. 
 
 ```{r}
-# bm_cg <- brm(correct ~ age + (1|subid) + (age | agent),
-#                     data = prior_data, family = bernoulli(),
-#           control = list(adapt_delta = 0.99, max_treedepth = 20),
-#           sample_prior = F,
-#           cores = 4,
-#           chains = 4,
-#           iter = 5000)%>%
-#   saveRDS(.,"../saves/bm_cg.rds")
+prior_cg <- c(prior(normal(0, 5), class = Intercept),
+           prior(normal(0, 5), class = b),
+           prior(cauchy(0, 1), class = sd))
+
+
+bm_cg <- brm(correct ~ age + (1|subid) + (age | agent),
+                    data = prior_data, family = bernoulli(),
+          control = list(adapt_delta = 0.99, max_treedepth = 20),
+          sample_prior = F,
+          prior = prior_cg,
+          cores = 4,
+          chains = 4,
+          iter = 5000)%>%
+  saveRDS(.,"../saves/bm_cg.rds")
 
 bm_cg <- readRDS("../saves/bm_cg.rds")
 
@@ -274,6 +280,12 @@ The experiment was preregistered at https://osf.io/4nm8g. The experiment itself 
 We tested `r length(unique(comb_data$subid))` children from the same general population as in Experiment 1 and 2, including `r length(unique(comb_data$subid[comb_data$subage == 2]))` 2-year-olds (range = `r format(round(min(comb_data$age_num[comb_data$subage == 2]),2), nsmall = 2)` - `r format(round(max(comb_data$age_num[comb_data$subage == 2]),2), nsmall = 2)`, 7 girls), `r length(unique(comb_data$subid[comb_data$subage == 3]))` 3-year-olds (range = `r format(round(min(comb_data$age_num[comb_data$subage == 3]),2), nsmall = 2)` - `r format(round(max(comb_data$age_num[comb_data$subage == 3]),2), nsmall = 2)`, 14 girls) and  `r length(unique(comb_data$subid[comb_data$subage == 4]))` 4-year-olds (range = `r format(round(min(comb_data$age_num[comb_data$subage == 4]),2), nsmall = 2)` - `r format(round(max(comb_data$age_num[comb_data$subage == 4]),2), nsmall = 2)`, 14 girls). Data from 20 additional children was not included because they were either exposed to less than 75% of English at home (15), did not finish at least half of the test trials (3) or the technical equipment failed (2). 
 
 ### Procedure
+
+Experiment 3 follwed the same procedure as Experiment 2 but involved the same objects as Experiment 1. In the beginning, one table was empty while there was an object (novel or familiar) on the other one. After commenting on the presence or absence of an object on each table, the speaker disappeared and a second object appeared (familiar or novel). Next, the speaker re-appeared and made the usual request.
+
+In the congruent condition, the familair object was present in the beginning and the novel object appeared while the speaker was away (Figure \@ref(fig:fig1)C - left). In this case, both the mutual exclusivity and the common ground inference pointed to the novel object as the referent. In the incongruent condition, the novel object was present in the beginning and the familair object appeared while the speaker was away. In this case, the two inferences pointed to different objects (Figure \@ref(fig:fig1)C - right).
+
+Participants received up to 12 test trials, e
 
 ### Results
 
