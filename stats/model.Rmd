@@ -17,7 +17,7 @@ library(stringr)
 library(matrixStats)
 library(data.table)
 library(bigmemory)
-#library(langcog)
+library(langcog)
 
 estimate_mode <- function(s) {
   d <- density(s)
@@ -435,25 +435,30 @@ ggplot() +
   scale_colour_ptol()+
   scale_fill_ptol()
 
-x_fb <- sample(1:length(unique(model_pred_prag_fb$iteration)), 100)
+x_fb <- sample(1:20000, 50)
 
-plot_model_prag_line_fb <- model_pred_prag_fb%>%
+plot_model_prag_line_fb <- readRDS("../saves/model_pred_prag_fb.rds")%>%
   filter(iteration %in% x_fb)%>%
   left_join(aoa_ratings) %>%
   ungroup()%>%
   mutate(item = fct_reorder(factor(item), mean_aoa))
 
+
 ggplot() +
   geom_hline(yintercept = 0.5, lty=2)+
-  geom_line(data = plot_model_prag_line_fb, aes(x=age+2,y = pred, col = alignment, group = interaction(chain,iteration)),size = .2, alpha = .1)+
-  geom_smooth(data = data_comb_plot, aes(x = age_num, y = correct), col = "black", method = "glm", method.args = list(family = "binomial"), se = T, alpha = .5, span = 1)+
+  geom_jitter(data = data_comb, aes(x = age_num, y = correct), alpha = .1, height = .025, width = 0)+
+  geom_line(data = plot_model_prag_line_fb, aes(x=age+2,y = pred, col = alignment, group = interaction(alignment,chain,iteration)),size = .2, alpha = .2)+
+  geom_pointrange(data = binned_data, aes(x = subage+0.5, y = data_mean, ymin = data_ci_lower, ymax = data_ci_upper), pch = 5)+
+    geom_line(data = binned_data, aes(x = subage+0.5, y = data_mean))+
+ # geom_smooth(data = data_comb_plot, aes(x = age_num, y = correct, col = alignment, lty = alignment), method = "glm", method.args = list(family = "binomial"), se = F, alpha = .5, span = 1)+
   labs(x="Age",y="Mutual Exclusivity effect")+
   facet_grid(alignment~item)+
   theme_few() +
-  ylim(-0.05,1.05)+
+  ylim(-0.09,1.09)+
   xlim(2,5)+
-  guides(alpha = F, fill = F, col = F)+ 
-  scale_colour_ptol(name = NULL)
+  guides(alpha = F, fill = F)+ 
+  scale_colour_ptol()+
+  theme(legend.position = "bottom")
 
 ```
 
@@ -464,7 +469,7 @@ ggsave("../graphs/pred_.pdf", width = 10, height = 3, scale = 1)
 ## Correlate model predictions and data 
 
 ```{r}
-binnned_data <- data_comb%>%
+binned_data <- data_comb%>%
   group_by(subage, alignment, item)%>%
   summarize(k = sum(correct), n = n())%>%
   ungroup() %>%
@@ -978,7 +983,9 @@ model_comp <- readRDS("../saves/expl_model_comparison.rds")%>%
 
 com_item_params <- bind_rows(
   item_params%>%mutate(model="pragmatic"),
-  item_params_fb%>%mutate(model="fullBayes")
+  item_params_fb%>%mutate(model="fullBayes"),
+  item_params_mm%>%mutate(model="mixture"),
+  item_params_dmm%>%mutate(model="mixture_dev")
 )
 
 ggplot(com_item_params, aes(x = value, fill = model, group = paste(model,chain)))+
@@ -986,9 +993,16 @@ ggplot(com_item_params, aes(x = value, fill = model, group = paste(model,chain))
   xlab("Parameter")+
   facet_grid(parameter ~ item, scales = 'free')+
   theme_few()+
-  theme(legend.position = "bottom")
+  theme(legend.position = "bottom")+
+  scale_fill_ptol()
 
 ```
+
+
+```{r}
+ggsave("../graphs/comparison_item_params.pdf", width = 12, height = 8, scale = 1.5)
+```
+
 
 ### Global parameters
 
@@ -1015,7 +1029,6 @@ ggplot(com_global_params, aes(x = value, fill = model, group = paste(model,chain
 ggsave("../graphs/global_params_by_model.pdf", width = 8, height = 3, scale = 1.5)
 ```
 
-
 ### Prior parameters
 
 ```{r}
@@ -1040,6 +1053,25 @@ ggplot() +
   guides(alpha = F, fill = F, col = F)
 ```
 
+### Global sigmas
+
+```{r}
+
+com_global_sigmas <- bind_rows(
+  item_sigma%>%mutate(model="pragmatic"),
+  item_sigma_fb%>%mutate(model="fullBayes"),
+  item_sigma_mm%>%mutate(model="mixture"),
+  item_sigma_dmm%>%mutate(model="mixture_dev")
+)
+
+ggplot(com_global_sigmas, aes(x = value, fill = model, group = paste(model,chain)))+
+  geom_density(alpha = 0.3)+
+  xlab("Parameter")+
+  facet_grid(type ~ ., scales = 'free')+
+  theme_few()+
+  theme(legend.position = "bottom")+
+  scale_fill_ptol()
+```
 
 ## Model predictions
 

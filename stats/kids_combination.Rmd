@@ -75,6 +75,11 @@ write_json(d, "../data/combination.json")
  d <- read_csv("../data/combination.csv")%>%
   mutate(subage = factor(subage))
 
+ 
+log <- read_excel("../../SPIN-subject_log.xlsx", 1)%>%
+  filter(Condition == "com", 
+         keep_drop == "drop") 
+
 ```
 
 ```{r}

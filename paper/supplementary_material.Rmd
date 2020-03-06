@@ -1,0 +1,388 @@
+---
+title: "Word learning at the semantics pragmatics interface"
+subtitle: "Supplementary material"
+author: "Manuel Bohn, Michael Henry Tessler and Michael C. Frank"
+output: 
+  bookdown::html_document2:
+    toc: yes
+    toc_float: true
+    fig_caption: yes
+    code_folding: hide
+    number_sections: false
+bibliography: library.bib
+#csl: pnas.csl
+header-includes:
+  \usepackage{caption}
+  \renewcommand{\thetable}{S\arabic{table}} 
+  \renewcommand{\thefigure}{S\arabic{figure}}
+---
+
+```{r, include = F}
+library(tidyverse)
+library(rwebppl)
+library(brms)
+library(coda)
+library(ggthemes)
+library(readxl)
+library(ggpubr)
+library(stringr)
+library(matrixStats)
+library(data.table)
+library(langcog)
+library(ggimage)
+library(BayesFactor)
+
+knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE, size="small")
+
+```
+
+
+```{r data}
+aoa_ratings <- read_xlsx(path = "../data/words_aoa_ratings.xlsx", sheet = 1)%>%
+  filter(Word %in% c("carrot","duck","bread","apple","kite","horseshoe","plug","garlic","barrel","eggplant","pawn","papaya"))%>%
+  mutate(mean_aoa = as.numeric(Rating.Mean),
+         item = Word)%>%
+  select(item,mean_aoa)
+
+
+me_data <- read_csv("../data/me.csv")
+prior_data <- read_csv("../data/novelty.csv")
+comb_data <- read_csv("../data/combination.csv")
+
+```
+
+
+# Overview
+
+First empirical studies. Then the general modelling framework and the pragmatic model in detail. Then we turn to results. First prediction (i.e. which model makes the best predictions about combination based on only the experiments for the individual inferences) then explanation, that is, if we use all the data that we have, how can we best explain what is happening. Here we fit the models to the combination data. We consider two hypothesis. First our pragmatic model in which the Me inference is conditional on the prior, second a mixture model in which the two inferences are computed separately and mixed by a certain ratio. We also explore a developmental mixture model in which we allow the mixture component to change with age. 
+
+# Empirical studies
+
+## Experiment 1: Mutual exclusivity
+
+The first experiment tested the so called mutual exclusivity inference in children between 2 and 5 years of age. The general phenomena is that when presented with a familiar and an unfamiliar object, children expect a novel word to refer to the unfamiliar object [e.g. @markman1988children]. A range of explanations have been put forward for the cogntive basis of this inference [see @lewis2020-me for a discussion]. Here, we treat the mutual exclusivity inference as pragmatic [e.g. @clark1987principle]. The inference process is specified in the model below. 
+
+The first goal of this experiment was to quantify developmental change in the age range tested. The second goal of Experiment 1 was to test the role of semantic knowledge [cf. @lewis2020-me]. The assumption is that the strength of the mutual exclusivity inference varies with knowledge of the word for the familiar object. That is, when the familiar object is an object for which chldren are less likely to know the word, they are less likely to assume that the novel word refers to the unfamiliar object. To test this, we systematically varied the familair object that was presented with the novel object.
+
+The experiment was preregistered at https://osf.io/gy37b. The experiment itself can be run by downloading the associated repository and opening the file `experiments/kids/kids_me.html`.
+
+### Participants
+
+We tested a total number of `r length(unique(me_data$subid))` children, including `r length(unique(me_data$subid[me_data$subage == 2]))` 2-year-olds (range = `r format(round(min(me_data$age_num[me_data$subage == 2]),2), nsmall = 2)` - `r format(round(max(me_data$age_num[me_data$subage == 2]),2), nsmall = 2)`, 15 girls), `r length(unique(me_data$subid[me_data$subage == 3]))` 3-year-olds (range = `r format(round(min(me_data$age_num[me_data$subage == 3]),2), nsmall = 2)` - `r format(round(max(me_data$age_num[me_data$subage == 3]),2), nsmall = 2)`, 22 girls) and  `r length(unique(me_data$subid[me_data$subage == 4]))` 4-year-olds (range = `r format(round(min(me_data$age_num[me_data$subage == 4]),2), nsmall = 2)` - `r format(round(max(me_data$age_num[me_data$subage == 4]),2), nsmall = 2)`, 16 girls). Data from 10 additional children was not included because they were either exposed to less than 75% of English at home (5), did not finish at least half of the test trials (2), the technical equipment failed (2) or their parents reported an autism spectrum disorder (1). All children were recruited from the floor of a Children’s museum in San José, California, USA. This population is characterized by diverse ethnic background (predominantly White, Asian, or mixed ethnicity) and high levels of parental education and socioeconomic status. Parents consented to their children’s participation and provided demographic information. All experiments were approved by the Stanford Institutional Review Board (protocolno. 19960)
+
+### Procedure
+
+The experiment was presented as an interactive pricture book on a tablet computer [@frank2016using]. Figure \@ref(fig:fig1)A shows the general setup. Children saw an animal between two tables. For each animal character, we recorded a set of utterances (one native English speaker per animal) that were used to make requests. Each experiment started with two training trials in which the speaker requested a known object (car and ball). 
+
+In Experiment 1, on one table, there was a familiar object, on the other table, there was a novel object (drawn for te purpose of the study). The speaker requested an object by saying "Oh cool, there is a [non-word] on the table, how neat, can you give me the [non-word]?". Children responded by touching one of the objects. The location of the novel object (left or right table) and the animal character were counterbalanced. Each child received 12 trials, one with each familiar object. The novel object also chnaged from trial to trial. We coded as correct choice if children chose the novel object as the referent of the novel word.
+
+```{r fig1,echo = F, fig.align = "center", fig.cap = "Schematic experimental procedure with screenshots from the experiments.", out.width="100%"}
+knitr::include_graphics("../graphs/method_overview.png")
+```
+
+Each child completed 12 trials, each with a different familiar and a different novel object. Familiar objects were selected to vary along the dimension of how likely children were to know the word for each object. This including objects that most 2-year-olds could name (e.g. a duck) as well as objects that only very few 5-year-olds could name (e.g. a pawn). The selection was based on age of acquition ratings from Kuperman and colleagues [-@kuperman2012age]. While these ratings do not capture the absolute age when children acquire these words, they capture the relative order in which words are learned. Figure \@ref(fig:fig2)A shows the objects used in the experiment. We induced this variation to estimate the role of semantic knowledge in a mutual excusivity inference. 
+
+```{r, include = F}
+plot_aoa_ratings <- aoa_ratings%>%
+  mutate(image = paste("../experiments/kids/images/",item,".png", sep=""))
+
+plot_aoa <- ggplot(plot_aoa_ratings, aes(x = reorder(item, mean_aoa), y = mean_aoa)) +
+  geom_point(size =2, pch = 4)+
+  ylab("Mean rated age of acquisition")+
+  xlab("Object")+
+  ylim(0,15)+
+  geom_image(aes(image=image, y = mean_aoa+2), asp = 4)+
+  theme_light()+
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+### Results
+
+```{r table1}
+chance_me <- me_data %>%
+  group_by(subage, subid) %>%
+  summarise(correct = mean(correct)) %>%
+  summarise(correct = list(correct)) %>%
+  group_by(subage)%>%
+  mutate(Mean= round(mean(unlist(correct)),2),
+         BayesFactor = format(round(extractBF(ttestBF(unlist(correct), mu = 0.5))$bf), scientific = F),
+         `Age group` = subage)%>%
+  ungroup()%>%
+  select(`Age group`, Mean, BayesFactor)
+
+knitr::kable(chance_me, caption = "Proportion of children choosing the novel object compared to a level expected by chance based on a one sample Bayesian t-test. Responses are aggregated for each participant across familiar objects.", digits = 2)
+```
+
+As a first step, we evaluated whether children made a mutual exclusivity inference. For this analysis, we aggregated participants' responses across familiar objects. We used the function `ttestBF` from the R-package `BayesFactor` [@R-BayesFactor] to compute a Bayes factor (BF) in favor of the hypothesis that children chose the novel object more often than expected by chance (50% correct). Table \@ref(tab:table1) shows that all age groups made the inference.
+
+```{r}
+
+prior_me <- c(prior(normal(0, 10), class = Intercept),
+           prior(normal(0, 10), class = b),
+           prior(cauchy(0, 1), class = sd))
+
+
+bm_me <- brm(correct ~ age + (1|subid) + (age | item) + (age | agent),
+                    data = me_data, family = bernoulli(),
+          control = list(adapt_delta = 0.99, max_treedepth = 20),
+          sample_prior = F,
+          prior = prior,
+          cores = 4,
+          chains = 4,
+          iter = 5000)%>%
+  saveRDS(.,"../saves/bm_me.rds")
+
+bm_me <- readRDS("../saves/bm_me.rds")
+
+fixef_me <- as_tibble(fixef(bm_me), rownames = "term")
+
+ranef_me <-  ranef(bm_me)
+
+ranef_plot_me <- as_tibble(ranef_me$item, rownames = "item")%>%
+  mutate(grand_intercept = fixef_me%>%filter(term=="Intercept")%>%pull(Estimate),
+         grand_slope = fixef_me%>%filter(term=="age")%>%pull(Estimate))%>%
+  group_by(item) %>%
+  tidyr::expand(Estimate.Intercept,Estimate.age,grand_intercept,grand_slope, age = unique(me_data$age))%>%
+  mutate(y = plogis(grand_intercept + Estimate.Intercept+(Estimate.age+grand_slope)*age), 
+         age = age+min(me_data$age_num))%>%
+  left_join(aoa_ratings)%>%
+  ungroup()%>%
+  mutate(item = fct_reorder(factor(item), mean_aoa))
+
+plot_me <- ggplot(ranef_plot_me, aes(x=age,y = y, col = item))+
+  geom_hline(yintercept = 0.5, lty=2)+
+  geom_jitter(data = me_data%>%left_join(aoa_ratings), aes(x = age_num, y = correct, col = reorder(item, mean_aoa)), width = 0, height = 0.02, alpha = .2)+
+  geom_line(size = 1)+
+  labs(x="Age",y="Mutual exclusivity effect")+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F)+ 
+  scale_colour_viridis_d(name = "Object")
+
+cor_plot_me <- as_tibble(ranef_me$item, rownames = "item") %>%
+  left_join(aoa_ratings)%>%
+  ggplot(., aes(x = mean_aoa, y = Estimate.Intercept))+
+  geom_abline(intercept = 1, slope = -1, lty = 2, alpha = 1, size = .5)+
+  geom_point(pch = 4, size = 2)+
+  geom_smooth(method = "lm", col = "black", se = F, lty = 2, size = .5)+
+  xlab("Rated age of acquisition")+
+  ylab("Mutual exclusivity effect (model intercept)")+
+  ylim(-1,1)+
+  stat_cor(method = "pearson", label.x = 7, label.y = .99)+
+  theme_few()
+```
+
+As a second step, we investiagted how the inference changed as a function of age and the familiar object. We modeled the trial by trial data using a Bayesian generalized linear mixed model (GLMM). We used the function `brm` from the package `brms` [@R-brms_a] with default priors. The model formula was `correct ~ age + (1 | id) + (age | object) + (age | agent)`\footnote{We did not pre-register agent as a random effect, but decided to included it to be consistent with Experiment 2 and 3.}. That is, we modeled an overall slope for age (continous, anchored at the minimum) and the object specific developmental trajcetories as deviations from the overall intercept and slope (random effects). The estimate for age was positive and reliably different from zero (*$\beta$* = `r fixef_me%>%filter(term == "age")%>%pull(Estimate)%>%round(2)`, 95% CrI: `r fixef_me%>%filter(term == "age")%>%pull(Q2.5)%>%round(2)` - `r fixef_me%>%filter(term == "age")%>%pull(Q97.5)%>%round(2)`). Older children were more likely to make a mutual exclusivity inference. Figure \@ref(fig:fig2)B visualizes the model based developmental trajectory for each familiar object and shows that there was substantial variation between them. Figure \@ref(fig:fig2)C shows the correaltion between rated age of acquisition and object specific model intercept. The mutual exclusivity effect was stronger for words that were rated to be acquired earlier. Objects for which children were less likely to know the word produced a weaker mutual exclusivity effect. Taken together, the mutual exclusivity inference depended on age as well as the familiar object.  
+
+```{r fig2, include = T, fig.align = "center", fig.cap = "A:Familiar words and corresponding pictures by rated age of acquisition. B: Developmental trajectories of mututal exclusivity effect by familiar object based on the mean of the model posterior distribution. Dots show individual datapoints. Lighter colors indicate later rated age of acquisition. Dotted line indicates a level of performance expected by chance. C: Correlation between rated age of acquisiton and mutual exclusivity effect (model based intercept for each familiar object).", fig.width=12, fig.height = 4}
+
+ggarrange(plot_aoa, plot_me, cor_plot_me,  labels = c("A","B","C"), nrow = 1, widths = c(1,1.3,1))
+
+```
+
+## Experiment 2: Common ground
+
+Here we tested children's sensitivity to common ground that is build up over the course of a conversation. In particular, we tested whether children keep track of which object is new to a speaker and which they have encountered previously [@akhtar1996role; @diesendruck2004two]. The main goal of the experiment was to measure how children's sensitivity to common grouns changes with age.
+
+The experiment was preregistered at https://osf.io/au5hr. The experiment itself can be run by downloading the associated repository and opening the file `experiments/kids/kids_novel.html`.
+
+### Participants
+
+We tested `r length(unique(prior_data$subid))` children from the same general population as in Experiment 1, including `r length(unique(prior_data$subid[prior_data$subage == 2]))` 2-year-olds (range = `r format(round(min(prior_data$age_num[prior_data$subage == 2]),2), nsmall = 2)` - `r format(round(max(prior_data$age_num[prior_data$subage == 2]),2), nsmall = 2)`, 7 girls), `r length(unique(prior_data$subid[prior_data$subage == 3]))` 3-year-olds (range = `r format(round(min(prior_data$age_num[prior_data$subage == 3]),2), nsmall = 2)` - `r format(round(max(prior_data$age_num[prior_data$subage == 3]),2), nsmall = 2)`, 14 girls) and  `r length(unique(prior_data$subid[prior_data$subage == 4]))` 4-year-olds (range = `r format(round(min(prior_data$age_num[prior_data$subage == 4]),2), nsmall = 2)` - `r format(round(max(prior_data$age_num[prior_data$subage == 4]),2), nsmall = 2)`, 14 girls). Data from 5 additional children was not included because they were either exposed to less than 75% of English at home (3) or the technical equipment failed (2).
+
+### Procedure
+
+The general setup was the same as in Experiment 1. The speaker was positioned between the tables. There was a novel object (drawn for the purpose of the study) on one of the tables while the other table was empty. Next, the speaker turned to one of the tables and either commented on the presence ("Aha, look at that.") or the absence ("Hm, nothing there") of an object. Then the speaker disappeared. While the speaker was away, a second novel object appeared on the previously empty table. Then the speaker returned and requested an object in the same way as in Experiment 1 (see also Figure \@ref(fig:fig1)B). The positioning of the novel object in the beginning of the experiment as well as the location the speaker turned to first was counterbalanced. Children received five trials, each with a different pair of novel objects. We coded as correct choice if chidlren chose the object that was new to the speaker as the referent of the novel word.
+
+### Results
+
+```{r table2}
+chance_prior <- prior_data %>%
+  group_by(subage, subid) %>%
+  summarise(correct = mean(correct)) %>%
+  summarise(correct = list(correct)) %>%
+  group_by(subage)%>%
+  mutate(Mean= round(mean(unlist(correct)),2),
+         BayesFactor = format(round(extractBF(ttestBF(unlist(correct), mu = 0.5))$bf,2), scientific = F),
+         `Age group` = subage)%>%
+  ungroup()%>%
+  select(`Age group`, Mean, BayesFactor)
+
+knitr::kable(chance_prior, caption = "Proportion of children choosing the object that was new to the speaker compared to a level expected by chance based on a one sample Bayesian t-test. Responses are aggregated for each participant across trials.", digits = 2)
+```
+
+Table \@ref(tab:table2) compares children's correct responses to a level expected by chance (50%). We found evidence that, as a group, 3- and 4-year-olds, but not 2-year-olds, inferred that the novel word referred to the object that was new to the speaker. 
+
+```{r}
+# bm_cg <- brm(correct ~ age + (1|subid) + (age | agent),
+#                     data = prior_data, family = bernoulli(),
+#           control = list(adapt_delta = 0.99, max_treedepth = 20),
+#           sample_prior = F,
+#           cores = 4,
+#           chains = 4,
+#           iter = 5000)%>%
+#   saveRDS(.,"../saves/bm_cg.rds")
+
+bm_cg <- readRDS("../saves/bm_cg.rds")
+
+fixef_cg <- as_tibble(fixef(bm_cg), rownames = "term")
+
+plot_cg_data <- prior_data %>%
+  group_by(age_num, subid) %>%
+  summarise(correct = mean(correct)) 
+
+plot_cg_samples <- posterior_samples(bm_cg, "^b", subset = 1:200)%>%
+  mutate(sample = 1:length(b_age))%>%
+  expand_grid(.,unique(prior_data$age))%>%
+  mutate(age = `unique(prior_data$age)`,
+         y =  plogis(b_Intercept + b_age * age))%>%
+  select(-`unique(prior_data$age)`)
+
+plot_cg_map <- as_tibble(fixef(bm_cg), rownames = "term")%>%
+  select(term, Estimate)%>%
+  spread(term, Estimate)%>%
+  expand_grid(.,unique(prior_data$age))%>%
+  mutate(slope = age, 
+         age = `unique(prior_data$age)`,
+         y =  plogis(Intercept + slope * age))%>%
+  select(-`unique(prior_data$age)`)
+
+plot_cg <- ggplot() +
+  geom_hline(yintercept = 1/2, lty=2, size = 1)+
+  geom_jitter(data = plot_cg_data,aes(x = age_num, y= correct), width = .00, height = .01, alpha = .5)+
+  geom_line(data = plot_cg_samples, aes(x = age+min(prior_data$age_num), y = y, group = sample), size = .025)+
+  geom_line(data = plot_cg_map, aes(x =age+min(prior_data$age_num), y = y), size = 1)+
+  labs(x="Age",y="Proportion object new to speaker chosen")+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F)
+
+```
+
+To directly investiagte whether children's response changed with age, we modeled the trial by trial data using a Bayesian GLMM (formula: `correct ~ age + (1 | id) + (age | speaker)`, specifications see [Experiment 1](#experiment-1-mutual-exclusivity)). The estimate for age was positive and reliably different from zero (*$\beta$* = `r fixef_cg%>%filter(term == "age")%>%pull(Estimate)%>%round(2)`, 95% CrI: `r fixef_cg%>%filter(term == "age")%>%pull(Q2.5)%>%round(2)` - `r fixef_cg%>%filter(term == "age")%>%pull(Q97.5)%>%round(2)`, see Figure \@ref(fig:fig3)). Older children were more likely to chose the object that was new to the speaker as the referent of the novel word, suggesting that the sensitivity to common ground in this context increases with age.
+
+## Experiment 3: Combination
+
+Experiment 3 combined the procedures from Experiment 1 and 2. As a consequence, children had to consider not just their semantic knowledge of the word for the familiar object and the inference this licences but alo the role that each object (novel and familiar) had played in the preceeding interaction. Combining the two procedures created two conditions: In the *congruent* condition, the novel object was also the object that was new to the speaker. In this case, the mutual exclusivity inference as well as the common ground inference pointed to the novel object as the referent. In the *incongurent condition*, the familiar object was new to the speaker. Int his case, the two inferences pointed to different objects. The main focus of the overall study was to model how children integrate and balance these different inforamtion sources. We investigate this question in depth in the [modelling](#model) section below. Here, we limit the discussion to whether children differentiated between the two conditions.
+
+The experiment was preregistered at https://osf.io/4nm8g. The experiment itself can be run by downloading the associated repository and opening the file `experiments/kids/kids_combination.html`.
+
+### Participants
+
+We tested `r length(unique(comb_data$subid))` children from the same general population as in Experiment 1 and 2, including `r length(unique(comb_data$subid[comb_data$subage == 2]))` 2-year-olds (range = `r format(round(min(comb_data$age_num[comb_data$subage == 2]),2), nsmall = 2)` - `r format(round(max(comb_data$age_num[comb_data$subage == 2]),2), nsmall = 2)`, 7 girls), `r length(unique(comb_data$subid[comb_data$subage == 3]))` 3-year-olds (range = `r format(round(min(comb_data$age_num[comb_data$subage == 3]),2), nsmall = 2)` - `r format(round(max(comb_data$age_num[comb_data$subage == 3]),2), nsmall = 2)`, 14 girls) and  `r length(unique(comb_data$subid[comb_data$subage == 4]))` 4-year-olds (range = `r format(round(min(comb_data$age_num[comb_data$subage == 4]),2), nsmall = 2)` - `r format(round(max(comb_data$age_num[comb_data$subage == 4]),2), nsmall = 2)`, 14 girls). Data from 20 additional children was not included because they were either exposed to less than 75% of English at home (15), did not finish at least half of the test trials (3) or the technical equipment failed (2). 
+
+### Procedure
+
+### Results
+
+```{r}
+
+prior_comb <- c(prior(normal(0, 5), class = Intercept),
+           prior(normal(0, 5), class = b),
+           prior(cauchy(0, 1), class = sd))
+
+bm_comb <- brm(correct ~ age * alignment + (alignment | subid) + (age * alignment | item)+ (age * alignment | agent),
+                    data = comb_data, family = bernoulli(),
+          control = list(adapt_delta = 0.99, max_treedepth = 20),
+          sample_prior = F,
+          prior = prior_comb,
+          cores = 4,
+          chains = 4,
+          inits = 0,
+          iter = 5000)%>%
+  saveRDS(.,"../saves/bm_comb.rds")
+
+bm_comb <- readRDS("../saves/bm_comb.rds")
+
+fixef_comb <- as_tibble(fixef(bm_comb), rownames = "term")
+
+ranef_comb <-  ranef(bm_comb)
+
+plot_comb_map <- bind_rows(
+  as_tibble(ranef_comb$item, rownames = "item")%>%
+  mutate(condition = "congruent",
+         condition_code = 0),
+  as_tibble(ranef_comb$item, rownames = "item")%>%
+  mutate(condition = "incongruent",
+         condition_code = 1))%>%
+  mutate(grand_intercept = fixef_comb%>%filter(term=="Intercept")%>%pull(Estimate),
+         grand_age = fixef_comb%>%filter(term=="age")%>%pull(Estimate),
+         grand_cond = fixef_comb%>%filter(term=="alignmentincongruent")%>%pull(Estimate),
+         grand_intact = fixef_comb%>%filter(term=="age:alignmentincongruent")%>%pull(Estimate))%>%
+  group_by(item, condition, condition_code)%>%
+  expand_grid(. ,age = unique(comb_data$age))%>%
+  mutate(y = plogis(grand_intercept + 
+                      Estimate.Intercept +
+                      grand_cond * condition_code +
+                      Estimate.alignmentincongruent * condition_code +
+                      grand_age * age +
+                      Estimate.age * age +
+                      grand_intact * (condition_code * age) +
+                      `Estimate.age:alignmentincongruent` * (condition_code * age)),
+         age = age+min(comb_data$age_num))%>%
+  left_join(aoa_ratings)%>%
+  ungroup()%>%
+  mutate(item = fct_reorder(factor(item), mean_aoa))
+
+
+plot_comb <- ggplot(plot_comb_map, aes(x=age,y = y, col = item))+
+  geom_hline(yintercept = 0.5, lty=2)+
+  geom_jitter(data = comb_data%>%left_join(aoa_ratings)%>%ungroup()%>%mutate(item = fct_reorder(factor(item), mean_aoa)), aes(x = age_num, y= correct, col = item), width = .00, height = .04, alpha = .2)+
+  geom_line(size = 1)+
+  labs(x="Age",y="Mutual Exclusivity effect")+
+  facet_grid(~condition)+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F)+ 
+  scale_colour_viridis_d(name = "familiar object")
+
+```
+
+```{r fig3, include = T, fig.align = "center", fig.cap = "Proportion of choosing the object that was new to the speaker by age. Dots show the mean response for each participant. The solid black line shows the developmental trajectory based on the mean of the model posterior distribution. Lighter lines show 200 random draws from the posterior distribution to depict uncertainty. Dotted line indicates a level of performance expected by chance.", fig.width=12, fig.height = 4}
+ggarrange(plot_cg, plot_comb,  labels = c("A","B"), nrow = 1, widths = c(1,2))
+```
+
+Comparison to chance not meaningful 
+
+# Model
+
+## loci of development
+
+Semantic Knowledge, Speaker Optimality, Prior sensitivity. Each correspond to an age sensitive parameter in our model. That is they change as a function of age. We assume that the integration process remains constant over time. 
+
+### Semantic knowledge
+
+### Expectations about speaker informativeness
+
+### Sensitivity to common ground
+
+
+## Prediction
+
+Estimate parameters based on me data and prior data. The models considered belwo make differential use of theses parameters. Basically, one full model and the rest are lesion model
+
+### Pragmatic model
+
+[overview fig, all model parameters for all models]
+
+### No word 
+
+semantic knowledge is only a function of age and not specific to the item. Roughyl corresponds to. If children are vaguely familiar with an object, the make the ME inference regardless of the individual object 
+
+### Model comparison
+
+range of log like accross chains and then model comparison 
+
+## Explanation
+
+### Pragmatic model 
+
+### Model comparison
+
+[overview fig, correlations for all models]
+
+# Discussion
+
