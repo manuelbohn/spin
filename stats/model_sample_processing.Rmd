@@ -34,9 +34,7 @@ hdi_lower<- function(s){
   return(m["var1","lower"])
 }
 ```
-```{r}
 
-```
 
 # remove chain 6
 
