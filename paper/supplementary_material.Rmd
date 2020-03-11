@@ -391,28 +391,34 @@ Finally, we ask how well our model *explains* the way that children integrate th
 
 ## Modelling framework 
 
-We implemented the cognitive models in the Rational Speech Act (RSA) framework [@frank2012predicting; goodman2016pragmatic]. RSA models are models of pragmatic reasoning in that they treat language understanding as a special case of Bayesian social reasoning. A listener interprets an utterance by assuming it was produced by a cooperative speaker who had the goal to be informative. Being informative is defined as providing a message that would increase the probability of the listener inferring the speaker’s intended message. This notion of contextual informativeness captures the Gricean idea of cooperation between speaker and listener, and provides a first approximation to what we have described above as utterance-level pragmatic information. 
+The cognitive models are situated in the Rational Speech Act (RSA) framework [@frank2012predicting; goodman2016pragmatic]. RSA models are models of pragmatic reasoning in that they treat language understanding as a special case of Bayesian social reasoning. A listener interprets an utterance by assuming it was produced by a cooperative speaker who had the goal to be informative. Being informative is defined as providing a message that would increase the probability of the listener inferring the speaker’s intended message. This notion of contextual informativeness captures the Gricean idea of cooperation between speaker and listener.
 
---- model in math --- 
+The model captures the following process. A listener is reasoning about the referent of a speaker's utterance while at the same time trying to learn a lexicon (object--word mappings). This reasoning is contextualized by the prior probability of each referent. This prior probability is thought to be a function of the common ground shared between speaker and listener in that interacting around the objects changes the probability that they will be referred to later. We assume that the degree to which interactions around objects change their prior probability depend on the child's age. 
+
+To decide between referents, the listener reasons about what a rational speaker would say given an intended referent. This speaker is assumed to compute the informativity of for each available utterance and then choose the most informative one. However, this expectation of speaker informativeness may vary and is caputred by the term alpha. In particualr, we take alpha to be a function of the child's age. 
+
+The informativity of each utterance is given by imagining which referent a literal listener, who interprets words according to their literal semantics, would infer upon hearing it. Thus, this reasoning depends what kind of word--object mappings the speaker thinks the literal listener knows. We assume that knowing the literal semantics of a word is not deterministic but probabilistic. That is, for each object involved there is a probability p that the literal listener knows the word for it. For each of the novel objects, this semantic knowledge is 0. For familiar objects, it depends on the kind of object as well as on the child's age. 
 
 ## Loci of development
 
-We can identify three potential loci of development in the model described above: semantic knowledge, expectations about speaker informativeness and common ground sensitivity. Each of theses components is represented by a parameter in the model. We capture developmental change by making these parameters a function of age and estimate the developmental trajectory for each parameter. These age sensitive parameters are then passed through the model to generate predictions in the form of developmental trajectories for each item in the congruent and the incongruent condition.
+The model description above points to three potential loci of developmental change: semantic knowledge, expectations about speaker informativeness and common ground sensitivity. Each of theses components is represented by a parameter in the model. We capture developmental change by making these parameters a function of age and therfor estimating a developmental trajectory (intercept and slope) for each parameter.
 
 ### Semantic knowledge
 
-Semantic knowledge captures the degree of certainty with which the speaker and the (naive) listener know the label for the familiar object. The major source of variation in semantic knowledge are the different familiar objects. For objects whose labels are generally acquired earlier (e.g. carrot) semantic knowledge is high whereas for others (e.g. pawn) semantic knowledge is lower. However, semantic knowledge also varies with age in that older children are more likely to know the labels for more of the familiar objects compared to younger children. As a consequence, each familiar object has a unique developmental trajectory with respect to semantic knowledge. 
+Semantic knowledge captures the degree of certainty with which the naive listener is assumed to know the label for the familiar object. When faced with the task, we think that children take their own semantic knowledge as the basis. As a consequence, semantic knowledge differs between familiar objects. For objects whose labels are generally acquired earlier (e.g. carrot) semantic knowledge is high whereas for others (e.g. pawn) semantic knowledge is lower. However, semantic knowledge also varies with age in that older children are more likely to know the labels for more of the familiar objects compared to younger children. As a consequence, each familiar object has a unique developmental trajectory with respect to semantic knowledge.
+
+Developmental trajectories are estimated via a model in which we assume th (that only captures the ME task). 
 
 ### Expectations about speaker informativeness
 
-
+Expectations how rational the speaker is change with age. Older children are assumed to expect
 
 ### Sensitivity to common ground
 
 
 ## Model fitting
 
-All models were implemented in `webppl` [@dippl]. The corresponding model code can be found in the associated online repository. Model predictions and model comparison are based on the full posterior distribution for each model parameter.   
+All models were implemented in `webppl` [@dippl]. The corresponding model code can be found in the associated online repository (xxxxx). To generate model predictions, we estimated age sensitive parameter distributions for semantic knowledge (by item), speaker informativeness and common ground sensitivity and then passed them through the model in line with the different ways in which they can be combined and aligned. The resulting predictions come in the form of distributions of developmental trajectories for each item in the congruent and the incongruent condition. We compared models based on the full posterior distribution for each model parameter.
 
 ## Prediction
 
@@ -539,6 +545,8 @@ semantic knowledge is only a function of age and not specific to the item. Rough
 range of log like across chains and then model comparison 
 
 ## Explanation
+
+model parameters are also estimated based in the data from experiment 1 and 2, but then updated based on the data from experiment 3.
 
 ### Model parameters
 
