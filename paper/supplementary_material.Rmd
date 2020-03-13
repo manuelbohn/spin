@@ -63,7 +63,11 @@ aoa_ratings <- read_xlsx(path = "../data/words_aoa_ratings.xlsx", sheet = 1)%>%
 
 me_data <- read_csv("../data/me.csv")
 prior_data <- read_csv("../data/novelty.csv")
-comb_data <- read_csv("../data/combination.csv")
+comb_data <- read_csv("../data/combination.csv")%>%
+  mutate(model = "data")%>%
+  left_join(aoa_ratings) %>%
+  ungroup()%>%
+  mutate(item = fct_reorder(factor(item), mean_aoa))
 
 ```
 
@@ -375,7 +379,7 @@ plot_comb <- ggplot(plot_comb_map, aes(x=age,y = y, col = item))+
 
 Use sd on item to say tha items vary substantially and sd on interaction or age to say they differ in their slope
 
-We modeled the trial by trial data in the following way: `correct ~ age * alignment + (alignment | subid) + (age * alignment | item) + (age * alignment | agent)`\footnote{We pre-registered to include item as a fixed effect in Experiment 3. The corresponding model was too complex to be constrained by the data. Furthermore, as explained in Experiment 1, items were chosen based on their rated age of acquisition. That is, we assumed that they are not necessarily different kinds but that they represent different locations on a distribution of required semantic knowledge.}, specifications see [Experiment 1](#experiment-1-mutual-exclusivity)). The estimate for age was reliably positive (*$\beta$* = `r fixef_comb%>%filter(term == "age")%>%pull(Estimate)%>%round(2)`, 95% CrI: `r fixef_comb%>%filter(term == "age")%>%pull(Q2.5)%>%round(2)` - `r fixef_comb%>%filter(term == "age")%>%pull(Q97.5)%>%round(2)`). The incongruent condition had a strong negative impact (*$\beta$* = `r fixef_comb%>%filter(term == "alignmentincongruent")%>%pull(Estimate)%>%round(2)`, 95% CrI: `r fixef_comb%>%filter(term == "alignmentincongruent")%>%pull(Q2.5)%>%round(2)` - `r fixef_comb%>%filter(term == "alignmentincongruent")%>%pull(Q97.5)%>%round(2)`), showing that children differentiated between the two conditions. The interaction term was weakly - though not entirely - negative, suggesting a shallower slope for age in the incongruent condition (*$\beta$* = `r fixef_comb%>%filter(term == "age:alignmentincongruent")%>%pull(Estimate)%>%round(2)`, 95% CrI: `r fixef_comb%>%filter(term == "age:alignmentincongruent")%>%pull(Q2.5)%>%round(2)` - `r fixef_comb%>%filter(term == "age:alignmentincongruent")%>%pull(Q97.5)%>%round(2)`). Figure \@ref(fig:fig3)B visualizes the model. Taken together, the results show that children responded to the way the two inferences were aligned with one another. For the remainder of the study, we address the question of how the two inferences might have interacted with one another.
+We modeled the trial by trial data in the following way: `correct ~ age * alignment + (alignment | subid) + (age * alignment | item) + (age * alignment | agent)`. We pre-registered to include item as a fixed effect in Experiment 3. The corresponding model was too complex to be constrained by the data. Furthermore, as explained in Experiment 1, items were chosen based on their rated age of acquisition. That is, we assumed that they are not necessarily different kinds but that they represent different locations on a distribution of required semantic knowledge. For further model specifications see [Experiment 1](#experiment-1-mutual-exclusivity)). The estimate for age was reliably positive (*$\beta$* = `r fixef_comb%>%filter(term == "age")%>%pull(Estimate)%>%round(2)`, 95% CrI: `r fixef_comb%>%filter(term == "age")%>%pull(Q2.5)%>%round(2)` - `r fixef_comb%>%filter(term == "age")%>%pull(Q97.5)%>%round(2)`). The incongruent condition had a strong negative impact (*$\beta$* = `r fixef_comb%>%filter(term == "alignmentincongruent")%>%pull(Estimate)%>%round(2)`, 95% CrI: `r fixef_comb%>%filter(term == "alignmentincongruent")%>%pull(Q2.5)%>%round(2)` - `r fixef_comb%>%filter(term == "alignmentincongruent")%>%pull(Q97.5)%>%round(2)`), showing that children differentiated between the two conditions. The interaction term was weakly - though not entirely - negative, suggesting a shallower slope for age in the incongruent condition (*$\beta$* = `r fixef_comb%>%filter(term == "age:alignmentincongruent")%>%pull(Estimate)%>%round(2)`, 95% CrI: `r fixef_comb%>%filter(term == "age:alignmentincongruent")%>%pull(Q2.5)%>%round(2)` - `r fixef_comb%>%filter(term == "age:alignmentincongruent")%>%pull(Q97.5)%>%round(2)`). Figure \@ref(fig:fig3)B visualizes the model. Taken together, the results show that children responded to the way the two inferences were aligned with one another. For the remainder of the study, we address the question of how the two inferences might have interacted with one another.
 
 ```{r fig3, include = T, fig.align = "center", fig.cap = "Proportion of choosing the object that was new to the speaker by age. Dots show the mean response for each participant. The solid black line shows the developmental trajectory based on the mean of the model posterior distribution. Lighter lines show 200 random draws from the posterior distribution to depict uncertainty. Dotted line indicates a level of performance expected by chance.", fig.width=12, fig.height = 4}
 ggarrange(plot_cg, plot_comb,  labels = c("A","B"), nrow = 1, widths = c(1,2))
@@ -405,29 +409,27 @@ The model description above points to three potential loci of developmental chan
 
 ### Semantic knowledge
 
-Semantic knowledge captures the degree of certainty with which the naive listener is assumed to know the label for the familiar object. When faced with the task, we think that children take their own semantic knowledge as the basis. As a consequence, semantic knowledge differs between familiar objects. For objects whose labels are generally acquired earlier (e.g. carrot) semantic knowledge is high whereas for others (e.g. pawn) semantic knowledge is lower. However, semantic knowledge also varies with age in that older children are more likely to know the labels for more of the familiar objects compared to younger children. As a consequence, each familiar object has a unique developmental trajectory with respect to semantic knowledge.
-
-Developmental trajectories are estimated via a model in which we assume th (that only captures the ME task). 
+Semantic knowledge captures the degree of certainty with which the naive listener is assumed to know the label for the familiar object. When faced with the task, we think that children take their own semantic knowledge as the basis. As a consequence, semantic knowledge differs between familiar objects. For objects whose labels are generally acquired earlier (e.g. carrot) semantic knowledge is high whereas for others (e.g. pawn) semantic knowledge is lower. However, semantic knowledge also varies with age in that older children are more likely to know the labels for more of the familiar objects compared to younger children. As a consequence, each familiar object has a unique developmental trajectory with respect to semantic knowledge. The likelihood term of the model depends not just the parameter settings for semantic knowledge but also on the value of the parameter capturing expecations about speaker informativeness (alpha - see next section). As a consequence, these two parameters are estimated in conjunction and co-vary with one another. 
 
 ### Expectations about speaker informativeness
 
-Expectations how rational the speaker is change with age. Older children are assumed to expect
+A second locus of developmental change are expectations about speaker informativeness. In the context of the model, speaker informativeness corresponds to the degree with which the listener expects the speaker to choose the most informative of all available utterances. We assume that children at different ages might have different expectations about how rational or informative speakers are. As mentioned above, this parameter jointly estimated with the parameters for semantic knowledge.  
 
 ### Sensitivity to common ground
 
+Sensitivity to common ground refers to the probability that an object is taken to be the referent of the utterance before actually hearing the utterance. Thus, it captures the salience of an object due to its role in the social interaction that preceeds the utterance. We expect children at different ages to respond differently to the common ground manipulation, resulting in an age specific prior distribution over objects.  
 
 ## Model fitting
 
-All models were implemented in `webppl` [@dippl]. The corresponding model code can be found in the associated online repository (xxxxx). To generate model predictions, we estimated age sensitive parameter distributions for semantic knowledge (by item), speaker informativeness and common ground sensitivity and then passed them through the model in line with the different ways in which they can be combined and aligned. The resulting predictions come in the form of distributions of developmental trajectories for each item in the congruent and the incongruent condition. We compared models based on the full posterior distribution for each model parameter.
+All Bayesian cognitive models were implemented in the probabilistic programming language  `WebPPL` [@dippl]. The corresponding model code can be found in the associated online repository and includes information about the prior distributions for all parameters in the model (file xxxxx). To generate model predictions, we estimated age sensitive parameter distributions for semantic knowledge (by item), speaker informativeness and common ground sensitivity and then passed them through the model in line with the different ways in which they can be combined and aligned. The resulting predictions come in the form of distributions of developmental trajectories for each item in the congruent and the incongruent condition. We generated model predictions for each model based on the full posterior distribution for each model parameter. Based on these model predictions, we computed the marginal likelihood of the data given each model and compared them via Bayes factors (see file `model_comparison.Rmd` in the associated online repository).
 
 ## Prediction
 
-Estimate parameters based on me data and prior data. The models considered below make differential use of theses parameters. Basically, one full model and the rest are lesion model
+In this section we evaluate different models in terms of how well they *predict* information integration. That is, in a situation in which we know the development of the mutual exclusivity inference as well as the common ground inference, which model best predicts what happens when the two are combined (combination data from Experiment 3). Asking this question automatically excludes all models which include parameters that need to be fit to the combination data itself. To this end, we estimated the model parameters for semantic knowledge and speaker informativeness based on Experiment 1 and the parameter for common ground sensitivity based on Experiment 2. Next, we combined the parameters according to the four models described below. Please note that the parameter distributions were the same for all models (see Figure \@ref(fig:fig4)) and that models only differed in how they were combined. 
 
-### Model parameters
+To estimate the parameter distributions, we collected samples from six independent MCMC chains, collecting 150 000 samples from each chain and removing the first 50 000 for burn-in. We removed samples from one chain because it converged on a local maximum and yielded parameter distributions that were substantially different from the other chains. The model outputs can be found in the following online repository: git large file storage.  
 
 ```{r}
-
 # parameter distributions based on model 
 item_params <- readRDS("../saves/item_params.rds")
 global_params <- readRDS("../saves/global_params.rds")
@@ -529,12 +531,143 @@ plot_prior <- ggplot() +
 ```
 
 ```{r fig4, include = T, fig.align = "center", fig.cap = "Developmental trajectories for model parameters based on the posterior distribution for (A) semantic knowlede, (B) speaker informativeness and (C) prior sensitivity. Solid lines in show the MAP estimate for each parameter. Lighter lines in (B) and (C) show 300 random draws from the posterior distributon to visualize uncertainty. (A) does not include these random draws for the sake of clarity.", fig.width=12, fig.height = 4}
-ggarrange(plot_sem_know, plot_speak_opt, plot_prior , labels = c("A","B","C"), nrow = 1, widths = c(1.1,1,1))
+ggarrange(plot_sem_know, plot_speak_opt, plot_prior , labels = c("A","B","C"), nrow = 1, widths = c(1.,1,1))
 ```
 
 ### Integration model
 
 [overview fig, all model parameters for all models]
+```{r fig5, include = T, fig.align = "center", fig.cap = "Model predictions based on the integration model. Colored lines show developmental trajectories for each familiar object and condition based on 300 random draws from the model posterior distribution. Top row (blue) shows the congruent condition and the bottom row (red) shows the inconguent condition. Familiar objects are ordered based on their rated age of acquisition (left o right). Dashed black lines show smoothed conditional mean of the data with 95\\% CI (in grey).", fig.width=12, fig.height = 4}
+# comb_data_binned <- comb_data%>%
+#   group_by(subage, alignment, item)%>%
+#   summarize(k = sum(correct), n = n())%>%
+#   ungroup() %>%
+#   mutate(a = 1 + k,
+#          b = 1 + n - k,
+#          data_mean = (a-1)/(a+b-2),
+#          data_ci_lower  = qbeta(.025, a, b),
+#          data_ci_upper = qbeta(.975, a, b),
+#          age = factor(subage))%>%
+#   select(-a,-b,-n,-k)%>%
+#   left_join(aoa_ratings) %>%
+#   ungroup()%>%
+#   mutate(item = fct_reorder(factor(item), mean_aoa))
+# 
+# select_pred <- sample(1:20000, 60)
+# 
+# plot_prag_pred <- readRDS("../saves/model_pred_prag.rds")%>%
+#   filter(iteration %in% select_pred)%>%
+#   left_join(aoa_ratings) %>%
+#   ungroup()%>%
+#   mutate(item = fct_reorder(factor(item), mean_aoa))
+# 
+# 
+#  saveRDS(plot_prag_pred, "../saves/plot_prag_pred.rds")
+
+plot_prag_pred <- readRDS( "../saves/plot_prag_pred.rds")
+
+
+ggplot(data = comb_data, aes(x = age_num, y = correct)) +
+  geom_hline(yintercept = 0.5, lty=2)+
+  geom_jitter(col = "black", height = .025, alpha = .1)+
+  #geom_pointrange(data = comb_data_binned, aes(x = subage+.5, y = data_mean, ymin =data_ci_lower, ymax = data_ci_upper), stroke = 1, pch = 5)+
+  #geom_line(data = comb_data_binned, aes(x = subage+.5, y = data_mean))+
+  geom_line(data = plot_prag_pred, aes(x=age+2,y = pred, col = alignment, group = interaction(chain,iteration)), size = .2, alpha = .25)+
+  geom_smooth(data = comb_data, aes(x = age_num, y = correct), col = "black", method = "glm", method.args = list(family = "binomial"), se = T, alpha = .4, lty = 2, size = 1)+
+  labs(x="Age",y="Mutual Exclusivity effect")+
+  facet_grid(alignment~item)+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F, fill = F, col = F)+ 
+  scale_colour_ptol(name = NULL)
+```
+
+```{r fig6, include = T, fig.align = "center", fig.cap = "Correlations between model predictions and data binned by year, item and condition. Vertical and horizontal error bars show 95\\% HDI. Blue diamonds show congruent condition and red ones show the incongruent condition.", fig.width=12, fig.height = 6}
+
+# cor_prag <- readRDS("../saves/model_pred_prag.rds")%>%
+#   mutate(age = as.numeric(age) + min(data_comb$age_num),
+#          age = cut(age,
+#                       breaks = c(2,3,4,5),
+#                       labels = c(2,3,4)))%>%
+#   group_by(model,alignment, item, age)%>%
+#   summarise(model_mean = estimate_mode(pred),
+#             model_ci_lower = hdi_lower(pred),
+#             model_ci_upper = hdi_upper(pred))
+# 
+# cor_global <- readRDS("../saves/model_pred_global.rds")%>%
+#   mutate(age = as.numeric(age) + min(data_comb$age_num),
+#          age = cut(age,
+#                       breaks = c(2,3,4,5),
+#                       labels = c(2,3,4)))%>%
+#   group_by(model, alignment, item, age)%>%
+#   summarise(model_mean = estimate_mode(pred),
+#             model_ci_lower = hdi_lower(pred),
+#             model_ci_upper = hdi_upper(pred))
+# 
+# cor_flat <- readRDS("../saves/model_pred_flat.rds")%>%
+#   mutate(age = as.numeric(age) + min(data_comb$age_num),
+#          age = cut(age,
+#                       breaks = c(2,3,4,5),
+#                       labels = c(2,3,4)))%>%
+#   group_by(model, alignment, item, age)%>%
+#   summarise(model_mean = estimate_mode(pred),
+#             model_ci_lower = hdi_lower(pred),
+#             model_ci_upper = hdi_upper(pred))
+# 
+# cor_prior <- readRDS("../saves/model_pred_prior.rds")%>%
+#   mutate(age = as.numeric(age) + min(data_comb$age_num),
+#          age = cut(age,
+#                       breaks = c(2,3,4,5),
+#                       labels = c(2,3,4)))%>%
+#   group_by(model, alignment, item, age)%>%
+#   summarise(model_mean = estimate_mode(pred),
+#             model_ci_lower = hdi_lower(pred),
+#             model_ci_upper = hdi_upper(pred))
+# 
+# cor_model_pred <- bind_rows(
+#    cor_prag,
+#    cor_global,
+#    cor_flat,
+#    cor_prior
+# )
+# 
+# 
+# plot_cor_model_pred <- cor_model_pred %>%
+#   left_join(
+#     bind_rows(
+#        binnned_data%>%mutate(model = "integration"),
+#        binnned_data%>%mutate(model = "no word knowledge"),
+#        binnned_data%>%mutate(model = "no common ground"),
+#        binnned_data%>%mutate(model = "no mutual exclusivity")
+#       )
+#   )%>%
+#   mutate(age = fct_recode(age, 
+#                           "2" = "2-year-olds",
+#                           "3" = "3-year-olds",
+#                           "4" = "4-year-olds"))
+#
+#saveRDS(plot_cor_model_pred, "../saves/corr_model_data_pred.rds")
+
+ plot_cor_model_pred <- readRDS( "../saves/corr_model_data_pred.rds")
+ 
+ggplot(data = plot_cor_model_pred,aes(x = model_mean, y = data_mean, col = alignment)) +
+  geom_abline(intercept = 0, slope = 1, lty = 2, alpha = 1, size = .5)+
+  geom_errorbar(aes(ymin = data_ci_lower, ymax = data_ci_upper),width = 0,size = .5, alpha = .7)+
+  geom_errorbarh(aes(xmin = model_ci_lower, xmax = model_ci_upper), height = 0,size = .5, alpha = .7)+
+  geom_point(size = 1.5, stroke = 1, pch = 5)+
+  coord_fixed()+
+ stat_cor(method = "pearson", label.x = 0.01, label.y = 0.99, aes(x = model_mean, y = data_mean), inherit.aes = F, size = 3)+
+  xlim(0,1)+ylim(0,1)+
+  xlab("Model")+
+  ylab("Data")+
+  facet_grid(age~model)+
+  theme_few() + 
+  scale_colour_ptol(name ="Condition")
+ 
+ 
+```
+
 
 ### No word 
 
@@ -651,15 +784,12 @@ plot_prior_exp <- ggplot() +
 
 ```
 
-```{r fig4, include = T, fig.align = "center", fig.cap = "Developmental trajectories for model parameters based on the posterior distribution for (A) semantic knowlede, (B) speaker informativeness and (C) prior sensitivity. Solid lines in show the MAP estimate for each parameter. Lighter lines in (B) and (C) show 300 random draws from the posterior distributon to visualize uncertainty. (A) does not include these random draws for the sake of clarity.", fig.width=12, fig.height = 4}
+```{r fig8, include = T, fig.align = "center", fig.cap = "Developmental trajectories for model parameters based on the posterior distribution for (A) semantic knowlede, (B) speaker informativeness and (C) prior sensitivity. Solid lines in show the MAP estimate for each parameter. Lighter lines in (B) and (C) show 300 random draws from the posterior distributon to visualize uncertainty. (A) does not include these random draws for the sake of clarity.", fig.width=12, fig.height = 4}
 ggarrange(plot_sem_know_exp, plot_speak_opt_exp, plot_prior_exp , labels = c("A","B","C"), nrow = 1, widths = c(1.1,1,1))
 ```
 
 
 
-```{r fig4, include = T, fig.align = "center", fig.cap = "Developmental trajectories for model parameters based on the posterior distribution for (A) semantic knowlede, (B) speaker informativeness and (C) prior sensitivity. Solid lines in show the MAP estimate for each parameter. Lighter lines in (B) and (C) show 300 random draws from the posterior distributon to visualize uncertainty. (A) does not include these random draws for the sake of clarity.", fig.width=12, fig.height = 4}
-ggarrange(plot_sem_know, plot_speak_opt, plot_prior , labels = c("A","B","C"), nrow = 1, widths = c(1.1,1,1))
-```
 
 ### Integration model 
 

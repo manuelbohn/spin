@@ -286,7 +286,7 @@ ggsave("../graphs/pred_model_data.pdf", width = 10, height = 3, scale = 1)
 #       )
 #   )
 
-# saveRDS(plot_cor_model_pred, "../saves/corr_model_data.rds")
+ saveRDS(plot_cor_model_pred, "../saves/corr_model_data.rds")
 
  plot_cor_model_pred <- readRDS( "../saves/model_cor.rds")
 
