@@ -65,7 +65,7 @@ d_model_comp.summarized <- d_model_comp %>%
 
 # join predictions with the data 
 
-model_comp <- bind_rows(
+model_like <- bind_rows(
   
   readRDS("../saves/model_pred_prag.rds") %>%
     right_join(d_model_comp.summarized) %>%
@@ -87,9 +87,28 @@ model_comp <- bind_rows(
     log_like = dbinom(x = k, size = n, prob = pred, log = TRUE)
   ) %>%
   group_by(chain, model, iteration) %>%
-  summarize(total_likelihood_sample = sum(log_like)) %>%
+  summarize(total_likelihood_sample = sum(log_like))
+
+model_by_chain <- model_like %>%
+  na.omit(chain)%>%
   group_by(chain, model) %>%
   summarize(marginal_likelihood = matrixStats::logSumExp(total_likelihood_sample)) %>%
+  spread(model, marginal_likelihood)
+
+saveRDS(model_by_chain, "../saves/pred_model_likelihood_chain.rds")
+
+model <- model_like %>%
+  na.omit(chain)%>%
+  group_by(model) %>%
+  summarize(marginal_likelihood = matrixStats::logSumExp(total_likelihood_sample))
+
+saveRDS(model, "../saves/pred_model_likelihood.rds")
+
+
+model_comp <- model_like  %>%
+  na.omit(chain)%>%
+  group_by(model) %>%
+  summarize(marginal_likelihood = matrixStats::logSumExp(total_likelihood_sample))%>%
   spread(model, marginal_likelihood)%>%
   mutate(prag_vs_global = pragmatic - global, # subtract likelihood for each predictions and model
          prag_vs_flat= pragmatic - flat,
@@ -98,7 +117,9 @@ model_comp <- bind_rows(
          global_vs_prior = global - prior,
          flat_vs_prior = flat - prior) %>%
   select(-pragmatic, -global, -flat, - prior) %>%
-  gather(model, logBF, -chain)
+  gather(model, logBF)
+
+saveRDS(model_comp, "../saves/pred_model_comparison.rds")
 
 ```
 
@@ -150,11 +171,17 @@ model_by_chain <- model_like %>%
 
 saveRDS(model_by_chain, "../saves/expl_model_likelihood_chain.rds")
 
-# compare models
-model_comp <- model_like %>%
+model <- model_like %>%
   na.omit(chain)%>%
   group_by(model) %>%
-  summarize(marginal_likelihood = matrixStats::logSumExp(total_likelihood_sample)) %>%
+  summarize(marginal_likelihood = matrixStats::logSumExp(total_likelihood_sample))
+
+saveRDS(model, "../saves/expl_model_likelihood.rds")
+
+model_comp <- model_like  %>%
+  na.omit(chain)%>%
+  group_by(model) %>%
+  summarize(marginal_likelihood = matrixStats::logSumExp(total_likelihood_sample))%>%
   spread(model, marginal_likelihood)%>%
   mutate(fb_vs_free = fullBayes - pragmatic,
           fb_vs_mixture= fullBayes - mixture,

@@ -421,11 +421,13 @@ Sensitivity to common ground refers to the probability that an object is taken t
 
 ## Model fitting
 
-All Bayesian cognitive models were implemented in the probabilistic programming language  `WebPPL` [@dippl]. The corresponding model code can be found in the associated online repository and includes information about the prior distributions for all parameters in the model (file xxxxx). To generate model predictions, we estimated age sensitive parameter distributions for semantic knowledge (by item), speaker informativeness and common ground sensitivity and then passed them through the model in line with the different ways in which they can be combined and aligned. The resulting predictions come in the form of distributions of developmental trajectories for each item in the congruent and the incongruent condition. We generated model predictions for each model based on the full posterior distribution for each model parameter. Based on these model predictions, we computed the marginal likelihood of the data given each model and compared them via Bayes factors (see file `model_comparison.Rmd` in the associated online repository).
+All Bayesian cognitive models were implemented in the probabilistic programming language  `WebPPL` [@dippl]. The corresponding model code can be found in the associated online repository and includes information about the prior distributions for all parameters in the model (file xxxxx). To generate model predictions, we estimated age sensitive parameter distributions for semantic knowledge (by item), speaker informativeness and common ground sensitivity and then passed them through the model in line with the different ways in which they can be combined and aligned. The resulting predictions come in the form of distributions of developmental trajectories for each item in the congruent and the incongruent condition.  
 
 ## Prediction
 
 In this section we evaluate different models in terms of how well they *predict* information integration. That is, in a situation in which we know the development of the mutual exclusivity inference as well as the common ground inference, which model best predicts what happens when the two are combined (combination data from Experiment 3). Asking this question automatically excludes all models which include parameters that need to be fit to the combination data itself. To this end, we estimated the model parameters for semantic knowledge and speaker informativeness based on Experiment 1 and the parameter for common ground sensitivity based on Experiment 2. Next, we combined the parameters according to the four models described below. Please note that the parameter distributions were the same for all models (see Figure \@ref(fig:fig4)) and that models only differed in how they were combined. 
+
+Four models, one full model, others lesions. What inforamtion do we need to make good predictions
 
 To estimate the parameter distributions, we collected samples from six independent MCMC chains, collecting 150 000 samples from each chain and removing the first 50 000 for burn-in. We removed samples from one chain because it converged on a local maximum and yielded parameter distributions that were substantially different from the other chains. The model outputs can be found in the following online repository: git large file storage.  
 
@@ -531,13 +533,13 @@ plot_prior <- ggplot() +
 ```
 
 ```{r fig4, include = T, fig.align = "center", fig.cap = "Developmental trajectories for model parameters based on the posterior distribution for (A) semantic knowlede, (B) speaker informativeness and (C) prior sensitivity. Solid lines in show the MAP estimate for each parameter. Lighter lines in (B) and (C) show 300 random draws from the posterior distributon to visualize uncertainty. (A) does not include these random draws for the sake of clarity.", fig.width=12, fig.height = 4}
-ggarrange(plot_sem_know, plot_speak_opt, plot_prior , labels = c("A","B","C"), nrow = 1, widths = c(1.,1,1))
+ggarrange(plot_sem_know, plot_speak_opt, plot_prior , labels = c("A","B","C"), nrow = 1, widths = c(1.3,1,1))
 ```
 
 ### Integration model
 
 [overview fig, all model parameters for all models]
-```{r fig5, include = T, fig.align = "center", fig.cap = "Model predictions based on the integration model. Colored lines show developmental trajectories for each familiar object and condition based on 300 random draws from the model posterior distribution. Top row (blue) shows the congruent condition and the bottom row (red) shows the inconguent condition. Familiar objects are ordered based on their rated age of acquisition (left o right). Dashed black lines show smoothed conditional mean of the data with 95\\% CI (in grey).", fig.width=12, fig.height = 4}
+```{r fig5, include = T, fig.align = "center", fig.cap = "Predicting information integration across development. Model predictions based on the integration model. Colored lines show developmental trajectories for each familiar object and condition based on 300 random draws from the model posterior distribution. Top row (blue) shows the congruent condition and the bottom row (red) shows the inconguent condition. Familiar objects are ordered based on their rated age of acquisition (left o right). Dashed black lines show smoothed conditional mean of the data with 95\\% CI (in grey). Light dots are individual data points.", fig.width=12, fig.height = 4}
 # comb_data_binned <- comb_data%>%
 #   group_by(subage, alignment, item)%>%
 #   summarize(k = sum(correct), n = n())%>%
@@ -583,10 +585,29 @@ ggplot(data = comb_data, aes(x = age_num, y = correct)) +
   scale_colour_ptol(name = NULL)
 ```
 
-```{r fig6, include = T, fig.align = "center", fig.cap = "Correlations between model predictions and data binned by year, item and condition. Vertical and horizontal error bars show 95\\% HDI. Blue diamonds show congruent condition and red ones show the incongruent condition.", fig.width=12, fig.height = 6}
+
+### No word knowledge model
+
+semantic knowledge is only a function of age and not specific to the item. Roughly corresponds to. If children are vaguely familiar with an object, the make the ME inference regardless of the individual object 
+
+### No common ground model
+
+### No mutual exclusivity model
+
+
+
+### Model comparison
+
+Compare model prediction in two ways. First is via correlations and second isvia bayes factors.
+
+Based on these model predictions, we computed the marginal likelihood of the data given each model and compared them via Bayes factors (see file `model_comparison.Rmd` in the associated online repository).
+
+range of log like across chains and then model comparison 
+
+```{r fig6, include = T, fig.align = "center", fig.cap = "Predicting information integration. Correlations between model predictions and data binned by year, item and condition. Vertical and horizontal error bars show 95\\% HDI. Blue diamonds show congruent condition and red ones show the incongruent condition.", fig.width=12, fig.height = 6}
 
 # cor_prag <- readRDS("../saves/model_pred_prag.rds")%>%
-#   mutate(age = as.numeric(age) + min(data_comb$age_num),
+#   mutate(age = as.numeric(age) + min(comb_data$age_num),
 #          age = cut(age,
 #                       breaks = c(2,3,4,5),
 #                       labels = c(2,3,4)))%>%
@@ -596,7 +617,7 @@ ggplot(data = comb_data, aes(x = age_num, y = correct)) +
 #             model_ci_upper = hdi_upper(pred))
 # 
 # cor_global <- readRDS("../saves/model_pred_global.rds")%>%
-#   mutate(age = as.numeric(age) + min(data_comb$age_num),
+#   mutate(age = as.numeric(age) + min(comb_data$age_num),
 #          age = cut(age,
 #                       breaks = c(2,3,4,5),
 #                       labels = c(2,3,4)))%>%
@@ -606,7 +627,7 @@ ggplot(data = comb_data, aes(x = age_num, y = correct)) +
 #             model_ci_upper = hdi_upper(pred))
 # 
 # cor_flat <- readRDS("../saves/model_pred_flat.rds")%>%
-#   mutate(age = as.numeric(age) + min(data_comb$age_num),
+#   mutate(age = as.numeric(age) + min(comb_data$age_num),
 #          age = cut(age,
 #                       breaks = c(2,3,4,5),
 #                       labels = c(2,3,4)))%>%
@@ -616,7 +637,7 @@ ggplot(data = comb_data, aes(x = age_num, y = correct)) +
 #             model_ci_upper = hdi_upper(pred))
 # 
 # cor_prior <- readRDS("../saves/model_pred_prior.rds")%>%
-#   mutate(age = as.numeric(age) + min(data_comb$age_num),
+#   mutate(age = as.numeric(age) + min(comb_data$age_num),
 #          age = cut(age,
 #                       breaks = c(2,3,4,5),
 #                       labels = c(2,3,4)))%>%
@@ -642,10 +663,10 @@ ggplot(data = comb_data, aes(x = age_num, y = correct)) +
 #        binnned_data%>%mutate(model = "no mutual exclusivity")
 #       )
 #   )%>%
-#   mutate(age = fct_recode(age, 
-#                           "2" = "2-year-olds",
-#                           "3" = "3-year-olds",
-#                           "4" = "4-year-olds"))
+  # mutate(age = fct_recode(age,
+  #                         "2-year-olds" = "2",
+  #                         "3-year-olds" = "3",
+  #                         "4-year-olds" = "4"))
 #
 #saveRDS(plot_cor_model_pred, "../saves/corr_model_data_pred.rds")
 
@@ -669,17 +690,30 @@ ggplot(data = plot_cor_model_pred,aes(x = model_mean, y = data_mean, col = align
 ```
 
 
-### No word 
+```{r table3}
+model_comp_pred <- readRDS("../saves/pred_model_comparison.rds")%>%
+  mutate(model = factor(model),
+         `Model comparison` = fct_recode(model, 
+                            "integration vs no word knowledge" = "prag_vs_global",
+                            "integration vs no common ground" = "prag_vs_flat",
+                            "integration vs no mutual exclusivity" = "prag_vs_prior",
+                            "no word knowledge vs no mutual exclusivity" = "global_vs_flat",
+                            "no word knowledge vs no common ground" = "global_vs_prior",
+                            "no mutual exclusivity vs no common ground" = "flat_vs_prior"),
+        `Bayes factor` = format(round(exp(logBF),2), trim = T, justify = "right", digits = 2))%>%
+  select(-logBF, -model)
+  
+  
 
-semantic knowledge is only a function of age and not specific to the item. Roughly corresponds to. If children are vaguely familiar with an object, the make the ME inference regardless of the individual object 
+knitr::kable(model_comp_pred, caption = "Model comparison using Bayes factors computed based on the marginal likelihood of each model given the data.", digits = 2)
+```
 
-### Model comparison
-
-range of log like across chains and then model comparison 
 
 ## Explanation
 
 model parameters are also estimated based in the data from experiment 1 and 2, but then updated based on the data from experiment 3.
+
+answer the question: which is the best way to think about information integration
 
 ### Model parameters
 
@@ -785,17 +819,140 @@ plot_prior_exp <- ggplot() +
 ```
 
 ```{r fig8, include = T, fig.align = "center", fig.cap = "Developmental trajectories for model parameters based on the posterior distribution for (A) semantic knowlede, (B) speaker informativeness and (C) prior sensitivity. Solid lines in show the MAP estimate for each parameter. Lighter lines in (B) and (C) show 300 random draws from the posterior distributon to visualize uncertainty. (A) does not include these random draws for the sake of clarity.", fig.width=12, fig.height = 4}
-ggarrange(plot_sem_know_exp, plot_speak_opt_exp, plot_prior_exp , labels = c("A","B","C"), nrow = 1, widths = c(1.1,1,1))
+ggarrange(plot_sem_know_exp, plot_speak_opt_exp, plot_prior_exp , labels = c("A","B","C"), nrow = 1, widths = c(1.3,1,1))
 ```
 
-
-
-
 ### Integration model 
+
+```{r fig9, include = T, fig.align = "center", fig.cap = "Explaining information integration across development. Model predictions based on the integration model. Colored lines show developmental trajectories for each familiar object and condition based on 300 random draws from the model posterior distribution. Top row (blue) shows the congruent condition and the bottom row (red) shows the inconguent condition. Familiar objects are ordered based on their rated age of acquisition (left o right). Dashed black lines show smoothed conditional mean of the data with 95\\% CI (in grey). Light dots are individual data points.", fig.width=12, fig.height = 4}
+
+
+# select_exp <- sample(1:20000, 50)
+# 
+# plot_prag_exp <- readRDS("../saves/model_pred_prag_fb.rds")%>%
+#   filter(iteration %in% select_pred)%>%
+#   left_join(aoa_ratings) %>%
+#   ungroup()%>%
+#   mutate(item = fct_reorder(factor(item), mean_aoa))
+# 
+# 
+# saveRDS(plot_prag_exp, "../saves/plot_prag_exp.rds")
+
+plot_prag_exp<- readRDS( "../saves/plot_prag_exp.rds")
+
+
+ggplot(data = comb_data, aes(x = age_num, y = correct)) +
+  geom_hline(yintercept = 0.5, lty=2)+
+  geom_jitter(col = "black", height = .025, alpha = .1)+
+  #geom_pointrange(data = comb_data_binned, aes(x = subage+.5, y = data_mean, ymin =data_ci_lower, ymax = data_ci_upper), stroke = 1, pch = 5)+
+  #geom_line(data = comb_data_binned, aes(x = subage+.5, y = data_mean))+
+  geom_line(data = plot_prag_exp, aes(x=age+2,y = pred, col = alignment, group = interaction(chain,iteration)), size = .2, alpha = .25)+
+  geom_smooth(data = comb_data, aes(x = age_num, y = correct), col = "black", method = "glm", method.args = list(family = "binomial"), se = T, alpha = .4, lty = 2, size = 1)+
+  labs(x="Age",y="Mutual Exclusivity effect")+
+  facet_grid(alignment~item)+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F, fill = F, col = F)+ 
+  scale_colour_ptol(name = NULL)
+```
 
 ### Mixture model
 
 ### Model comparison
+
+```{r fig10, include = T, fig.align = "center", fig.cap = "Explaining information integration. Correlations between model predictions and data binned by year, item and condition. Vertical and horizontal error bars show 95\\% HDI. Blue diamonds show congruent condition and red ones show the incongruent condition.", fig.width=12, fig.height = 6}
+
+# cor_prag_exp <- readRDS("../saves/model_pred_prag_fb.rds")%>%
+#   mutate(age = as.numeric(age) + min(comb_data$age_num),
+#          age = cut(age,
+#                       breaks = c(2,3,4,5),
+#                       labels = c(2,3,4)))%>%
+#   group_by(model,alignment, item, age)%>%
+#   summarise(model_mean = estimate_mode(pred),
+#             model_ci_lower = hdi_lower(pred),
+#             model_ci_upper = hdi_upper(pred))
+# 
+# cor_mix_exp <- readRDS("../saves/model_pred_mm.rds")%>%
+#   mutate(age = as.numeric(age) + min(comb_data$age_num),
+#          age = cut(age,
+#                       breaks = c(2,3,4,5),
+#                       labels = c(2,3,4)))%>%
+#   group_by(model, alignment, item, age)%>%
+#   summarise(model_mean = estimate_mode(pred),
+#             model_ci_lower = hdi_lower(pred),
+#             model_ci_upper = hdi_upper(pred))
+# 
+# cor_dev_mix_exp <- readRDS("../saves/model_pred_dmm.rds")%>%
+#   mutate(age = as.numeric(age) + min(comb_data$age_num),
+#          age = cut(age,
+#                       breaks = c(2,3,4,5),
+#                       labels = c(2,3,4)))%>%
+#   group_by(model, alignment, item, age)%>%
+#   summarise(model_mean = estimate_mode(pred),
+#             model_ci_lower = hdi_lower(pred),
+#             model_ci_upper = hdi_upper(pred))
+# 
+# 
+# cor_model_exp <- bind_rows(
+#    cor_prag_exp%>%ungroup()%>%mutate(model = "integration"),
+#    cor_mix_exp%>%ungroup()%>%mutate(model = "mixture"),
+#    cor_dev_mix_exp%>%ungroup()%>%mutate(model = "developmental mixture")
+# )
+# 
+# 
+# plot_cor_model_exp <- cor_model_exp %>%
+#   left_join(
+#     bind_rows(
+#        comb_data_binned%>%mutate(model = "integration"),
+#        comb_data_binned%>%mutate(model = "mixture"),
+#        comb_data_binned%>%mutate(model = "developmental mixture")
+#       )
+#   )%>%
+#   mutate(age = fct_recode(age,
+#                           "2-year-olds" = "2",
+#                           "3-year-olds" = "3",
+#                           "4-year-olds" = "4"))
+# 
+# saveRDS(plot_cor_model_exp, "../saves/corr_model_data_exp.rds")
+
+plot_cor_model_exp <- readRDS( "../saves/corr_model_data_exp.rds")
+ 
+ggplot(data = plot_cor_model_exp,aes(x = model_mean, y = data_mean, col = alignment)) +
+  geom_abline(intercept = 0, slope = 1, lty = 2, alpha = 1, size = .5)+
+  geom_errorbar(aes(ymin = data_ci_lower, ymax = data_ci_upper),width = 0,size = .5, alpha = .7)+
+  geom_errorbarh(aes(xmin = model_ci_lower, xmax = model_ci_upper), height = 0,size = .5, alpha = .7)+
+  geom_point(size = 1.5, stroke = 1, pch = 5)+
+  coord_fixed()+
+ stat_cor(method = "pearson", label.x = 0.01, label.y = 0.99, aes(x = model_mean, y = data_mean), inherit.aes = F, size = 3)+
+  xlim(0,1)+ylim(0,1)+
+  xlab("Model")+
+  ylab("Data")+
+  facet_grid(age~model)+
+  theme_few() + 
+  scale_colour_ptol(name ="Condition")
+ 
+ 
+```
+
+```{r table4}
+model_comp_pred <- readRDS("../saves/expl_model_comparison.rds")%>%
+  mutate(model = factor(model),
+         `Model comparison` = fct_recode(model, 
+                            "integration (explanation) vs integration (prediction)" = "fb_vs_free",
+                            "integration (explanation) vs mixture" = "fb_vs_mixture",
+                            "integration (prediction) vs mixture" = "free_vs_mixture",
+                            "integration (explanation) vs developmental mixture" = "fb_vs_dev_mixture",
+                            "integration (prediction) vs developmental mixture" = "free_vs_dev_mixture",
+                            "developmental mixture vs mixture" = "dev_mixture_vs_mixture"),
+        `Bayes factor` = format(round(exp(logBF)), trim = T, justify = "right", scientific = F))%>%
+  select(-logBF, -model)
+  
+  
+
+knitr::kable(model_comp_pred, caption = "Model comparison using Bayes factors computed based on the marginal likelihood of each model given the data.", digits = 2)
+```
+
 
 [overview fig, correlations for all models]
 
