@@ -130,7 +130,7 @@ chance_me <- me_data %>%
   ungroup()%>%
   select(`Age group`, Mean, BayesFactor)
 
-knitr::kable(chance_me, caption = "Proportion of children choosing the novel object compared to a level expected by chance based on a one sample Bayesian t-test. Responses are aggregated for each participant across familiar objects.", digits = 2)
+knitr::kable(chance_me, caption = "Proportion of children choosing the novel object compared to a level expected by chance based on a one sample Bayesian t-test. Responses are aggregated for each participant across familiar objects.", digits = 2, align = "l")
 ```
 
 As a first step, we evaluated whether children made a mutual exclusivity inference. For this analysis, we aggregated participants' responses across familiar objects. We used the function `ttestBF` from the R-package `BayesFactor` [@R-BayesFactor] to compute a Bayes factor (BF) in favor of the hypothesis that children chose the novel object more often than expected by chance (50% correct). Table \@ref(tab:table1) shows that all age groups made the inference.
@@ -195,7 +195,9 @@ cor_plot_me <- as_tibble(ranef_me$item, rownames = "item") %>%
 
 talk about sd around item as evidence for variation 
 
-As a second step, we investigated how the inference changed as a function of age and the familiar object. We modeled the trial by trial data using a Bayesian generalized linear mixed model (GLMM). We used the function `brm` from the package `brms` [@R-brms_a]. As priors we used `normal(0,5)` for fixed effects and `cauchy(0,1)` for standard deviations of random effects\footnote{We pre-registered the use of default priors in all models. However, the model in Experiment 3 was unable to initialize with default priors and we thus used weakly informative priors for all models to be consistent.}. The model formula was `correct ~ age + (1 | id) + (age | object) + (age | agent)`\footnote{We did not pre-register agent as a random effect, but decided to included it to be consistent with Experiment 2 and 3.}. That is, we modeled an overall slope for age (continuous, anchored at the minimum) and the object specific developmental trajectories as deviations from the overall intercept and slope (random effects). The estimate for age was positive and reliably different from zero (*$\beta$* = `r fixef_me%>%filter(term == "age")%>%pull(Estimate)%>%round(2)`, 95% CrI: `r fixef_me%>%filter(term == "age")%>%pull(Q2.5)%>%round(2)` - `r fixef_me%>%filter(term == "age")%>%pull(Q97.5)%>%round(2)`). Older children were more likely to make a mutual exclusivity inference. Figure \@ref(fig:fig2)B visualizes the model based developmental trajectory for each familiar object and shows that there was substantial variation between them. Figure \@ref(fig:fig2)C shows the correlation between rated age of acquisition and object specific model intercept. The mutual exclusivity effect was stronger for words that were rated to be acquired earlier. Objects for which children were less likely to know the word produced a weaker mutual exclusivity effect. Taken together, the mutual exclusivity inference depended on age as well as the familiar object.  
+As a second step, we investigated how the inference changed as a function of age and the familiar object. We modeled the trial by trial data using a Bayesian generalized linear mixed model (GLMM). We used the function `brm` from the package `brms` [@R-brms_a]. We pre-registered the use of default priors in all models. However, the model in Experiment 3 was unable to initialize with default priors and we thus used weakly informative priors for all models to be consistent. The priors we used were `normal(0,5)` for fixed effects and `cauchy(0,1)` for standard deviations of random effects.  The model formula was `correct ~ age + (1 | id) + (age | object) + (age | agent)`. That is, we modeled an overall slope for age (continuous, anchored at the minimum) and the object specific developmental trajectories as deviations from the overall intercept and slope (random effects). We did not pre-register agent as a random effect, but decided to included it to be consistent with Experiment 2 and 3.
+
+The estimate for age was positive and reliably different from zero (*$\beta$* = `r fixef_me%>%filter(term == "age")%>%pull(Estimate)%>%round(2)`, 95% CrI: `r fixef_me%>%filter(term == "age")%>%pull(Q2.5)%>%round(2)` - `r fixef_me%>%filter(term == "age")%>%pull(Q97.5)%>%round(2)`). Older children were more likely to make a mutual exclusivity inference. Figure \@ref(fig:fig2)B visualizes the model based developmental trajectory for each familiar object and shows that there was substantial variation between them, both in terms of absolute strength of the inference as well as its developmental trajectory. Figure \@ref(fig:fig2)C shows the correlation between rated age of acquisition and object specific model intercept. The mutual exclusivity effect was stronger for words that were rated to be acquired earlier. Objects for which children were less likely to know the word produced a weaker mutual exclusivity effect. Taken together, the mutual exclusivity inference depended on age as well as the familiar object.  
 
 ```{r fig2, include = T, fig.align = "center", fig.cap = "A:Familiar words and corresponding pictures by rated age of acquisition. B: Developmental trajectories of mututal exclusivity effect by familiar object based on the mean of the model posterior distribution. Dots show individual datapoints. Lighter colors indicate later rated age of acquisition. Dotted line indicates a level of performance expected by chance. C: Correlation between rated age of acquisiton and mutual exclusivity effect (model based intercept for each familiar object).", fig.width=12, fig.height = 4}
 
@@ -231,7 +233,7 @@ chance_prior <- prior_data %>%
   ungroup()%>%
   select(`Age group`, Mean, BayesFactor)
 
-knitr::kable(chance_prior, caption = "Proportion of children choosing the object that was new to the speaker compared to a level expected by chance based on a one sample Bayesian t-test. Responses are aggregated for each participant across trials.", digits = 2)
+knitr::kable(chance_prior, caption = "Proportion of children choosing the object that was new to the speaker compared to a level expected by chance based on a one sample Bayesian t-test. Responses are aggregated for each participant across trials.", digits = 2, align = "l")
 ```
 
 Table \@ref(tab:table2) compares children's correct responses to a level expected by chance (50%). We found evidence that, as a group, 3- and 4-year-olds, but not 2-year-olds, inferred that the novel word referred to the object that was new to the speaker. 
@@ -377,39 +379,43 @@ plot_comb <- ggplot(plot_comb_map, aes(x=age,y = y, col = item))+
 
 ```
 
-Use sd on item to say tha items vary substantially and sd on interaction or age to say they differ in their slope
+We modeled the trial by trial data in the following way: `correct ~ age * alignment + (alignment | subid) + (age * alignment | item) + (age * alignment | agent)`. We pre-registered to include item as a fixed effect in Experiment 3. The corresponding model was too complex to be constrained by the data. Furthermore, as explained in Experiment 1, items were chosen based on their rated age of acquisition. That is, we assumed that they are not necessarily different kinds but that they represent different locations on a distribution of required semantic knowledge. For further model specifications see [Experiment 1](#experiment-1-mutual-exclusivity)). 
 
-We modeled the trial by trial data in the following way: `correct ~ age * alignment + (alignment | subid) + (age * alignment | item) + (age * alignment | agent)`. We pre-registered to include item as a fixed effect in Experiment 3. The corresponding model was too complex to be constrained by the data. Furthermore, as explained in Experiment 1, items were chosen based on their rated age of acquisition. That is, we assumed that they are not necessarily different kinds but that they represent different locations on a distribution of required semantic knowledge. For further model specifications see [Experiment 1](#experiment-1-mutual-exclusivity)). The estimate for age was reliably positive (*$\beta$* = `r fixef_comb%>%filter(term == "age")%>%pull(Estimate)%>%round(2)`, 95% CrI: `r fixef_comb%>%filter(term == "age")%>%pull(Q2.5)%>%round(2)` - `r fixef_comb%>%filter(term == "age")%>%pull(Q97.5)%>%round(2)`). The incongruent condition had a strong negative impact (*$\beta$* = `r fixef_comb%>%filter(term == "alignmentincongruent")%>%pull(Estimate)%>%round(2)`, 95% CrI: `r fixef_comb%>%filter(term == "alignmentincongruent")%>%pull(Q2.5)%>%round(2)` - `r fixef_comb%>%filter(term == "alignmentincongruent")%>%pull(Q97.5)%>%round(2)`), showing that children differentiated between the two conditions. The interaction term was weakly - though not entirely - negative, suggesting a shallower slope for age in the incongruent condition (*$\beta$* = `r fixef_comb%>%filter(term == "age:alignmentincongruent")%>%pull(Estimate)%>%round(2)`, 95% CrI: `r fixef_comb%>%filter(term == "age:alignmentincongruent")%>%pull(Q2.5)%>%round(2)` - `r fixef_comb%>%filter(term == "age:alignmentincongruent")%>%pull(Q97.5)%>%round(2)`). Figure \@ref(fig:fig3)B visualizes the model. Taken together, the results show that children responded to the way the two inferences were aligned with one another. For the remainder of the study, we address the question of how the two inferences might have interacted with one another.
+The estimate for age was reliably positive (*$\beta$* = `r fixef_comb%>%filter(term == "age")%>%pull(Estimate)%>%round(2)`, 95% CrI: `r fixef_comb%>%filter(term == "age")%>%pull(Q2.5)%>%round(2)` - `r fixef_comb%>%filter(term == "age")%>%pull(Q97.5)%>%round(2)`). The incongruent condition had a strong negative impact (*$\beta$* = `r fixef_comb%>%filter(term == "alignmentincongruent")%>%pull(Estimate)%>%round(2)`, 95% CrI: `r fixef_comb%>%filter(term == "alignmentincongruent")%>%pull(Q2.5)%>%round(2)` - `r fixef_comb%>%filter(term == "alignmentincongruent")%>%pull(Q97.5)%>%round(2)`), showing that children differentiated between the two conditions. The interaction term was weakly - though not entirely - negative, suggesting a shallower slope for age in the incongruent condition (*$\beta$* = `r fixef_comb%>%filter(term == "age:alignmentincongruent")%>%pull(Estimate)%>%round(2)`, 95% CrI: `r fixef_comb%>%filter(term == "age:alignmentincongruent")%>%pull(Q2.5)%>%round(2)` - `r fixef_comb%>%filter(term == "age:alignmentincongruent")%>%pull(Q97.5)%>%round(2)`). Figure \@ref(fig:fig3)B visualizes the model. Taken together, the results show that children responded to the way the two inferences were aligned with one another. 
 
 ```{r fig3, include = T, fig.align = "center", fig.cap = "Proportion of choosing the object that was new to the speaker by age. Dots show the mean response for each participant. The solid black line shows the developmental trajectory based on the mean of the model posterior distribution. Lighter lines show 200 random draws from the posterior distribution to depict uncertainty. Dotted line indicates a level of performance expected by chance.", fig.width=12, fig.height = 4}
 ggarrange(plot_cg, plot_comb,  labels = c("A","B"), nrow = 1, widths = c(1,2))
 ```
 
-# Model
+## Discussion 
 
-The main purpose of the study was to study *how* children integrate different information sources during word learning. To address this question, we use Bayesian cognitive models of prgamatic reasoning. We first describe an *integration model* which we think best represents the inference and integration processes. We then specify how this model captures developmental change.
+The experiments reported above show that children are sensitive to the types of information sources we intended to manipulate. Experiment 1 showed that children of all age groups are make a mutual exclusivity inference, that the strength of this inference increases with age and, crucially, that it depends on the type of familiar object that is presented. Experiment 2 showed that three- and four-year-olds are sensitive the common ground manipulation we implemented and that this inference increases with age. Finally, experiment 3 showed that children respond differently depending on how the mutual exclusivity inference and the common ground inference are aligned with one another. In the next section, we use Bayesian cognitive models to address the question of *how* information sources are integrated when the two inferences are combined with one another.
 
-Next, we ask how well this model *predicts* how children integrate the two information sources. That is, in a situation in which we know the development trajectories for the mutual exclusivity inference as well as for the common ground inference, what can we say about how they will be comined. Importantly, we ask this question before any data on integration has been collected. The model offers an answer and also allows us to make quantitative predictions. We can then test the predictive power of the model by comparing the model predictions to newly collected data. We will use model comparisons to test the *integration model* against a range of alternative models.   
+# Models
+
+The main purpose of the study was to study *how* children integrate different information sources during word learning and how this process develops with age. To do so, we use Bayesian cognitive models of pragmatic reasoning. We first describe an *integration model* which we think best represents the inference and integration processes and then specify how this model captures developmental change. Next, we ask how well this model *predicts* how children integrate the two information sources. That is, in a situation in which we know the development trajectories for the mutual exclusivity inference as well as for the common ground inference, what can we say about what happens when they are combined. We then test the predictive power of the model by comparing the model predictions to the data from experiment 3. We will use model comparisons to test the *integration model* against a range of alternative models.   
 
 Finally, we ask how well our model *explains* the way that children integrate the two information sources. For this analysis, we fit the free parameters in the model to all the available data, those from experiment 1 and 2 as well as the integration data from experiment 3. We then compare the model to a range of alternative models that make different assumptions about how information is integrated and how this process develops. This approach answers the question of how we can best explain how children are integrating the different information sources. 
 
 ## Modelling framework 
 
-The cognitive models are situated in the Rational Speech Act (RSA) framework [@frank2012predicting; goodman2016pragmatic]. RSA models are models of pragmatic reasoning in that they treat language understanding as a special case of Bayesian social reasoning. A listener interprets an utterance by assuming it was produced by a cooperative speaker who had the goal to be informative. Being informative is defined as providing a message that would increase the probability of the listener inferring the speaker’s intended message. This notion of contextual informativeness captures the Gricean idea of cooperation between speaker and listener.
+The cognitive models are situated in the Rational Speech Act (RSA) framework [@frank2012predicting; @goodman2016pragmatic]. RSA models are models of pragmatic reasoning in that they treat language understanding as a special case of Bayesian social reasoning. A listener interprets an utterance by assuming it was produced by a cooperative speaker who had the goal to be informative. Being informative is defined as providing a message that would increase the probability of the listener inferring the speaker’s intended message. This notion of contextual informativeness captures the Gricean idea of cooperation between speaker and listener.
 
 The model captures the following process. A listener is reasoning about the referent of a speaker's utterance while at the same time trying to learn a lexicon (object--word mappings). This reasoning is contextualized by the prior probability of each referent. This prior probability is thought to be a function of the common ground shared between speaker and listener in that interacting around the objects changes the probability that they will be referred to later. We assume that the degree to which interactions around objects change their prior probability depend on the child's age. 
 
-To decide between referents, the listener reasons about what a rational speaker would say given an intended referent. This speaker is assumed to compute the informativity of for each available utterance and then choose the most informative one. However, this expectation of speaker informativeness may vary and is caputred by the term alpha. In particualr, we take alpha to be a function of the child's age. 
+To decide between referents, the listener reasons about what a rational speaker would say given an intended referent. This speaker is assumed to compute the informativity of for each available utterance and then choose the most informative one. However, this expectation of speaker informativeness may vary and is captured by the term alpha. In particular, we take alpha to be a function of the child's age. 
 
 The informativity of each utterance is given by imagining which referent a literal listener, who interprets words according to their literal semantics, would infer upon hearing it. Thus, this reasoning depends what kind of word--object mappings the speaker thinks the literal listener knows. We assume that knowing the literal semantics of a word is not deterministic but probabilistic. That is, for each object involved there is a probability p that the literal listener knows the word for it. For each of the novel objects, this semantic knowledge is 0. For familiar objects, it depends on the kind of object as well as on the child's age. 
 
 ## Loci of development
 
-The model description above points to three potential loci of developmental change: semantic knowledge, expectations about speaker informativeness and common ground sensitivity. Each of theses components is represented by a parameter in the model. We capture developmental change by making these parameters a function of age and therfor estimating a developmental trajectory (intercept and slope) for each parameter.
+The model description above points to three potential loci of developmental change: semantic knowledge, expectations about speaker informativeness and common ground sensitivity. Each of theses components is represented by a parameter in the model. We capture developmental change by making these parameters a function of age and therefore estimating a developmental trajectory (intercept and slope) for each parameter.
 
 ### Semantic knowledge
 
-Semantic knowledge captures the degree of certainty with which the naive listener is assumed to know the label for the familiar object. When faced with the task, we think that children take their own semantic knowledge as the basis. As a consequence, semantic knowledge differs between familiar objects. For objects whose labels are generally acquired earlier (e.g. carrot) semantic knowledge is high whereas for others (e.g. pawn) semantic knowledge is lower. However, semantic knowledge also varies with age in that older children are more likely to know the labels for more of the familiar objects compared to younger children. As a consequence, each familiar object has a unique developmental trajectory with respect to semantic knowledge. The likelihood term of the model depends not just the parameter settings for semantic knowledge but also on the value of the parameter capturing expecations about speaker informativeness (alpha - see next section). As a consequence, these two parameters are estimated in conjunction and co-vary with one another. 
+Semantic knowledge captures the degree of certainty with which the naive listener is assumed to know the label for the familiar object. When faced with the task, we think that children take their own semantic knowledge as the basis. As a consequence, semantic knowledge differs between familiar objects. For objects whose labels are generally acquired earlier (e.g. carrot) semantic knowledge is high whereas for others (e.g. pawn) semantic knowledge is lower. However, semantic knowledge also varies with age in that older children are more likely to know the labels for more of the familiar objects compared to younger children. As a consequence, each familiar object has a unique developmental trajectory with respect to semantic knowledge. Technically, the object specifics parameters are estimated in the form of a random effects model, that is, each object's trajectory is estimated as a deviation from an overall trajectory for semantic. This overall trajectory represent an increase in semantic knowledge that is independent of a particular familiar object.  
+
+Semantic knowledge enters the likelihood term of the model specified above. The likelihood depends not just on the parameter settings for semantic knowledge but also on the value of the parameter capturing expectations about speaker informativeness ($\alpha$ - see next section). As a consequence, these parameters are jointly estimated and co-vary with one another. 
 
 ### Expectations about speaker informativeness
 
@@ -417,19 +423,21 @@ A second locus of developmental change are expectations about speaker informativ
 
 ### Sensitivity to common ground
 
-Sensitivity to common ground refers to the probability that an object is taken to be the referent of the utterance before actually hearing the utterance. Thus, it captures the salience of an object due to its role in the social interaction that preceeds the utterance. We expect children at different ages to respond differently to the common ground manipulation, resulting in an age specific prior distribution over objects.  
+Sensitivity to common ground refers to the probability that an object is taken to be the referent of the utterance before actually hearing the utterance. Thus, it captures the salience of an object due to its role in the social interaction that precedes the utterance. We expect children at different ages to respond differently to the common ground manipulation, resulting in an age specific prior distribution over objects.  
 
 ## Model fitting
 
-All Bayesian cognitive models were implemented in the probabilistic programming language  `WebPPL` [@dippl]. The corresponding model code can be found in the associated online repository and includes information about the prior distributions for all parameters in the model (file xxxxx). To generate model predictions, we estimated age sensitive parameter distributions for semantic knowledge (by item), speaker informativeness and common ground sensitivity and then passed them through the model in line with the different ways in which they can be combined and aligned. The resulting predictions come in the form of distributions of developmental trajectories for each item in the congruent and the incongruent condition.  
+All Bayesian cognitive models were implemented in the probabilistic programming language `WebPPL` [@dippl]. The corresponding model code can be found in the associated online repository and includes information about the prior distributions for all parameters (file xxxxx). To generate model predictions, we estimated age sensitive parameter distributions for semantic knowledge (by familiar object), speaker informativeness and common ground sensitivity and then passed them through the model in line with the different ways in which they can be combined and aligned. The resulting predictions come in the form of distributions of developmental trajectories for each object in the congruent and the incongruent condition.  
 
 ## Prediction
 
-In this section we evaluate different models in terms of how well they *predict* information integration. That is, in a situation in which we know the development of the mutual exclusivity inference as well as the common ground inference, which model best predicts what happens when the two are combined (combination data from Experiment 3). Asking this question automatically excludes all models which include parameters that need to be fit to the combination data itself. To this end, we estimated the model parameters for semantic knowledge and speaker informativeness based on Experiment 1 and the parameter for common ground sensitivity based on Experiment 2. Next, we combined the parameters according to the four models described below. Please note that the parameter distributions were the same for all models (see Figure \@ref(fig:fig4)) and that models only differed in how they were combined. 
+In this section we evaluate different models in terms of how well they *predict* information integration. That is, in a situation in which we know the development of the mutual exclusivity inference as well as the common ground inference, which model best predicts what happens when the two are combined (combination data from Experiment 3). Asking about "pure" prediction automatically excludes all models which include parameters that need to be fit to the combination data itself (e.g. mixture model, see below). To generate these predictions, we estimated the model parameters for semantic knowledge and speaker informativeness based on Experiment 1 and the parameter for common ground sensitivity based on Experiment 2. 
 
-Four models, one full model, others lesions. What inforamtion do we need to make good predictions
+To estimate the parameters for semantic knowledge and speaker informativeness, we adapted the model described above to a situation in which both objects (novel and familiar) have equal prior probability. We used the data from experiment 1 to then infer the parameters. That is, we inferred which intercepts and slopes for speaker informativeness and semantic knowledge would generate model predictions that corresponded to the average proportion of correct responses measured in experiment 1. To estimate the parameters representing sensitivity to common ground, we used a simple logistic regression to infer which combination of intercept and slope would generate predictions that corresponded to the average proportion of correct responses measured in experiment 1.
 
-To estimate the parameter distributions, we collected samples from six independent MCMC chains, collecting 150 000 samples from each chain and removing the first 50 000 for burn-in. We removed samples from one chain because it converged on a local maximum and yielded parameter distributions that were substantially different from the other chains. The model outputs can be found in the following online repository: git large file storage.  
+To estimate the parameter distributions, we collected samples from six independent MCMC chains, collecting 150 000 samples from each chain and removing the first 50 000 for burn-in. We removed samples from one chain because it converged on a local maximum which resulted in parameter distributions that were substantially different from the other chains. The model outputs can be found in the following online repository: git large file storage. 
+
+Next, we combined the parameters according to the four models described below. Please note that the parameter distributions were the same for all models (see Figure \@ref(fig:fig4)) and that models only differed in which parameters they included. The models described below are a full model (*integration model*) and three lesion models, which selectively omit one type of information. The following model comparison therefore asks which types of information are necessary to make good predictions about how information is integrated. We do not compare models that make different assumptions about how information is integrated. We turn to this question in the [explanation](#explanation) section.
 
 ```{r}
 # parameter distributions based on model 
@@ -535,10 +543,12 @@ plot_prior <- ggplot() +
 ```{r fig4, include = T, fig.align = "center", fig.cap = "Developmental trajectories for model parameters based on the posterior distribution for (A) semantic knowlede, (B) speaker informativeness and (C) prior sensitivity. Solid lines in show the MAP estimate for each parameter. Lighter lines in (B) and (C) show 300 random draws from the posterior distributon to visualize uncertainty. (A) does not include these random draws for the sake of clarity.", fig.width=12, fig.height = 4}
 ggarrange(plot_sem_know, plot_speak_opt, plot_prior , labels = c("A","B","C"), nrow = 1, widths = c(1.3,1,1))
 ```
+### Models
 
-### Integration model
+#### Integration model
 
-[overview fig, all model parameters for all models]
+The integration model serves as the full model and takes in all available information. That is, it takes in object specific semantic knowledge, speaker informativeness and common ground sensitivity and combines these components by way of the process described above. Figure \@ref(fig:fig5) visualizes the corresponding model predictions in comparison to the data from experiment 3.
+
 ```{r fig5, include = T, fig.align = "center", fig.cap = "Predicting information integration across development. Model predictions based on the integration model. Colored lines show developmental trajectories for each familiar object and condition based on 300 random draws from the model posterior distribution. Top row (blue) shows the congruent condition and the bottom row (red) shows the inconguent condition. Familiar objects are ordered based on their rated age of acquisition (left o right). Dashed black lines show smoothed conditional mean of the data with 95\\% CI (in grey). Light dots are individual data points.", fig.width=12, fig.height = 4}
 # comb_data_binned <- comb_data%>%
 #   group_by(subage, alignment, item)%>%
@@ -585,24 +595,25 @@ ggplot(data = comb_data, aes(x = age_num, y = correct)) +
   scale_colour_ptol(name = NULL)
 ```
 
+#### No word knowledge model
 
-### No word knowledge model
+This model is the first lesion model. It takes in speaker informativeness and common ground sensitivity as well as general semantic knowledge, but omits semantic knowledge that is specific to the familiar objects. We described above that the parameters for semantic knowledge are fitted via a mixed effects model. On the one hand, there is an overall developmental trajectory for semantic knowledge (main effect) and then there is object specific variation around this trajectory (random effects). The *no word knowledge* model takes in the overall trajectory for semantic knowledge but ignores object specific variation. That is, the model assumes a listener whose mutual exclusivity inference does not vary depending on the particular familiar object but only depends on the average semantic knowledge.   
 
-semantic knowledge is only a function of age and not specific to the item. Roughly corresponds to. If children are vaguely familiar with an object, the make the ME inference regardless of the individual object 
+#### No common ground model
 
-### No common ground model
+This model takes in object specific semantic knowledge and speaker informativeness but ignores common ground. Thus, the prior distribution over objects $P(r)$ in the model described above is flat (e.g. [0.5, 0.5]. This corresponds to a listener who only focuses on the mutual exclusivity inference and ignores the common ground manipulation. As a consequence the listener does not differentiate between the two alignment conditions.
 
-### No mutual exclusivity model
+#### No mutual exclusivity model
 
-
+The last lesion model only takes in the common ground sensitivity. This corresponds to a listener who only focuses on common ground and ignores the identity of the objects on the tables as well as any inferences their semantic knowledge of the familiar objects license. The model predictions therefore correspond to the prior distribution over objects $P(r)$. 
 
 ### Model comparison
 
-Compare model prediction in two ways. First is via correlations and second isvia bayes factors.
+We compared the models mentioned above in two ways. On the one hand, we used correlations between model predictions and the data. For this analysis, we binned the model predictions and the data by year and familiar object. Figure \@ref(fig:fig6) visualizes the correlation between model predictions and the data for all models. The results shows a very high correlation between the predictions of the *integration model* and the data in all age groups suggesting that the model accurately captures the variation in the data. The correlation increased from 2- to 3-year-olds but then again dropped for 4-year-olds. This is probably a consequence of the model making very extreme predictions for the oldest age group. Correlations for the *integration model* were also higher compared to the other models considered. 
 
-Based on these model predictions, we computed the marginal likelihood of the data given each model and compared them via Bayes factors (see file `model_comparison.Rmd` in the associated online repository).
+On the other hand, we compared models based on Bayes factors which were calculated from the marginal likelihoods of each model given the data. For this analysis, we treated age continuously. We first calculated the marginal log-likelihood for each model and then computed Bayes factors by subtracting the log-likelihoods for the models involved in the comparison and then exponentiating the result (see file `model_comparison.Rmd` in the associated online repository). Table \@ref(tab:table3) lists the Bayes factors for the different model comparisons. The results show that the *integration model*, by far, outperformed all the other models. When comparing the lesion models among each other, we see that models including the mutual exclusivity inference make better predictions compared to the *no mutual exclusivity model*.
 
-range of log like across chains and then model comparison 
+Taken together, this analysis showed two things. First, the *integration model* makes accurate predictions about how mutual exclusivity and common ground inferences are integrated with one another. It does so based on knowing the strength and development of each inference alone. Second, models that omit one or more type of information (object specific word knowledge, speaker informativeness, common ground sensitivity) make much worse predictions. This exemplifies that children across the entire age range flexibly integrate all the available information. In the next section we ask whether there are other ways think about the process of information integration than the way formalized in the *integration model*.
 
 ```{r fig6, include = T, fig.align = "center", fig.cap = "Predicting information integration. Correlations between model predictions and data binned by year, item and condition. Vertical and horizontal error bars show 95\\% HDI. Blue diamonds show congruent condition and red ones show the incongruent condition.", fig.width=12, fig.height = 6}
 
@@ -670,7 +681,8 @@ range of log like across chains and then model comparison
 #
 #saveRDS(plot_cor_model_pred, "../saves/corr_model_data_pred.rds")
 
- plot_cor_model_pred <- readRDS( "../saves/corr_model_data_pred.rds")
+plot_cor_model_pred <- readRDS( "../saves/corr_model_data_pred.rds")%>%
+  mutate(model = factor(model, levels = c("integration", "no word knowledge", "no common ground", "no mutual exclusivity")))
  
 ggplot(data = plot_cor_model_pred,aes(x = model_mean, y = data_mean, col = alignment)) +
   geom_abline(intercept = 0, slope = 1, lty = 2, alpha = 1, size = .5)+
@@ -685,10 +697,7 @@ ggplot(data = plot_cor_model_pred,aes(x = model_mean, y = data_mean, col = align
   facet_grid(age~model)+
   theme_few() + 
   scale_colour_ptol(name ="Condition")
- 
- 
 ```
-
 
 ```{r table3}
 model_comp_pred <- readRDS("../saves/pred_model_comparison.rds")%>%
@@ -705,124 +714,26 @@ model_comp_pred <- readRDS("../saves/pred_model_comparison.rds")%>%
   
   
 
-knitr::kable(model_comp_pred, caption = "Model comparison using Bayes factors computed based on the marginal likelihood of each model given the data.", digits = 2)
+knitr::kable(model_comp_pred, caption = "Model comparison using Bayes factors computed based on the marginal likelihood of each model given the data.", digits = 2, align = "l")
 ```
-
 
 ## Explanation
 
-model parameters are also estimated based in the data from experiment 1 and 2, but then updated based on the data from experiment 3.
+In this section we explore how we can best explain information integration across development. We explore alternative ways to think about information integration. The *integration model* outlined above operates via Bayesian inference in that the prior probability of a referent - following the common ground manipulation - is updated upon hearing the utterance and computing the mutual exclusivity inference. In essence, this model is a multiplicative model because the probability of each referent is proportional to the product of the likelihood and the prior. The alternative model we consider here is an additive model. This *mixture model* assumes that the two inferences are computed separately and then weighted by some ratio $\phi$. 
 
-answer the question: which is the best way to think about information integration
+With respect to developmental change, the *integration model* assumes that the process by which information is integrated remains the same across development. What changes is children's semantic knowledge, their expectations about speaker informativeness and their sensitivity to common ground. But the way these information sources are combined remains the same across age. As an alternative, we explore a *developmental mixture model*. This model makes the same assumptions about developmental chnage in the individual information sources but, in addition, also assumes that the way that the the mutual exclusivity and the common ground inference are combined with one another changes over time. It is structurally identical to the *mixture model* but the mixture parameter $\phi$ is a function of age. 
 
-### Model parameters
+In this section, we make use of all the available data. That is, we ask which process best explains the way that the different information sources are combined in the combination data from experiment 3. We use the data from experiment 1 and 2 to compute prior distributions over model parameters which are subsequently updated depending on how well the model predictions they generate fit the data.
+
+### Integration model 
 
 ```{r}
-
-# parameter distributions based on model 
 item_params_exp <- readRDS("../saves/item_params_fb.rds")
 global_params_exp <- readRDS("../saves/global_params_fb.rds")
 item_sigma_exp <- readRDS("../saves/item_sigma_fb.rds")
-
-# summaries
-item_params_summary_exp <- item_params_exp %>%
-  group_by(item, parameter)%>%
-  summarise(mode = estimate_mode(value),
-            uci = hdi_upper(value),
-            lci = hdi_lower(value))
-
-global_params_summary_exp <- global_params_exp %>%
-  group_by (parameter,type)%>%
-  summarise(mode = estimate_mode(value),
-            uci = hdi_upper(value),
-            lci = hdi_lower(value))
-
-# selection object
-select_exp <- sample(1:length(unique(global_params_exp$iteration)), 30)
-
-# plot for semantic knowledge
-
-sem_know_map_exp <- item_params_summary_exp%>%
-  select(-uci,-lci)%>%
-  spread(parameter, -item) %>%
-  expand_grid(., age = unique(comb_data$age)) %>%
-  mutate(sem_know = plogis(intercept + slope * age)) %>%
-  left_join(aoa_ratings) %>%
-  ungroup()%>%
-  mutate(item = fct_reorder(factor(item), mean_aoa))
-
-plot_sem_know_exp <- ggplot()+
-  geom_line(data = sem_know_map_exp, aes(x = age+2, y= sem_know, col = item, group = item),size = 1)+
-  ylab("Semantic knowledge")+
-  xlab("Age")+
-  ylim(0,1)+
-  theme_few()+
-  scale_colour_viridis_d(name = "Object")
-
-# plot or speaker optimality
-
-speak_opt_exp <- global_params_exp%>%
-  filter(parameter == "speaker_optimality")
-
-speak_opt_line_exp <- speak_opt_exp%>%
-  filter(iteration %in% select)%>%
-  spread(type, value)%>%
-  expand_grid(., age = unique(comb_data$age))%>%
-  mutate(y = intercept + slope * age)
-
-speak_opt_map_exp <- global_params_summary_exp%>%
-  ungroup()%>%
-  filter(parameter == "speaker_optimality")%>%
-  select(type, mode)%>%
-  spread(type, mode)%>%
-  expand_grid(., age = unique(comb_data$age))%>%
-  mutate(y = intercept + slope * age)
-
-plot_speak_opt_exp <- ggplot() +
-  geom_line(data = speak_opt_line_exp, aes(x=age+2,y = y, group = interaction(chain,iteration)), size = .2, alpha = .1)+
-  geom_line(data = speak_opt_map_exp, aes(x=age+2,y = y),size = 1)+
-  labs(x="Age",y="Speaker informativeness")+
-  theme_few() +
-  ylim(0,10)+
-  xlim(2,5)+
-  guides(alpha = F, fill = F, col = F)
-
-# Plot prior sensitivity
-
-prior_exp <- global_params_exp%>%
-  filter(parameter == "prior")
-
-prior_line_exp <- prior_exp%>%
-  filter(iteration %in% select)%>%
-  spread(type, value)%>%
-  expand_grid(., age = unique(comb_data$age))%>%
-  mutate(y = plogis(intercept + slope * age))
-
-prior_map_exp <- global_params_summary_exp%>%
-  ungroup()%>%
-  filter(parameter == "prior")%>%
-  select(type, mode)%>%
-  spread(type, mode)%>%
-  expand_grid(., age = unique(comb_data$age))%>%
-  mutate(y = plogis(intercept + slope * age))
-
-plot_prior_exp <- ggplot() +
-  geom_line(data = prior_line_exp, aes(x=age+2,y = y, group = interaction(chain,iteration)), size = .2, alpha = .1)+
-  geom_line(data = prior_map_exp, aes(x=age+2,y = y),size = 1)+
-  labs(x="Age",y="Prior sensitivity")+
-  theme_few() +
-  ylim(0,1)+
-  xlim(2,5)+
-  guides(alpha = F, fill = F, col = F)
-
-
 ```
 
-```{r fig8, include = T, fig.align = "center", fig.cap = "Developmental trajectories for model parameters based on the posterior distribution for (A) semantic knowlede, (B) speaker informativeness and (C) prior sensitivity. Solid lines in show the MAP estimate for each parameter. Lighter lines in (B) and (C) show 300 random draws from the posterior distributon to visualize uncertainty. (A) does not include these random draws for the sake of clarity.", fig.width=12, fig.height = 4}
-ggarrange(plot_sem_know_exp, plot_speak_opt_exp, plot_prior_exp , labels = c("A","B","C"), nrow = 1, widths = c(1.3,1,1))
-```
-
-### Integration model 
+The *integration model* in this section differs from the same model in the prediciton section only in the distributions for the parameters representing the different information sources. Figure \@ref(fig:figa1) - \@ref(fig:figa3) in the appendix show how the  parameter distributions differ between the prediction and the explanation version of the *integration* model. As a quick summary we can say that semantic knowledge and speaker inforamtiveness are rougly similar, the intercept for common ground sensitivity is estimated to be larger and the slope shallower when taking into account all the data comapred to when estiamting these parameters only based on experiment 1 and 2 respectively. Figure \@ref(fig:fig9) shows model predicions for the *integration model* in comparison to the data from experiment 3.
 
 ```{r fig9, include = T, fig.align = "center", fig.cap = "Explaining information integration across development. Model predictions based on the integration model. Colored lines show developmental trajectories for each familiar object and condition based on 300 random draws from the model posterior distribution. Top row (blue) shows the congruent condition and the bottom row (red) shows the inconguent condition. Familiar objects are ordered based on their rated age of acquisition (left o right). Dashed black lines show smoothed conditional mean of the data with 95\\% CI (in grey). Light dots are individual data points.", fig.width=12, fig.height = 4}
 
@@ -859,9 +770,69 @@ ggplot(data = comb_data, aes(x = age_num, y = correct)) +
 
 ### Mixture model
 
+\begin{equation} 
+P_{L_1}(r, \mathcal{L}|u) = \phi P_{S_1}(u|r_{t}, \mathcal{L}) + (1-\phi) P( \mathcal{L})P(r)
+\end{equation} 
+
+The posterior distribution for the mixture parameter $\phi$ is shown in figure \@ref(fig:fig10)A. It suggests that the mutual exclusivity inference is weighted as slightly more important compared to the common ground inference.
+
+
+```{r}
+item_params_mixture <- readRDS("../saves/item_params_mm.rds")
+
+global_params_mixture <- readRDS("../saves/global_params_mm.rds")
+
+mixture_parameter <- readRDS("../saves/mixture_mm.rds")
+```
+
+```{r}
+plot_mixture <- ggplot(mixture_parameter, aes(x = p_informative))+
+  geom_density(alpha = 0.8, adjust = 2)+
+  xlab("Proportion mutual exclusivity component")+
+  xlim(0,1)+
+  theme_few()
+
+```
+
+
+### Developmental mixture model
+
+For this model, we make the mixture parameter $\phi$ a function of age and estimate the intercept and slope that result in the best model predictions compared to the data from experiment 3. Figure \@ref(fig:fig10)B visualizes the developmental trajectory of the mixture parameter. Based on this model, the common ground inference seems to decrease in importance compared to the mutual exclusivity infernence.
+
+```{r}
+item_params_dev_mixture <- readRDS("../saves/item_params_dmm.rds")
+
+global_params_dev_mixture <- readRDS("../saves/global_params_dmm.rds")
+
+developmental_mixture_parameter <- readRDS("../saves/mixture_dmm.rds")
+```
+
+```{r}
+select_dev_mix <- sample(1:20000, 50)
+
+plot_mixture_line <- developmental_mixture_parameter%>%
+  filter(iteration %in% select_dev_mix) %>%
+  spread(type, value) %>%
+  expand_grid(.,age = unique(comb_data$age)) %>%
+  mutate(mixture = plogis(intercept + slope * age))
+
+plot_dev_mixture <- ggplot() +
+  geom_line(data = plot_mixture_line, aes(x=age+2,y = mixture, group = interaction(chain,iteration)),size = .2, alpha = .1)+
+  labs(x="Age",y="Proportion mutual exclusivity component")+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F, fill = F)
+
+```
+
+```{r fig10, include = T, fig.align = "center", fig.cap = "Mixture component for the mixture model (A) and the developmental mixture model (B). (A) shows the posterior distribution of the mixture component and (B) shows developmental trajectories for the mixture component based on 300 random draws from the posterior distribution for intercept and slope.", fig.width=12, fig.height = 4}
+ggarrange(plot_mixture, plot_dev_mixture,  labels = c("A","B"), nrow = 1)
+```
+
 ### Model comparison
 
-```{r fig10, include = T, fig.align = "center", fig.cap = "Explaining information integration. Correlations between model predictions and data binned by year, item and condition. Vertical and horizontal error bars show 95\\% HDI. Blue diamonds show congruent condition and red ones show the incongruent condition.", fig.width=12, fig.height = 6}
+```{r fig11, include = T, fig.align = "center", fig.cap = "Explaining information integration. Correlations between model predictions and data binned by year, item and condition. Vertical and horizontal error bars show 95\\% HDI. Blue diamonds show congruent condition and red ones show the incongruent condition.", fig.width=12, fig.height = 6}
 
 # cor_prag_exp <- readRDS("../saves/model_pred_prag_fb.rds")%>%
 #   mutate(age = as.numeric(age) + min(comb_data$age_num),
@@ -916,7 +887,8 @@ ggplot(data = comb_data, aes(x = age_num, y = correct)) +
 # 
 # saveRDS(plot_cor_model_exp, "../saves/corr_model_data_exp.rds")
 
-plot_cor_model_exp <- readRDS( "../saves/corr_model_data_exp.rds")
+plot_cor_model_exp <- readRDS( "../saves/corr_model_data_exp.rds")%>%
+  mutate(model = factor(model, levels = c("integration", "mixture", "developmental mixture")))
  
 ggplot(data = plot_cor_model_exp,aes(x = model_mean, y = data_mean, col = alignment)) +
   geom_abline(intercept = 0, slope = 1, lty = 2, alpha = 1, size = .5)+
@@ -931,8 +903,6 @@ ggplot(data = plot_cor_model_exp,aes(x = model_mean, y = data_mean, col = alignm
   facet_grid(age~model)+
   theme_few() + 
   scale_colour_ptol(name ="Condition")
- 
- 
 ```
 
 ```{r table4}
@@ -950,13 +920,83 @@ model_comp_pred <- readRDS("../saves/expl_model_comparison.rds")%>%
   
   
 
-knitr::kable(model_comp_pred, caption = "Model comparison using Bayes factors computed based on the marginal likelihood of each model given the data.", digits = 2)
+knitr::kable(model_comp_pred, caption = "Model comparison using Bayes factors computed based on the marginal likelihood of each model given the data.", digits = 2, align = "l")
 ```
-
-
-[overview fig, correlations for all models]
-
-## Comparing model parameters
 
 # Discussion
 
+# Appendix: Comparing model parameters 
+
+## Semantic knowledge
+
+### Intercept
+
+```{r}
+item_comp <- bind_rows(
+  item_params_exp %>% mutate(model = "integration (explanation)"),
+  item_params %>% mutate(model = "integration (prediction)"),
+  item_params_mixture %>% mutate(model = "mixture"),
+  item_params_dev_mixture %>% mutate(model = "developmental mixture")
+)
+
+```
+
+```{r figa1, include = T, fig.align = "center", fig.cap = "Posterior distribution of intercept term for semantic knowledge for each object by model.", fig.width=12, fig.height = 6}
+
+item_comp_int <- item_comp %>%
+  filter(parameter == "intercept")
+
+ggplot(item_comp_int, aes(x = value, fill = model, col = model))+
+  geom_density(alpha = 0.8, adjust = 2)+
+  xlab("value")+
+  facet_wrap( ~ item, nrow = 2, scales = 'free')+
+  theme_few()+
+  xlim(-10,5)+
+  theme(legend.position = "bottom")+
+  scale_fill_ptol()+
+  scale_color_ptol()
+```
+
+### Slope
+
+```{r figa2, include = T, fig.align = "center", fig.cap = "Posterior distribution of slope term for semantic knowledge for each object by model.", fig.width=12, fig.height = 6}
+
+item_comp_slope <- item_comp %>%
+  filter(parameter == "slope")
+
+ggplot(item_comp_slope, aes(x = value, fill = model, col = model))+
+  geom_density(alpha = 0.8, adjust = 2)+
+  xlab("value")+
+  facet_wrap( ~ item, nrow = 2, scales = 'free_y')+
+  xlim(-1,4)+
+  theme_few()+
+  ggtitle("Semantic knowledge by object - Slope")+
+  theme(legend.position = "bottom")+
+  scale_fill_ptol()+
+  scale_color_ptol()
+```
+
+## Speaker informativeness and common ground sensitivity
+
+```{r figa3, include = T, fig.align = "center", fig.cap = "Posterior distribution of slope and intercept terms for speaker informativeness and sensitivity to common ground by model.", fig.width=8, fig.height = 6, fig.align="center"}
+
+global_comp <- bind_rows(
+  global_params_exp %>% mutate(model = "integration (explanation)"),
+  global_params %>% mutate(model = "integration (prediction)"),
+  global_params_mixture %>% mutate(model = "mixture"),
+  global_params_dev_mixture %>% mutate(model = "developmental mixture")
+)%>%
+  filter(parameter !="global_sem")%>%
+  mutate(parameter = fct_recode(parameter, 
+                               "common ground sensitivity" = "prior",
+                               "speaker informativeness" = "speaker_optimality"))
+
+ggplot(global_comp, aes(x = value, fill = model, col = model))+
+  geom_density(alpha = 0.8, adjust = 2)+
+  xlab("value")+
+  facet_grid(type ~ parameter, scales = 'free')+
+  theme_few()+
+  theme(legend.position = "bottom")+
+  scale_fill_ptol()+
+  scale_color_ptol()
+```
