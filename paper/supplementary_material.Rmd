@@ -74,11 +74,11 @@ comb_data <- read_csv("../data/combination.csv")%>%
 
 # Overview
 
-The goal of this study is to investigate the integration of semantic and pragmatic information during word learning in children between 2 and 5 years of age. As a first step, we replicate earlier work showing that children make a so called mutual exclusivity inference and that this inference depends on children's developing semantic knowledge. In a second experiment, we show that children make inferences about word meanings based on common ground. In a third experiment, we find that, when combined in one procedure, children are sensitive to the way that the two inferences are aligned.
+The goal of this study is to investigate the integration of semantic and pragmatic information during word learning in children between 2 and 5 years of age. As a first step, we replicate earlier work showing that children rely on different forms of pragmatic and semantic information during word learning. In experiment 1, we show that children make a so called mutual exclusivity inference and that this inference depends on children's developing semantic knowledge. In a second experiment, we show that children make inferences about word meanings based on common ground. In a third experiment, we find that, when combined in one procedure, children are sensitive to the way that the two inferences are aligned.
 
 Next, we introduce a computational framework which we use to formalize the process of how the inferences are integrated. As a part of this, we identify three information sources that children consider when making the alleged inferences: semantic knowledge, expectations about speaker informativeness and sensitivity to common ground. We then use the our modelling framework to ask which of these information sources are necessary to predict children's responses in experiment 3. 
 
-In the final section, we turn to the process by which information is integrated. We contrast the process of rational Bayesian inference we introduced in our model with a process in which one type of inference is given more weight. As part of this, we also explore alternative ways to think about developmental change in the integration process. 
+In the final section, we turn to the process by which information is integrated. We contrast the process of rational Bayesian inference we introduced in our model with a biased integration process in which one type of inference is given more weight. As part of this, we also explore alternative ways to think about developmental change in the integration process. 
 
 # Empirical studies
 
@@ -86,19 +86,19 @@ In the final section, we turn to the process by which information is integrated.
 
 The first experiment tested the so called mutual exclusivity inference in children between 2 and 5 years of age. The general phenomena is that when presented with a familiar and an unfamiliar object, children expect a novel word to refer to the unfamiliar object [e.g. @markman1988children]. A range of explanations have been put forward for the cognitive basis of this inference [see @lewis2020-me for a discussion]. Here, we treat the mutual exclusivity inference as pragmatic [e.g. @clark1987principle]. The inference process is specified in the model below. 
 
-The first goal of this experiment was to quantify developmental change in the age range tested. The second goal of Experiment 1 was to test the role of semantic knowledge [cf. @lewis2020-me]. The assumption is that the strength of the mutual exclusivity inference varies with knowledge of the word for the familiar object. That is, when the familiar object is an object for which children are less likely to know the word, they are less likely to assume that the novel word refers to the unfamiliar object. To test this, we systematically varied the familiar object that was presented with the novel object.
+The first goal of this experiment was to quantify developmental change in the age range tested. The second goal was to test the role of semantic knowledge [cf. @lewis2020-me]. The assumption is that the strength of the mutual exclusivity inference varies with knowledge of the word for the familiar object. That is, when the familiar object is an object for which children are less likely to know the word, they are less likely to assume that the novel word refers to the unfamiliar object. To test this, we systematically varied the familiar object that were presented alongside the novel object.
 
 The experiment was preregistered at https://osf.io/gy37b. The experiment itself can be run by downloading the associated repository and opening the file `experiments/kids/kids_me.html`.
 
 ### Participants
 
-We tested a total number of `r length(unique(me_data$subid))` children, including `r length(unique(me_data$subid[me_data$subage == 2]))` 2-year-olds (range = `r format(round(min(me_data$age_num[me_data$subage == 2]),2), nsmall = 2)` - `r format(round(max(me_data$age_num[me_data$subage == 2]),2), nsmall = 2)`, 15 girls), `r length(unique(me_data$subid[me_data$subage == 3]))` 3-year-olds (range = `r format(round(min(me_data$age_num[me_data$subage == 3]),2), nsmall = 2)` - `r format(round(max(me_data$age_num[me_data$subage == 3]),2), nsmall = 2)`, 22 girls) and  `r length(unique(me_data$subid[me_data$subage == 4]))` 4-year-olds (range = `r format(round(min(me_data$age_num[me_data$subage == 4]),2), nsmall = 2)` - `r format(round(max(me_data$age_num[me_data$subage == 4]),2), nsmall = 2)`, 16 girls). Data from 10 additional children was not included because they were either exposed to less than 75% of English at home (5), did not finish at least half of the test trials (2), the technical equipment failed (2) or their parents reported an autism spectrum disorder (1). All children were recruited from the floor of a Children’s museum in San José, California, USA. This population is characterized by diverse ethnic background (predominantly White, Asian, or mixed ethnicity) and high levels of parental education and socioeconomic status. Parents consented to their children’s participation and provided demographic information. All experiments were approved by the Stanford Institutional Review Board (protocol no. 19960)
+We tested a total number of `r length(unique(me_data$subid))` children, including `r length(unique(me_data$subid[me_data$subage == 2]))` 2-year-olds (range = `r format(round(min(me_data$age_num[me_data$subage == 2]),2), nsmall = 2)` - `r format(round(max(me_data$age_num[me_data$subage == 2]),2), nsmall = 2)`, 15 girls), `r length(unique(me_data$subid[me_data$subage == 3]))` 3-year-olds (range = `r format(round(min(me_data$age_num[me_data$subage == 3]),2), nsmall = 2)` - `r format(round(max(me_data$age_num[me_data$subage == 3]),2), nsmall = 2)`, 22 girls) and  `r length(unique(me_data$subid[me_data$subage == 4]))` 4-year-olds (range = `r format(round(min(me_data$age_num[me_data$subage == 4]),2), nsmall = 2)` - `r format(round(max(me_data$age_num[me_data$subage == 4]),2), nsmall = 2)`, 16 girls). Data from 10 additional children was not included because they were either exposed to less than 75% of English at home (5), did not finish at least half of the test trials (2), the technical equipment failed (2) or their parents reported an autism spectrum disorder (1). All children were recruited from the floor of a Children’s museum in San José, California, USA. This population is characterized by diverse ethnic background (predominantly White, Asian, or mixed ethnicity) and high levels of parental education and socioeconomic status. Parents consented to their children’s participation and provided demographic information. All experiments were approved by the Stanford Institutional Review Board (protocol no. 19960).
 
 ### Procedure
 
-The experiment was presented as an interactive picture book on a tablet computer [@frank2016using]. Figure \@ref(fig:fig1)A shows the general setup. Children saw an animal between two tables. For each animal character, we recorded a set of utterances (one native English speaker per animal) that were used to make requests. Each experiment started with two training trials in which the speaker requested a known object (car and ball). 
+The experiment was presented as an interactive picture book on a tablet computer [@frank2016using]. Figure \@ref(fig:fig1)A shows the general setup. Children saw an animal standing on a little hill between two tables. For each animal character, we recorded a set of utterances (one native English speaker per animal) that were used to make requests. Each experiment started with two training trials in which the speaker requested known objects (car and ball). 
 
-In Experiment 1, on one table, there was a familiar object, on the other table, there was a novel object (drawn for the purpose of the study). The speaker requested an object by saying "Oh cool, there is a [non-word] on the table, how neat, can you give me the [non-word]?". Children responded by touching one of the objects. The location of the novel object (left or right table) and the animal character were counterbalanced. Each child received 12 trials, one with each familiar object. The novel object also changed from trial to trial. We coded as correct choice if children chose the novel object as the referent of the novel word.
+In experiment 1, on one table, there was a familiar object, on the other table, there was a novel object (drawn for the purpose of the study). The speaker requested an object by saying "Oh cool, there is a [non-word] on the table, how neat, can you give me the [non-word]?". Children responded by touching one of the objects. The location of the novel object (left or right table) and the animal character were counterbalanced. Each child received 12 trials, one with each familiar object. The novel object also changed from trial to trial. We coded as correct choice if children chose the novel object as the referent of the novel word.
 
 ```{r fig1,echo = F, fig.align = "center", fig.cap = "Schematic experimental procedure with screenshots from the experiments.", out.width="100%"}
 knitr::include_graphics("../graphs/method_overview.png")
@@ -154,8 +154,22 @@ As a first step, we evaluated whether children made a mutual exclusivity inferen
 #           chains = 4,
 #           iter = 5000)%>%
 #   saveRDS(.,"../saves/bm_me.rds")
+# 
+# 
+# bm_me2 <- brm(correct ~ age + (1|subid) + (age | agent),
+#                     data = me_data, family = bernoulli(),
+#           control = list(adapt_delta = 0.99, max_treedepth = 20),
+#           sample_prior = F,
+#           prior = prior_me,
+#           cores = 4,
+#           chains = 4,
+#           iter = 5000)%>%
+#   saveRDS(.,"../saves/bm_me.rds")
 
 bm_me <- readRDS("../saves/bm_me.rds")
+
+bm_me2 <- readRDS("../saves/bm_me2.rds")
+
 ```
 
 ```{r}
@@ -198,9 +212,26 @@ cor_plot_me <- as_tibble(ranef_me$item, rownames = "item") %>%
   theme_few()
 ```
 
-As a second step, we investigated how the inference changed as a function of age and the familiar object. We modeled the trial by trial data using a Bayesian generalized linear mixed model (GLMM). We used the function `brm` from the package `brms` [@R-brms_a]. We pre-registered the use of default priors in all models. However, the model in Experiment 3 was unable to initialize with default priors and we thus used weakly informative priors for all models to be consistent. The priors we used were `normal(0,5)` for fixed effects and `cauchy(0,1)` for standard deviations of random effects.  The model formula was `correct ~ age + (1 | id) + (age | object) + (age | agent)`. That is, we modeled an overall slope for age (continuous, anchored at the minimum) and the object specific developmental trajectories as deviations from the overall intercept and slope (random effects). We did not pre-register agent as a random effect, but decided to included it to be consistent with Experiment 2 and 3.
+As a second step, we investigated how the inference changed as a function of age and the familiar object. We modeled the trial by trial data using a Bayesian generalized linear mixed model (GLMM). We used the function `brm` from the package `brms` [@R-brms_a]. We pre-registered the use of default priors in all models. However, the model in Experiment 3 was unable to initialize with default priors and we thus used weakly informative priors for all models to be consistent. The priors we used were `normal(0,5)` for fixed effects and `cauchy(0,1)` for standard deviations of random effects.  The model formula was `correct ~ age + (1 | id) + (age | object) + (age | agent)`. That is, we modeled an overall slope for age (continuous, anchored at the minimum) and the object specific developmental trajectories as deviations from the overall intercept and slope (random effects). We did not pre-register agent as a random effect, but retrospecitvely included it to be consistent with Experiment 2 and 3.
 
-The estimate for age was positive and reliably different from zero (*$\beta$* = `r fixef_me%>%filter(term == "age")%>%pull(Estimate)%>%round(2)`, 95% CrI: `r fixef_me%>%filter(term == "age")%>%pull(Q2.5)%>%round(2)` - `r fixef_me%>%filter(term == "age")%>%pull(Q97.5)%>%round(2)`). Older children were more likely to make a mutual exclusivity inference. Figure \@ref(fig:fig2)B visualizes the model based developmental trajectory for each familiar object and shows that there was substantial variation between them, both in terms of absolute strength of the inference as well as its developmental trajectory. Figure \@ref(fig:fig2)C shows the correlation between rated age of acquisition and object specific model intercept. The mutual exclusivity effect was stronger for words that were rated to be acquired earlier. Objects for which children were less likely to know the word produced a weaker mutual exclusivity effect. Taken together, the mutual exclusivity inference depended on age as well as the familiar object.  
+The estimate for age was positive and reliably different from zero (*$\beta$* = `r fixef_me%>%filter(term == "age")%>%pull(Estimate)%>%round(2)`, 95% CrI: `r fixef_me%>%filter(term == "age")%>%pull(Q2.5)%>%round(2)` - `r fixef_me%>%filter(term == "age")%>%pull(Q97.5)%>%round(2)`). Older children were more likely to make a mutual exclusivity inference. To assess the variability accross objects, we compared the fit of the above model to a model lacking `object` as a random effect. Following McElreath [-@rethinking], we compared models using WAIC (widely applicable information criterion) scores and weights. The WAIC score is an indicator of the model’s predictive accuracy for out of sample data; model’s with lower scores are preferred. WAIC weights are an estimate of the probability that this model (compared to all other models considered) will make the best predictions on new data. The model including object provided a much better fit compared to the model lacking it (see Table \@ref(tab:table2)). Figure \@ref(fig:fig2)B visualizes the model based developmental trajectory for each familiar object and illustrates the substantial variation between them, both in terms of absolute strength of the inference as well as its developmental trajectory. Figure \@ref(fig:fig2)C shows the correlation between rated age of acquisition and object specific model intercept. The mutual exclusivity effect was stronger for words that were rated to be acquired earlier. Objects for which children were less likely to know the word produced a weaker mutual exclusivity effect. Taken together, the strength  of the mutual exclusivity inference depended on age as well as the familiar object. 
+
+```{r table2, echo=T}
+
+me_waic <- brms::waic(bm_me, bm_me2, compare = F)
+
+me_weights <- model_weights(bm_me, bm_me2, weights = "waic")
+
+me_comp <- tibble(
+  Model = c("with object as RE", "without object as RE"),
+  WAIC = round(c(me_waic$loos$bm_me$estimates["waic","Estimate"],me_waic$loos$bm_me2$estimates["waic","Estimate"]),2),
+  SE = round(c(me_waic$loos$bm_me$estimates["waic","SE"],me_waic$loos$bm_me2$estimates["waic","SE"]),2),
+  weight = round(c(me_weights[1],me_weights[2]))
+)
+
+knitr::kable(me_comp, caption = "Model comparison in experiment 1 based on WAIC scores and weights.", digits = 2, align = "l")
+```
+
 
 ```{r fig2, include = T, fig.align = "center", fig.cap = "A:Familiar words and corresponding pictures by rated age of acquisition. B: Developmental trajectories of mututal exclusivity effect by familiar object based on the mean of the model posterior distribution. Dots show individual datapoints. Lighter colors indicate later rated age of acquisition. Dotted line indicates a level of performance expected by chance. C: Correlation between rated age of acquisiton and mutual exclusivity effect (model based intercept for each familiar object).", fig.width=12, fig.height = 4}
 ggarrange(plot_aoa, plot_me, cor_plot_me,  labels = c("A","B","C"), nrow = 1, widths = c(1,1.3,1))
@@ -222,7 +253,7 @@ The general setup was the same as in Experiment 1. The speaker was positioned be
 
 ### Results
 
-```{r table2, echo=T}
+```{r table3, echo=T}
 chance_prior <- prior_data %>%
   group_by(subage, subid) %>%
   summarise(correct = mean(correct)) %>%
@@ -237,7 +268,7 @@ chance_prior <- prior_data %>%
 knitr::kable(chance_prior, caption = "Proportion of children choosing the object that was new to the speaker compared to a level expected by chance based on a one sample Bayesian t-test. Responses are aggregated for each participant across trials.", digits = 2, align = "l")
 ```
 
-Table \@ref(tab:table2) compares children's correct responses to a level expected by chance (50%). We found evidence that, as a group, 3- and 4-year-olds, but not 2-year-olds, inferred that the novel word referred to the object that was new to the speaker. 
+Table \@ref(tab:table3) compares children's correct responses to a level expected by chance (50%). We found evidence that, as a group, 3- and 4-year-olds, but not 2-year-olds, inferred that the novel word referred to the object that was new to the speaker. 
 
 ```{r, echo=T}
 # prior_cg <- c(prior(normal(0, 5), class = Intercept),
@@ -334,8 +365,22 @@ All results are reported from the perspective of the mutual exclusivity inferenc
 #           inits = 0,
 #           iter = 5000)%>%
 #   saveRDS(.,"../saves/bm_comb.rds")
+# 
+# bm_comb2 <- brm(correct ~ age * alignment + (alignment | subid) + (age * alignment | agent),
+#                     data = comb_data, family = bernoulli(),
+#           control = list(adapt_delta = 0.99, max_treedepth = 20),
+#           sample_prior = F,
+#           prior = prior_comb,
+#           cores = 4,
+#           chains = 4,
+#           inits = 0,
+#           iter = 5000)%>%
+#   saveRDS(.,"../saves/bm_comb2.rds")
 
 bm_comb <- readRDS("../saves/bm_comb.rds")
+
+bm_comb2 <- readRDS("../saves/bm_comb2.rds")
+
 ```
 
 ```{r}
@@ -386,7 +431,24 @@ plot_comb <- ggplot(plot_comb_map, aes(x=age,y = y, col = item))+
 
 We modeled the trial by trial data in the following way: `correct ~ age * alignment + (alignment | subid) + (age * alignment | item) + (age * alignment | agent)`. We pre-registered to include item as a fixed effect in Experiment 3. The corresponding model was too complex to be constrained by the data. Furthermore, as explained in Experiment 1, items were chosen based on their rated age of acquisition. That is, we assumed that they are not necessarily different kinds but that they represent different locations on a distribution of required semantic knowledge. For further model specifications see [Experiment 1](#experiment-1-mutual-exclusivity)). 
 
-The estimate for age was reliably positive (*$\beta$* = `r fixef_comb%>%filter(term == "age")%>%pull(Estimate)%>%round(2)`, 95% CrI: `r fixef_comb%>%filter(term == "age")%>%pull(Q2.5)%>%round(2)` - `r fixef_comb%>%filter(term == "age")%>%pull(Q97.5)%>%round(2)`). The incongruent condition had a strong negative impact (*$\beta$* = `r fixef_comb%>%filter(term == "alignmentincongruent")%>%pull(Estimate)%>%round(2)`, 95% CrI: `r fixef_comb%>%filter(term == "alignmentincongruent")%>%pull(Q2.5)%>%round(2)` - `r fixef_comb%>%filter(term == "alignmentincongruent")%>%pull(Q97.5)%>%round(2)`), showing that children differentiated between the two conditions. The interaction term was weakly - though not entirely - negative, suggesting a shallower slope for age in the incongruent condition (*$\beta$* = `r fixef_comb%>%filter(term == "age:alignmentincongruent")%>%pull(Estimate)%>%round(2)`, 95% CrI: `r fixef_comb%>%filter(term == "age:alignmentincongruent")%>%pull(Q2.5)%>%round(2)` - `r fixef_comb%>%filter(term == "age:alignmentincongruent")%>%pull(Q97.5)%>%round(2)`). Figure \@ref(fig:fig3)B visualizes the model. Taken together, the results show that children responded to the way the two inferences were aligned with one another. 
+The estimate for age was reliably positive (*$\beta$* = `r fixef_comb%>%filter(term == "age")%>%pull(Estimate)%>%round(2)`, 95% CrI: `r fixef_comb%>%filter(term == "age")%>%pull(Q2.5)%>%round(2)` - `r fixef_comb%>%filter(term == "age")%>%pull(Q97.5)%>%round(2)`). The incongruent condition had a strong negative impact (*$\beta$* = `r fixef_comb%>%filter(term == "alignmentincongruent")%>%pull(Estimate)%>%round(2)`, 95% CrI: `r fixef_comb%>%filter(term == "alignmentincongruent")%>%pull(Q2.5)%>%round(2)` - `r fixef_comb%>%filter(term == "alignmentincongruent")%>%pull(Q97.5)%>%round(2)`), showing that children differentiated between the two conditions. The interaction term was weakly - though not entirely - negative, suggesting a shallower slope for age in the incongruent condition (*$\beta$* = `r fixef_comb%>%filter(term == "age:alignmentincongruent")%>%pull(Estimate)%>%round(2)`, 95% CrI: `r fixef_comb%>%filter(term == "age:alignmentincongruent")%>%pull(Q2.5)%>%round(2)` - `r fixef_comb%>%filter(term == "age:alignmentincongruent")%>%pull(Q97.5)%>%round(2)`). A model lacking `object` as a random effect provided a much poorer fit, suggesting substantial variation across objects (see Table \@ref(tab:table4)). Figure \@ref(fig:fig3)B visualizes the model. Taken together, the results show that children responded to the way the two inferences were aligned with one another. 
+
+```{r table4, echo=T}
+
+comb_waic <- brms::waic(bm_comb, bm_comb2, compare = F)
+
+comb_weights <- model_weights(bm_comb, bm_comb2, weights = "waic")
+
+comb_comp <- tibble(
+  Model = c("with object as RE", "without object as RE"),
+  WAIC = round(c(comb_waic$loos$bm_comb$estimates["waic","Estimate"],comb_waic$loos$bm_comb2$estimates["waic","Estimate"]),2),
+  SE = round(c(comb_waic$loos$bm_comb$estimates["waic","SE"],comb_waic$loos$bm_comb2$estimates["waic","SE"]),2),
+  weight = round(c(comb_weights[1],comb_weights[2]))
+)
+
+knitr::kable(comb_comp, caption = "Model comparison in experiment 3 based on WAIC scores and weights.", digits = 2, align = "l")
+```
+
 
 ```{r fig3, include = T, fig.align = "center", fig.cap = "Proportion of choosing the object that was new to the speaker by age. Dots show the mean response for each participant. The solid black line shows the developmental trajectory based on the mean of the model posterior distribution. Lighter lines show 200 random draws from the posterior distribution to depict uncertainty. Dotted line indicates a level of performance expected by chance.", fig.width=12, fig.height = 4}
 ggarrange(plot_cg, plot_comb,  labels = c("A","B"), nrow = 1, widths = c(1,2))
@@ -402,7 +464,7 @@ The main purpose of the study was to study *how* children integrate different in
 
 Finally, we ask how well our model *explains* the way that children integrate the two information sources. For this analysis, we fit the free parameters in the model to all the available data, those from experiment 1 and 2 as well as the integration data from experiment 3. We then compare the model to a range of alternative models that make different assumptions about how information is integrated and how this process develops. This approach answers the question of how we can best explain how children are integrating the different information sources. 
 
-## Modelling framework 
+## Modeling framework 
 
 The cognitive models are situated in the Rational Speech Act (RSA) framework [@frank2012predicting; @goodman2016pragmatic]. RSA models are models of pragmatic reasoning in that they treat language understanding as a special case of Bayesian social reasoning. A listener interprets an utterance by assuming it was produced by a cooperative speaker who had the goal to be informative. Being informative is defined as providing a message that would increase the probability of the listener inferring the speaker’s intended message. This notion of contextual informativeness captures the Gricean idea of cooperation between speaker and listener.
 
@@ -615,7 +677,7 @@ The last lesion model only takes in the common ground sensitivity. This correspo
 
 We compared the models mentioned above in two ways. On the one hand, we used correlations between model predictions and the data. For this analysis, we binned the model predictions and the data by year and familiar object. Figure \@ref(fig:fig6) visualizes the correlation between model predictions and the data for all models. The results shows a very high correlation between the predictions of the *integration model* and the data in all age groups suggesting that the model accurately captures the variation in the data. The correlation increased from 2- to 3-year-olds but then again dropped for 4-year-olds. This is probably a consequence of the model making very extreme predictions for the oldest age group. Correlations for the *integration model* were also higher compared to the other models considered. 
 
-On the other hand, we compared models based on Bayes factors which were calculated from the marginal likelihoods of each model given the data. For this analysis, we treated age continuously. We first calculated the marginal log-likelihood for each model and then computed Bayes factors by subtracting the log-likelihoods for the models involved in the comparison and then exponentiating the result (see file `model_comparison.Rmd` in the associated online repository). Table \@ref(tab:table3) lists the Bayes factors for the different model comparisons. The results show that the *integration model*, by far, outperformed all the other models. When comparing the lesion models among each other, we see that models including the mutual exclusivity inference make better predictions compared to the *no mutual exclusivity model*.
+On the other hand, we compared models based on Bayes factors which were calculated from the marginal likelihoods of each model given the data. For this analysis, we treated age continuously. We first calculated the marginal log-likelihood for each model and then computed Bayes factors by subtracting the log-likelihoods for the models involved in the comparison and then exponentiating the result (see file `model_comparison.Rmd` in the associated online repository). Table \@ref(tab:table5) lists the Bayes factors for the different model comparisons. The results show that the *integration model*, by far, outperformed all the other models. When comparing the lesion models among each other, we see that models including the mutual exclusivity inference make better predictions compared to the *no mutual exclusivity model*.
 
 Taken together, this analysis showed two things. First, the *integration model* makes accurate predictions about how mutual exclusivity and common ground inferences are integrated with one another. It does so based on knowing the strength and development of each inference alone. Second, models that omit one or more type of information (object specific word knowledge, speaker informativeness, common ground sensitivity) make much worse predictions. This exemplifies that children across the entire age range flexibly integrate all the available information. In the next section we ask whether there are other ways think about the process of information integration than the way formalized in the *integration model*.
 
@@ -703,7 +765,7 @@ ggplot(data = plot_cor_model_pred,aes(x = model_mean, y = data_mean, col = align
   scale_colour_ptol(name ="Condition")
 ```
 
-```{r table3}
+```{r table5}
 model_comp_pred <- readRDS("../saves/pred_model_comparison.rds")%>%
   mutate(model = factor(model),
          `Model comparison` = fct_recode(model, 
@@ -777,7 +839,7 @@ ggplot(data = comb_data, aes(x = age_num, y = correct)) +
 In the *mixture model* the two inferences are computed in the same way as in in the *integration model*. Subsequently, they are weighted by the mixture parameter $\phi$:
 
 \begin{equation} 
-P_{L_1}(r, \mathcal{L}|u) = \phi P_{S_1}(u|r_{t}, \mathcal{L}) + (1-\phi) P( \mathcal{L})P(r)
+to be adjusted .... P_{L_1}(r, \mathcal{L}|u) = \phi P_{S_1}(u|r_{t}, \mathcal{L}) + (1-\phi) P( \mathcal{L})P(r)
 \end{equation} 
 
 To estimate $\phi$ as well as the other parameters, we make use of all the available data. The model code can be found in the associated online repository (file: xxxxxxx). The posterior distribution for the mixture parameter $\phi$ is shown in figure \@ref(fig:fig10)A. It suggests that the mutual exclusivity inference is weighted as slightly more important compared to the common ground inference.
@@ -836,7 +898,7 @@ ggarrange(plot_mixture, plot_dev_mixture,  labels = c("A","B"), nrow = 1)
 
 ### Model comparison
 
-We compared models based on correlations and Bayes factors. Figure \@ref(fig:fig11) shows correlations between model predictions and the data, each binned by year and object. Even though model predictions and data are closely aligned for all models, the *integration model* shows the highest correlation in all age groups. Next we directly compared models based using Bayes factors (see Table \@ref(tab:table4)). We also included the prediction *integration model* into this analysis.
+We compared models based on correlations and Bayes factors. Figure \@ref(fig:fig11) shows correlations between model predictions and the data, each binned by year and object. Even though model predictions and data are closely aligned for all models, the *integration model* shows the highest correlation in all age groups. Next we directly compared models based using Bayes factors (see Table \@ref(tab:table6)). We also included the prediction *integration model* into this analysis.
 
 Perhaps unsurprisingly, we see that updating the parameters for semantic knowledge, speaker informativeness and common ground sensitivity greatly improves the model fit (comparison: integration (explanation) vs integration (prediction)). We also see that the explanation *integration model* provides, by far, the best fit to the data compared to the two *mixture models*. Interestingly, the prediction *integration model* also had a better fit, even though its parameters were not updated based on the data from experiment 3. When comparing the two *mixture models* directly, we see that an age sensitive mixture parameter did not result in a substantially better fit.
 
@@ -915,7 +977,7 @@ ggplot(data = plot_cor_model_exp,aes(x = model_mean, y = data_mean, col = alignm
   scale_colour_ptol(name ="Condition")
 ```
 
-```{r table4}
+```{r table6}
 model_comp_pred <- readRDS("../saves/expl_model_comparison.rds")%>%
   mutate(model = factor(model),
          `Model comparison` = fct_recode(model, 
