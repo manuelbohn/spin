@@ -1,0 +1,219 @@
+---
+title: "Word learning at the semantics pragmatics interface"
+output: html_document
+---
+
+```{r, include = F}
+library(tidyverse)
+library(rwebppl)
+library(gridExtra)
+library(coda)
+library(ggthemes)
+library(readxl)
+library(ggpubr)
+library(stringr)
+library(matrixStats)
+library(data.table)
+library(langcog)
+library(ggimage)
+library(BayesFactor)
+
+library(cowplot)
+library(magick)
+
+estimate_mode <- function(s) {
+  d <- density(s)
+  return(d$x[which.max(d$y)])
+}
+
+
+hdi_upper<- function(s){
+  m <- HPDinterval(mcmc(s))
+  return(m["var1","upper"])
+}
+
+hdi_lower<- function(s){
+  m <- HPDinterval(mcmc(s))
+  return(m["var1","lower"])
+}
+
+knitr::opts_chunk$set(echo=F, warning=FALSE, message=FALSE, size="small")
+
+```
+
+
+```{r data}
+aoa_ratings <- read_xlsx(path = "../data/words_aoa_ratings.xlsx", sheet = 1)%>%
+  filter(Word %in% c("carrot","duck","bread","apple","kite","horseshoe","plug","garlic","barrel","eggplant","pawn","papaya"))%>%
+  mutate(mean_aoa = as.numeric(Rating.Mean),
+         item = Word)%>%
+  select(item,mean_aoa)
+
+
+me_data <- read_csv("../data/me.csv")
+prior_data <- read_csv("../data/novelty.csv")
+comb_data <- read_csv("../data/combination.csv")%>%
+  mutate(model = "data")%>%
+  left_join(aoa_ratings) %>%
+  ungroup()%>%
+  mutate(item = fct_reorder(factor(item), mean_aoa))
+
+```
+
+
+```{r}
+# parameter distributions based on model 
+item_params <- readRDS("../saves/item_params.rds")
+global_params <- readRDS("../saves/global_params.rds")
+item_sigma <- readRDS("../saves/item_sigma.rds")
+
+# summaries
+item_params_summary <- item_params %>%
+  group_by(item, parameter)%>%
+  summarise(mode = estimate_mode(value),
+            uci = hdi_upper(value),
+            lci = hdi_lower(value))
+
+global_params_summary <- global_params %>%
+  group_by (parameter,type)%>%
+  summarise(mode = estimate_mode(value),
+            uci = hdi_upper(value),
+            lci = hdi_lower(value))
+
+# selection object
+select <- sample(1:length(unique(global_params$iteration)), 30)
+
+
+# plot for semantic knowledge
+
+sem_know_map <- item_params_summary%>%
+  select(-uci,-lci)%>%
+  spread(parameter, -item) %>%
+  expand_grid(., age = unique(me_data$age)) %>%
+  mutate(sem_know = plogis(intercept + slope * age)) %>%
+  left_join(aoa_ratings) %>%
+  ungroup()%>%
+  mutate(item = fct_reorder(factor(item), mean_aoa))
+
+plot_sem_know <- ggplot()+
+  geom_line(data = sem_know_map, aes(x = age+2, y= sem_know, col = item, group = item),size = 1)+
+  ylab("Semantic knowledge")+
+  xlab("Age")+
+  ylim(0,1)+
+  theme_few()+
+  scale_colour_viridis_d(name = "Object")
+
+# plot or speaker optimality
+
+speak_opt <- global_params%>%
+  filter(parameter == "speaker_optimality")
+
+speak_opt_line <- speak_opt%>%
+  filter(iteration %in% select)%>%
+  spread(type, value)%>%
+  expand_grid(., age = unique(me_data$age))%>%
+  mutate(y = intercept + slope * age)
+
+speak_opt_map <- global_params_summary%>%
+  ungroup()%>%
+  filter(parameter == "speaker_optimality")%>%
+  select(type, mode)%>%
+  spread(type, mode)%>%
+  expand_grid(., age = unique(me_data$age))%>%
+  mutate(y = intercept + slope * age)
+
+plot_speak_opt <- ggplot() +
+  geom_line(data = speak_opt_line, aes(x=age+2,y = y, group = interaction(chain,iteration)), size = .2, alpha = .1)+
+  geom_line(data = speak_opt_map, aes(x=age+2,y = y),size = 1)+
+  labs(x="Age",y="Speaker informativeness")+
+  theme_few() +
+  ylim(0,10)+
+    xlim(2,5)+
+  guides(alpha = F, fill = F, col = F)
+
+# Plot prior sensitivity
+
+prior <- global_params%>%
+  filter(parameter == "prior")
+
+prior_line <- prior%>%
+  filter(iteration %in% select)%>%
+  spread(type, value)%>%
+  expand_grid(., age = unique(me_data$age))%>%
+  mutate(y = plogis(intercept + slope * age))
+
+prior_map <- global_params_summary%>%
+  ungroup()%>%
+  filter(parameter == "prior")%>%
+  select(type, mode)%>%
+  spread(type, mode)%>%
+  expand_grid(., age = unique(me_data$age))%>%
+  mutate(y = plogis(intercept + slope * age))
+
+plot_prior <- ggplot() +
+  geom_line(data = prior_line, aes(x=age+2,y = y, group = interaction(chain,iteration)), size = .2, alpha = .1)+
+  geom_line(data = prior_map, aes(x=age+2,y = y),size = 1)+
+  labs(x="Age",y="Prior sensitivity")+
+  theme_few() +
+  ylim(0,1)+
+  xlim(2,5)+
+  guides(alpha = F, fill = F, col = F)
+
+```
+```{r}
+plot_cor_model_pred <- readRDS( "../saves/corr_model_data_pred.rds")%>%
+  mutate(model = factor(model, levels = c("integration", "no word knowledge", "no common ground", "no mutual exclusivity")))%>%
+  filter(model == "integration")
+ 
+pred_cor <- ggplot(data = plot_cor_model_pred,aes(x = model_mean, y = data_mean, col = alignment)) +
+  geom_abline(intercept = 0, slope = 1, lty = 2, alpha = 1, size = .5)+
+  geom_errorbar(aes(ymin = data_ci_lower, ymax = data_ci_upper),width = 0,size = .5, alpha = .7)+
+  geom_errorbarh(aes(xmin = model_ci_lower, xmax = model_ci_upper), height = 0,size = .5, alpha = .7)+
+  geom_point(size = 1.5, stroke = 1, pch = 5)+
+  #coord_fixed()+
+ stat_cor(method = "pearson", label.x = 0.01, label.y = 0.99, aes(x = model_mean, y = data_mean), inherit.aes = F, size = 3)+
+  xlim(0,1)+ylim(0,1)+
+  xlab("Model")+
+  ylab("Data")+
+  facet_grid(~age)+
+  theme_few() + 
+  scale_colour_ptol(name ="Condition")
+```
+
+```{r}
+plot_prag_pred <- readRDS( "../saves/plot_prag_pred.rds")
+
+
+pred_pred <- ggplot(data = comb_data, aes(x = age_num, y = correct)) +
+  #geom_hline(yintercept = 0.5, lty=2)+
+  #geom_jitter(col = "black", height = .025, alpha = .1)+
+  #geom_pointrange(data = comb_data_binned, aes(x = subage+.5, y = data_mean, ymin =data_ci_lower, ymax = data_ci_upper), stroke = 1, pch = 5)+
+  #geom_line(data = comb_data_binned, aes(x = subage+.5, y = data_mean))+
+  geom_line(data = plot_prag_pred, aes(x=age+2,y = pred, col = alignment, group = interaction(chain,iteration)), size = .2, alpha = .25)+
+  geom_smooth(data = comb_data, aes(x = age_num, y = correct), col = "black", method = "glm", method.args = list(family = "binomial"), se = T, alpha = .4, lty = 2, size = 1)+
+  labs(x="Age",y="Mutual Exclusivity effect")+
+  facet_grid(alignment~item)+
+  theme_few() +
+  ylim(-0.05,1.05)+
+  xlim(2,5)+
+  guides(alpha = F, fill = F, col = F)+ 
+  scale_colour_ptol(name = NULL)
+```
+
+
+```{r}
+
+ggarrange(
+ggarrange(plot_speak_opt, plot_prior,plot_sem_know, labels = c("A","B","C"), nrow = 1, widths = c(1,1,1.5)),
+ggarrange(pred_cor, labels = c("D"), nrow = 1 ),
+nrow= 2,
+heights = c(1,1)
+)
+
+```
+
+
+```{r}
+ggsave("../graphs/paper_figure2.png", width = 5, height = 3.5, scale = 2)
+```
+
