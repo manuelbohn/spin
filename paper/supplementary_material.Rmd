@@ -470,7 +470,7 @@ The cognitive models are situated in the Rational Speech Act (RSA) framework [@f
 
 Our model describes a listener jointly reasoning about the referent of a speaker's utterance and trying to learn a lexicon (object--word mappings). This reasoning is contextualized by the prior probability of each referent. This prior probability is thought to be a function of the common ground shared between speaker and listener in that interacting around the objects changes the probability that they will be referred to later. We assume that the degree to which interactions around objects are integrated into the common ground and thus change the prior probability of those objects depends on the child's age. 
 
-To decide between referents, the listener reasons about what a rational speaker would say given an intended referent. This speaker is assumed to compute the informativity of for each available utterance and then choose the most informative one. However, this expectation of speaker informativeness may vary and is captured by the parameter $\alpha$. In particular, we take $\alpha$ to be a function of the child's age. 
+To decide between referents, the listener reasons about what a rational speaker would say given an intended referent. This speaker is assumed to compute the informativity for each available utterance and then choose the most informative one. However, this expectation of speaker informativeness may vary and is captured by the parameter $\alpha$. In particular, we take $\alpha$ to be a function of the child's age. 
 
 The informativity of each utterance is given by imagining which referent a literal listener, who interprets words according to their literal semantics, would infer upon hearing the utterance. Thus, this reasoning depends on what kind of semantic knowledge (word--object mappings) the speaker thinks the literal listener knows. We assume that a listener's knowledge of a word's semantics is graded (not categorical). That is, for each object involved there is a probability $p$ that the literal listener knows the word for it. For each of the novel objects, this semantic knowledge is 0, which assumes that the novel word is equaliy likely to refer to the novel object as it is to refer to the familiar object. For familiar objects, semantic knowledge is a function of the degree-of-acquisition of the associated word, which in turn depends upon the kind of object (its expected acquisition trajectory) as well as on the child's age. 
 
@@ -759,7 +759,7 @@ ggplot(data = plot_cor_model_pred,aes(x = model_mean, y = data_mean, col = align
   geom_errorbarh(aes(xmin = model_ci_lower, xmax = model_ci_upper), height = 0,size = .5, alpha = .7)+
   geom_point(size = 1.5, stroke = 1, pch = 5)+
   coord_fixed()+
- stat_cor(method = "pearson", label.x = 0.01, label.y = 0.99, aes(x = model_mean, y = data_mean), inherit.aes = F, size = 3)+
+stat_cor(method = "pearson", label.x = 0.01, label.y = 0.99, aes(x = model_mean, y = data_mean, label = paste(..rr.label..)), inherit.aes = F, size = 3)+
   xlim(0,1)+ylim(0,1)+
   xlab("Model")+
   ylab("Data")+
@@ -971,7 +971,7 @@ ggplot(data = plot_cor_model_exp,aes(x = model_mean, y = data_mean, col = alignm
   geom_errorbarh(aes(xmin = model_ci_lower, xmax = model_ci_upper), height = 0,size = .5, alpha = .7)+
   geom_point(size = 1.5, stroke = 1, pch = 5)+
   coord_fixed()+
- stat_cor(method = "pearson", label.x = 0.01, label.y = 0.99, aes(x = model_mean, y = data_mean), inherit.aes = F, size = 3)+
+stat_cor(method = "pearson", label.x = 0.01, label.y = 0.99, aes(x = model_mean, y = data_mean, label = paste(..rr.label..)), inherit.aes = F, size = 3)+
   xlim(0,1)+ylim(0,1)+
   xlab("Model")+
   ylab("Data")+
