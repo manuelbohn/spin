@@ -23,5 +23,6 @@ saves/model_pred_mm.rds
 saves/model_pred_dmm.rds
 
 paper/manuscript_references.Rmd
+paper/manuscript_references.html
 paper/science.csl
 paper/visualizations.Rmd

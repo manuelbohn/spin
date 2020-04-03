@@ -109,13 +109,16 @@ plot_aoa_ratings <- aoa_ratings%>%
   mutate(image = paste("../experiments/kids/images/",item,".png", sep=""))
 
 plot_aoa <- ggplot(plot_aoa_ratings, aes(x = reorder(item, mean_aoa), y = mean_aoa)) +
-  geom_point(size =2, pch = 4)+
+  geom_point(size =2, pch = 4, aes(col = item))+
   ylab("Mean rated age of acquisition")+
   xlab("Object")+
   ylim(0,15)+
   geom_image(aes(image=image, y = mean_aoa+2), asp = 4)+
   theme_light()+
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  scale_colour_viridis_d()+
+  guides(col = F)
+  
 ```
 
 ### Results
@@ -200,14 +203,15 @@ plot_me <- ggplot(ranef_plot_me, aes(x=age,y = y, col = item))+
 cor_plot_me <- as_tibble(ranef_me$item, rownames = "item") %>%
   left_join(aoa_ratings)%>%
   ggplot(., aes(x = mean_aoa, y = Estimate.Intercept))+
-  geom_abline(intercept = 1, slope = -1, lty = 2, alpha = 1, size = .5)+
-  geom_point(pch = 4, size = 2)+
+  geom_point(pch = 4, size = 2, aes(col = item))+
   geom_smooth(method = "lm", col = "black", se = F, lty = 2, size = .5)+
   xlab("Rated age of acquisition")+
   ylab("Mutual exclusivity effect (model intercept)")+
   ylim(-1,1)+
-  stat_cor(method = "pearson", label.x = 7, label.y = .99)+
-  theme_few()
+  stat_cor(method = "pearson", label.x = 6, label.y = .99)+
+  theme_few()+
+  scale_colour_viridis_d()+
+  guides(col = F)
 ```
 
 As a second step, we investigated how the inference changed as a function of age and the familiar object. We modeled the trial by trial data using a Bayesian generalized linear mixed model (GLMM). We used the function `brm` from the package `brms` [@R-brms_a]. We pre-registered the use of default priors in all models. However, the model in Experiment 3 was unable to initialize with default priors and we thus used weakly informative priors for all models to be consistent. The priors we used were `normal(0,5)` for fixed effects and `cauchy(0,1)` for standard deviations of random effects.  The model formula was `correct ~ age + (1 | id) + (age | object) + (age | agent)`. That is, we modeled an overall slope for age (continuous, anchored at the minimum) and the object specific developmental trajectories as deviations from the overall intercept and slope (random effects). We did not pre-register agent as a random effect, but retrospecitvely included it to be consistent with Experiment 2 and 3.
@@ -232,7 +236,7 @@ knitr::kable(me_comp, caption = "Model comparison in experiment 1 based on WAIC 
 
 
 ```{r fig2, include = T, fig.align = "center", fig.cap = "A:Familiar words and corresponding pictures by rated age of acquisition. B: Developmental trajectories of mututal exclusivity effect by familiar object based on the mean of the model posterior distribution. Dots show individual datapoints. Lighter colors indicate later rated age of acquisition. Dotted line indicates a level of performance expected by chance. C: Correlation between rated age of acquisiton and mutual exclusivity effect (model based intercept for each familiar object).", fig.width=12, fig.height = 4}
-ggarrange(plot_aoa, plot_me, cor_plot_me,  labels = c("A","B","C"), nrow = 1, widths = c(1,1.3,1))
+ggarrange(plot_aoa, plot_me, cor_plot_me,  labels = c("A","B","C"), nrow = 1, widths = c(1,1.3,1), common.legend = F)
 ```
 
 ## Experiment 2: Common ground
