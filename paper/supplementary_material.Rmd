@@ -52,7 +52,6 @@ knitr::opts_chunk$set(echo=F, warning=FALSE, message=FALSE, size="small")
 
 ```
 
-
 ```{r data}
 aoa_ratings <- read_xlsx(path = "../data/words_aoa_ratings.xlsx", sheet = 1)%>%
   filter(Word %in% c("carrot","duck","bread","apple","kite","horseshoe","plug","garlic","barrel","eggplant","pawn","papaya"))%>%
@@ -70,7 +69,6 @@ comb_data <- read_csv("../data/combination.csv")%>%
   mutate(item = fct_reorder(factor(item), mean_aoa))
 
 ```
-
 
 # Overview
 
@@ -429,7 +427,7 @@ plot_comb <- ggplot(plot_comb_map, aes(x=age,y = y, col = item))+
 
 ```
 
-We modeled the trial by trial data in the following way: `correct ~ age * alignment + (alignment | subid) + (age * alignment | item) + (age * alignment | agent)`. We pre-registered to include item as a fixed effect in Experiment 3. The corresponding model was too complex to be constrained by the data. Furthermore, as explained in Experiment 1, items were chosen based on their rated age of acquisition. That is, we assumed that they are not necessarily different kinds but that they represent different locations on a distribution of required semantic knowledge. For further model specifications see [Experiment 1](#experiment-1-mutual-exclusivity)). 
+We modeled the trial by trial data in the following way: `correct ~ age * alignment + (alignment | subid) + (age * alignment | object) + (age * alignment | agent)`. We pre-registered to include item as a fixed effect in Experiment 3. The corresponding model was too complex to be constrained by the data. Furthermore, as explained in Experiment 1, items were chosen based on their rated age of acquisition. That is, we assumed that they are not necessarily different kinds but that they represent different locations on a distribution of required semantic knowledge. For further model specifications see [Experiment 1](#experiment-1-mutual-exclusivity)). 
 
 The estimate for age was reliably positive (*$\beta$* = `r fixef_comb%>%filter(term == "age")%>%pull(Estimate)%>%round(2)`, 95% CrI: `r fixef_comb%>%filter(term == "age")%>%pull(Q2.5)%>%round(2)` - `r fixef_comb%>%filter(term == "age")%>%pull(Q97.5)%>%round(2)`). The incongruent condition had a strong negative impact (*$\beta$* = `r fixef_comb%>%filter(term == "alignmentincongruent")%>%pull(Estimate)%>%round(2)`, 95% CrI: `r fixef_comb%>%filter(term == "alignmentincongruent")%>%pull(Q2.5)%>%round(2)` - `r fixef_comb%>%filter(term == "alignmentincongruent")%>%pull(Q97.5)%>%round(2)`), showing that children differentiated between the two conditions. The interaction term was weakly - though not entirely - negative, suggesting a shallower slope for age in the incongruent condition (*$\beta$* = `r fixef_comb%>%filter(term == "age:alignmentincongruent")%>%pull(Estimate)%>%round(2)`, 95% CrI: `r fixef_comb%>%filter(term == "age:alignmentincongruent")%>%pull(Q2.5)%>%round(2)` - `r fixef_comb%>%filter(term == "age:alignmentincongruent")%>%pull(Q97.5)%>%round(2)`). A model lacking `object` as a random effect provided a much poorer fit, suggesting substantial variation across objects (see Table \@ref(tab:table4)). Figure \@ref(fig:fig3)B visualizes the model. Taken together, the results show that children responded to the way the two inferences were aligned with one another. 
 
@@ -456,7 +454,7 @@ ggarrange(plot_cg, plot_comb,  labels = c("A","B"), nrow = 1, widths = c(1,2))
 
 ## Discussion 
 
-The experiments reported above show that children are sensitive to the types of information sources we intended to manipulate. Experiment 1 showed that children of all age groups are make a mutual exclusivity inference, that the strength of this inference increases with age and, crucially, that it depends on the type of familiar object that is presented. Experiment 2 showed that three- and four-year-olds are sensitive the common ground manipulation we implemented and that this inference increases with age. Finally, experiment 3 showed that children respond differently depending on how the mutual exclusivity inference and the common ground inference are aligned with one another. In the next section, we use Bayesian cognitive models to address the question of *how* information sources are integrated when the two inferences are combined with one another.
+The experiments reported above show that children are sensitive to the types of information sources we intended to manipulate. Experiment 1 showed that children of all age groups make a mutual exclusivity inference, that the strength of this inference increases with age and, crucially, that it depends on the type of familiar object that is presented. Experiment 2 showed that children are sensitive the common ground manipulation we implemented and that this inference increases with age. Finally, experiment 3 showed that children respond differently depending on how the mutual exclusivity inference and the common ground inference are aligned with one another. In the next section, we use Bayesian cognitive models to address the question of *how* information sources are integrated when inferences are combined with one another.
 
 # Models
 
@@ -618,7 +616,7 @@ ggarrange(plot_sem_know, plot_speak_opt, plot_prior , labels = c("A","B","C"), n
 
 The integration model serves as the full model and takes in all available information. That is, it takes in object-specific semantic knowledge, speaker informativeness and common ground sensitivity and combines these components by way of the process described above. Figure \@ref(fig:fig5) visualizes the corresponding model predictions in comparison to the data from experiment 3.
 
-```{r fig5, include = T, fig.align = "center", fig.cap = "Predicting information integration across development. Model predictions based on the integration model. Colored lines show developmental trajectories for each familiar object and condition based on 300 random draws from the model posterior distribution. Top row (blue) shows the congruent condition and the bottom row (red) shows the inconguent condition. Familiar objects are ordered based on their rated age of acquisition (left o right). Dashed black lines show smoothed conditional mean of the data with 95\\% CI (in grey). Light dots are individual data points.", fig.width=12, fig.height = 4}
+```{r fig5, include = T, fig.align = "center", fig.cap = "Predicting information integration across development. Model predictions based on the integration model. Colored lines show developmental trajectories for each familiar object and condition based on 300 random draws from the model posterior distribution. Top row (blue) shows the congruent condition and the bottom row (red) shows the inconguent condition. Familiar objects are ordered based on their rated age of acquisition (left to right). Dashed black lines show smoothed conditional mean of the data with 95\\% CI (in grey). Light dots are individual data points.", fig.width=12, fig.height = 4}
 # comb_data_binned <- comb_data%>%
 #   group_by(subage, alignment, item)%>%
 #   summarize(k = sum(correct), n = n())%>%
@@ -778,7 +776,7 @@ model_comp_pred <- readRDS("../saves/pred_model_comparison.rds")%>%
                             "no word knowledge vs no mutual exclusivity" = "global_vs_flat",
                             "no word knowledge vs no common ground" = "global_vs_prior",
                             "no mutual exclusivity vs no common ground" = "flat_vs_prior"),
-        `Bayes factor` = format(round(exp(logBF),2), trim = T, justify = "right", digits = 2))%>%
+        `Bayes factor` = format(round(exp(logBF)), trim = T, justify = "right", scientific = F))%>%
   select(-logBF, -model)
   
   
