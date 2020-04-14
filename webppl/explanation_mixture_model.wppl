@@ -1,6 +1,5 @@
-// example call: time webppl model-fullyBayesian-mixtureModel.wppl --require webppl-json --require webppl-sample-writer fullBayes 1
-// example call: time webppl model-fullyBayesian-mixtureModel.wppl --require webppl-json --require webppl-sample-writer marginalLikelihood 1
-// ~/webppl-github/webppl model.wppl --require webppl-json --require webppl-sample-writer $SLURM_ARRAY_TASK_ID
+// example call: time webppl explanation_mixture_model.wppl --require webppl-json --require webppl-sample-writer fullBayes 1
+
 var chain = last(process.argv) // load index as last command line index
 var fullBayes = process.argv[process.argv.length - 2]
 

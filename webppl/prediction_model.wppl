@@ -1,6 +1,6 @@
-// example call: time webppl model.wppl --require webppl-json --require webppl-sample-writer 1
-// ~/webppl-github/webppl model.wppl --require webppl-json --require webppl-sample-writer $SLURM_ARRAY_TASK_ID
-var chain = last(process.argv) // load index as last command line index
+// example call: time webppl prediction_model.wppl --require webppl-json --require webppl-sample-writer 1
+
+var chain = last(process.argv) 
 
 var all_objects = [
 { shape: "novel_object"},
@@ -19,7 +19,6 @@ var lexicon1 = function(utterance, obj, sem_knowledge){
 }
 
 var lexicon2 = function(utterance, obj, sem_knowledge){
-  // display(sem_knowledge)
   utterance.label == "novel_word" ? obj.shape == "familiar_object" :
   utterance.label == "familiar_word" ? flip(sem_knowledge) ?
     obj.shape == "familiar_object" :
@@ -45,14 +44,6 @@ var utterancePrior = function(){ return uniformDraw([ {label: "novel_word"}, {la
 
 var LexiconPrior = Categorical({vs: ["novel_word = novel_object","novel_word = familiar_object" ], ps: [1, 1]})
 
-// var addNoise = function(dist, noiseParam){
-//    Infer({model: function(){
-//       return flip(noiseParam) ? uniformDraw([0, 1]) : sample(dist)
-//     }
-//    })
-// }
-
-
 var foreach = function(fn, lst) {
     var foreach_ = function(i) {
         if (i < lst.length) {
@@ -77,17 +68,16 @@ var combData = json.read('../data/combination.json');
 
 var priorSubjects = levels(priorData, "subid")
 var priorSubjectsAges = sort(levels(priorData, "age_month"))
+
 var familiars = levels(meData, "item")
 var familiarsAges = sort(levels(meData, "age_month"))
-// var meDataAges = levels
+
 var subjects = levels(meData, "subid")
+
 var combDataAges = sort(levels(combData, "age_month"))
 
 var priorProbs = [.5, .5]
 
-// _.uniq(priorSubjectsAges.concat(familiarsAges).concat(combDataAges)).length
-// combDataAges.length
-// combData
 var model  = function(){
 
 ////////////// Prior ////////////////////////
@@ -95,31 +85,22 @@ var model  = function(){
   var prior_slope = uniformDrift({a: -2, b: 2, width: 0.4})
   var prior_int = uniformDrift({a: -2, b: 2, width: 0.4})
 
-
-  // random slopes
-  // var prior_subject_sigma = uniformDrift({a: 0, b:3, width: 0.2})
-  // var priorSampleSub = function(age){
-  //   return gaussianDrift({ mu: age, sigma: prior_subject_sigma, width: 0.1 })
-  // }
-
   foreach(function(age_month){
       var priorSubjectDataByAge = _.filter(priorData, {age_month: age_month})
-      // display(age_month + ' n data points = ' + priorSubjectDataByAge.length)
+
       var subj_age = priorSubjectDataByAge[0].age_month
       var priorSubjectDataByAge_correct = _.map(priorSubjectDataByAge, "correct")
 
-      // random slopes (should be: by-subject...)
-      // var subjectPrior = priorSampleSub(subj_age)
-
       var priorReg = logistic(prior_int + prior_slope * subj_age)
+
       var prior = [priorReg, 1 - priorReg]
+
       var modelPredictions = Infer({method: "enumerate", model: function(){
         var obj = sample( Categorical({vs: all_objects, ps: prior}));
         return obj.shape == "novel_object" ? 1 : 0
       }})
 
       mapData({data: priorSubjectDataByAge_correct}, function(d){
-        // display(modelPredictions.score(d))
         observe(modelPredictions, d);
       })
 
@@ -127,7 +108,6 @@ var model  = function(){
 
   query.add(["parameter","parameters", "prior", "intercept", "NA", "NA"], prior_int)
   query.add(["parameter","parameters", "prior", "slope", "NA", "NA"], prior_slope)
-  // query.add(["parameter","sigma", "prior", "NA", "NA", "NA"], ["NA", prior_subject_sigma])
 
 
 //////////////// Semantic knowledge and speaker optimality ////////////////////////
@@ -147,10 +127,6 @@ var model  = function(){
     slope: uniformDrift({a: 0, b: 1, width: 0.2})
   }
 
-  // conceptually it might not make sense to have two sigmas, but maybe it does
-  // intercept sigma probably will be smaller than slope sigma
-  // var item_int_sigma = uniformDrift({a: 0, b: 3, width: 0.2})
-
   var sampleItemParameters = function(itemName) {
     return [itemName, {
         intercept: gaussianDrift({
@@ -166,10 +142,8 @@ var model  = function(){
       }]
   }
 
-  // {papaya: {int, slope}, bread: {int, slope}, ... }
   var all_item_parameters = _.fromPairs(map(sampleItemParameters, familiars))
 
-    // want something that favors smaller values
   var subject_sigma = uniformDrift({a: 0, b:1, width: 0.1})
 
   var sampleLinguisticCompetence = function(age){
@@ -177,24 +151,20 @@ var model  = function(){
   }
 
   foreach(function(age_month){
-    //display(age_month)
+
       var subjectData_byAge = _.filter(meData, {age_month: age_month})
 
       var subj_age = subjectData_byAge[0].age_month
-      var subj_linguistic_competence = subj_age//sampleLinguisticCompetence(subj_age)
-      // display("age = " + subj_age + " ... intercept = " + subj_linguistic_competence)
-      // question: should we use age here instead of the random intercept? or a different random intercept?
       var speakerOptimality = speakerOptimalityParameters.intercept  + speakerOptimalityParameters.slope * subj_age
 
       foreach(function(item){
         var subjectData_byAgeItem = _.filter(subjectData_byAge, {item: item})
         var subjectDataByAgeItem_correct = _.map(subjectData_byAgeItem, "correct")
-        // display(age_month + ', item = ' + item +' n data points = ' + subjectData_byAgeItem.length)
 
         var itemLineParameters = all_item_parameters[item]
 
         var sem_knowledge = logistic(itemLineParameters.intercept +
-            itemLineParameters.slope * subj_linguistic_competence)
+            itemLineParameters.slope * subj_age)
 
         var literalListener = cache(function(utterance){
           Infer({method: "enumerate", model: function(){
@@ -234,35 +204,14 @@ var model  = function(){
 
       }, familiars)
 
-      // each row is a different item
-      // foreach(function(row){
-
-        // var itemLineParameters = all_item_parameters[row.item]
-
-
-            // display('outside RSA = ' + sem_knowledge
-        // display(sem_knowledge)
-
-        // display(modelPredictions.score(row.correct))
-
-
-        // if you want to save predictions, make sure to record subid because these predictions are for this particular subid
-        // query.add(["modelPrediction", cndtn, age], [age, Math.exp(modelPredictions.score(1))])
-
-      // }, subjectData)
-
-    // comment out to save memory
-  //  query.add(["parameter","subj_intercept", subid], [subjectData[0].age, subj_linguistic_competence])
-
   }, familiarsAges)
 
 
 //////////////// Model predictions and combination ////////////////////////
 
-// var noise = uniformDrift({a: 0, b:1, width: 0.1})
 
 foreach(function(age_month) {
-  // display(age_month)
+
   var combData_byAge = _.filter(combData, {age_month: age_month})
 
   var priorReg = logistic(prior_int + prior_slope * age_month)
@@ -274,39 +223,20 @@ foreach(function(age_month) {
      speakerOptimalityParameters.slope * age_month
 
   foreach(function(item){
-    // display(item)
+
     var itemLineParameters = all_item_parameters[item]
     var item_sem_knowledge = logistic(itemLineParameters.intercept +
                                  itemLineParameters.slope * age_month)
 
 
      foreach(function(alignment_condition){
-       // display(alignment_condition)
-       // var combData_byAgeCondition = _.filter(combData_byAge, {alignment: alignment_condition})
-       var priorComb = (alignment_condition == "congruent") ? [priorReg, 1 - priorReg] : [1 - priorReg, priorReg]
-       // if (alignment_condition == "congruent"){
-       //   var priorComb = [priorReg, 1 - priorReg]
-       // } else {
-       //   var priorComb = [1 - priorReg, priorReg]
-       // }
-       // var priorComb = [priorReg, 1 - priorReg]
 
-       // display(priorComb)
+       var priorComb = (alignment_condition == "congruent") ? [priorReg, 1 - priorReg] : [1 - priorReg, priorReg]
 
        foreach(function(model_type){
 
-         // display(model_type)
          var sem_knowledge = (model_type == "global") ? global_sem_knowledge : item_sem_knowledge
          var priorProbs = (model_type == "flat") ? [0.5, 0.5] : priorComb
-         //   var sem_knowledge = item_sem_knowledge
-         //   var priorProbs = priorComb
-         // } else if (model_type == "global") {
-         //   var sem_knowledge = global_sem_knowledge
-         //   var priorProbs = priorComb
-         // } else if (model_type == "flat") {
-         //   var sem_knowledge = item_sem_knowledge
-         //   var priorProbs = [0.5, 0.5]
-         // }
 
          var literalListener = cache(function(utterance){
            Infer({method: "enumerate", model: function(){
@@ -342,15 +272,8 @@ foreach(function(age_month) {
          }
 
         var modelPredictions = pragmaticListener({label: "novel_word"})
-        // var noisyModelPredictions = addNoise(modelPredictions, noise)
 
-        // display(expectation(modelPredictions))
-        // display(expectation(noisyModelPredictions))
-        // query.add(["modelPrediction",model_type,"free", alignment_condition, item, "NA"], [age_month, Math.exp(modelPredictions.score(1))])
-        // query.add(["modelPrediction",model_type,"noise", alignment_condition, item, "NA"], [age_month, Math.exp(noisyModelPredictions.score(1))])
         query.add(["modelPrediction",model_type,"free", alignment_condition, item, age_month], Math.exp(modelPredictions.score(1)))
-        // query.add(["modelPrediction",model_type,"noise", alignment_condition, item, age_month], Math.exp(noisyModelPredictions.score(1)))
-
 
       }, ["pragmatic", "global", "flat"])
 
@@ -359,12 +282,7 @@ foreach(function(age_month) {
            return obj.shape == "novel_object" ? 1 : 0
         }})
 
-       // var noisyPriorOnlyModelPredictions = addNoise(priorOnlyModelPredictions, noise)
        query.add(["modelPrediction","prior","free", alignment_condition, item, age_month], Math.exp(priorOnlyModelPredictions.score(1)))
-       // query.add(["modelPrediction","prior","noise", alignment_condition, item, age_month], Math.exp(noisyPriorOnlyModelPredictions.score(1)))
-
-       // display(expectation(priorOnlyModelPredictions))
-       // display(expectation(noisyPriorOnlyModelPredictions))
 
       }, ["congruent", "incongruent"])
 
@@ -372,60 +290,7 @@ foreach(function(age_month) {
 
   }, combDataAges)
 
-
-  // query.add(["modelPrediction","pragmatic","free", row.alignment, row.item, row.subid], [row.age, Math.exp(pragModelPredictions.score(1))])
-  // query.add(["modelPrediction","pragmatic","noise", row.alignment, row.item, row.subid], [row.age, Math.exp(noisyPragModelPredictions.score(1))])
-  // query.add(["modelPrediction","global","free", row.alignment, row.item, row.subid], [row.age, Math.exp(globalPragModelPredictions.score(1))])
-  // query.add(["modelPrediction","global","noise", row.alignment, row.item, row.subid], [row.age, Math.exp(noisyPragModelPredictions.score(1))])
-  // query.add(["modelPrediction","flat","free", row.alignment, row.item, row.subid], [row.age, Math.exp(flatModelPredictions.score(1))])
-  // query.add(["modelPrediction","flat","noise", row.alignment, row.item, row.subid], [row.age, Math.exp(noisyFlatModelPredictions.score(1))])
-  // query.add(["modelPrediction","prior","free", row.alignment, row.item, row.subid], [row.age, Math.exp(priorOnlyModelPredictions.score(1))])
-  // query.add(["modelPrediction","prior","noise", row.alignment, row.item, row.subid], [row.age, Math.exp(noisyPriorOnlyModelPredictions.score(1))])
-
-//  query.add(["modelPrediction","globalPrag","free", row.condition, row.familiarObject, row.subid], [row.age, Math.exp(globalPragModelPredictions.score(1))])
-
-  // return {
-  //   prag: pragModelPredictions.score(row.correct),
-  //   noisePrag: noisyPragModelPredictions.score(row.correct),
-  //
-  //   globalPrag: globalPragModelPredictions.score(row.correct),
-  //   noiseGlobalPrag: noisyGlobalPragModelPredictions.score(row.correct),
-  //
-  //   flat: flatModelPredictions.score(row.correct),
-  //   noiseFlat: noisyFlatModelPredictions.score(row.correct),
-  //
-  //   priorOnly: priorOnlyModelPredictions.score(row.correct),
-  //   noisePriorOnly: noisyPriorOnlyModelPredictions.score(row.correct)
-  // }
-
-
-
-// var log_likelihood_prag = sum(_.map(all_log_likes, "prag"))
-// var log_likelihood_prag_noise = sum(_.map(all_log_likes, "noisePrag"))
-//
-// var log_likelihood_prag_global = sum(_.map(all_log_likes, "globalPrag"))
-// var log_likelihood_prag_global_noise = sum(_.map(all_log_likes, "noiseGlobalPrag"))
-//
-// var log_likelihood_flat = sum(_.map(all_log_likes, "flat"))
-// var log_likelihood_flat_noise = sum(_.map(all_log_likes, "noiseFlat"))
-//
-// var log_likelihood_prior_only = sum(_.map(all_log_likes, "priorOnly"))
-// var log_likelihood_prior_only_noise = sum(_.map(all_log_likes, "noisePriorOnly"))
-//
-// query.add(["log_like", "pragmatics", "parameter_free", "NA", "NA", "NA"], ["NA", log_likelihood_prag])
-// query.add(["log_like", "pragmatics", "noise", "NA", "NA", "NA"], ["NA", log_likelihood_prag_noise])
-//
-// query.add(["log_like", "pragmatics_global", "parameter_free", "NA", "NA", "NA"], ["NA", log_likelihood_prag_global])
-// query.add(["log_like", "pragmatics_global", "noise", "NA", "NA", "NA"], ["NA", log_likelihood_prag_global_noise])
-//
-// query.add(["log_like", "flat_prior", "parameter_free", "NA", "NA", "NA"], ["NA", log_likelihood_flat])
-// query.add(["log_like", "flat_prior", "noise", "NA", "NA", "NA"], ["NA", log_likelihood_flat_noise])
-//
-// query.add(["log_like", "prior_only", "parameter_free", "NA", "NA", "NA"], ["NA", log_likelihood_prior_only])
-// query.add(["log_like", "prior_only", "noise", "NA", "NA", "NA"], ["NA", log_likelihood_prior_only_noise])
-//
-
-  foreach(function(item){
+foreach(function(item){
     var itemLineParameters = all_item_parameters[item]
     query.add(["parameter","items", item, "intercept", "NA", "NA"], itemLineParameters.intercept)
     query.add(["parameter","items", item, "slope", "NA", "NA"], itemLineParameters.slope)
@@ -437,25 +302,17 @@ foreach(function(age_month) {
   query.add(["parameter","parameters", "global_sem", "slope", "NA", "NA"], globalLineParameters.slope)
   query.add(["parameter","sigma", "global_sem_sigmas", "intercept", "NA", "NA"], itemVariability.intercept)
   query.add(["parameter","sigma", "global_sem_sigmas", "slope", "NA", "NA"], itemVariability.slope)
-  // query.add(["parameter","sigma", "global_subject_sigmas", "NA", "NA", "NA"], ["NA", subject_sigma])
-
   return query
 }
 
 
 var header = "iteration,a,b,c,d,e,f,g,h"
 
-// var randomNumberForFile = Math.round(uniform(0, 1000))
-
 var totalIterations = 100000, lag =  5;
 
 var samples = totalIterations/lag, burn = totalIterations / 2;
 
-// var totalIterations = 10
-// var samples = totalIterations
-// var burn = 0
-// var lag = 0
-var output_file = 'output/samples-reFactor-noRandomEffects_mcmc-'+ totalIterations+'_burn'+burn+'_lag'+lag+'_chain'+chain+'.csv'
+var output_file = 'output/prediction_model-'+ totalIterations+'_burn'+burn+'_lag'+lag+'_chain'+chain+'.csv'
 var callback = webpplSampleWriter.streamQueryCSV(output_file, header);
 
 var output  = Infer({model,
@@ -463,7 +320,6 @@ var output  = Infer({model,
       burn: burn,
       lag: lag,
       method: 'MCMC',
-      // method: 'incrementalMH',
       onlyMAP: true,
       verbose: T,
       verboseLag: totalIterations / 20,
@@ -471,5 +327,3 @@ var output  = Infer({model,
     });
 
 'output written to ' + output_file
-
-// familiarsAges
