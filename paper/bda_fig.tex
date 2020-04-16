@@ -32,7 +32,7 @@
 	\edge{RSA}{L1_comb};
 	
 	% COMMON GROUND
-	\node[latent, above=of data_cg, yshift=0.1cm](rho){$\rho_i$};
+	\node[det, above=of data_cg, yshift=0.1cm](rho){$\rho_i$};
 	\node[latent, right=of rho, yshift=0.5cm](beta_rho_int){$\beta^{\rho}_0$};
 	\node[latent, right=of rho, yshift=-0.5cm](beta_rho_slope){$\beta^{\rho}_1$};
 	
@@ -43,7 +43,7 @@
 	
 	%% SPEAKER INFORMATIVITY
 	
-	\node[latent, left=of RSA, xshift=-1cm](alpha){$\alpha_i$};
+	\node[det, left=of RSA, xshift=-1cm](alpha){$\alpha_i$};
 	\node[latent, left=of alpha, yshift=0.5cm](beta_alpha_int){$\beta^{\alpha}_0$};
 	\node[latent, left=of alpha, yshift=-0.5cm](beta_alpha_slope){$\beta^{\alpha}_1$};
 
@@ -54,7 +54,7 @@
 	
 	%% SEMANTIC KNOWLEDGE model
 
-	\node[latent, above=of RSA, yshift=-0.25cm](theta){$\theta_{ij}$};
+	\node[det, above=of RSA, yshift=-0.25cm](theta){$\theta_{ij}$};
 	\node[latent, above=of theta, xshift=-1.25cm, yshift=-0.5cm](beta_theta_int){$\beta^{\theta}_{0, j}$};
 	\node[latent, above=of theta, xshift=1.25cm, yshift=-0.5cm](beta_theta_slope){$\beta^{\theta}_{1, j}$};
 	
@@ -116,7 +116,7 @@
 
     \end{tabular}
   \end{center}
-  \caption{Graphical model representing the Bayesian data analysis for \emph{Integration model} used for \emph{Explanation}. $L_1$ represents the RSA model defined by Eq. X, used to predict the Combination Data from Expt.~3 $d^{CM}$ for each unique age bin $i$, lexical item $j$, and alignment condition $k$. This RSA model takes as input a speaker optimality parameter $\alpha_i$ (which varies by age), a semantic knowledge parameter $\theta_{ij}$ (which varies by age and item), and a common ground sensitivity $\rho_i$ (which varies by age). Speaker optimality and semantic knowledge parameters are additionally constrained by the data from the Mutual Exclusivity task ($d^{ME}$; Expt.~1), via a related RSA model $L'_1$;  common ground sensitivity parameters $\rho_i$ are directly constrained by the data from the Common Ground experiment ($d^{CG}$; Expt.~2).  
+  \caption{Graphical model representing the Bayesian data analysis for \emph{Integration model} used for \emph{Explanation}. $L_1$ represents the RSA model defined by Eq. X, used to predict the Combination Data $d^{CM}$  from Expt.~3 for each unique age bin $i$, lexical item $j$, and alignment condition $k$. This RSA model takes as input a speaker optimality parameter $\alpha_i$ (which varies by age), a semantic knowledge parameter $\theta_{ij}$ (which varies by age and item), and a common ground sensitivity $\rho_i$ (which varies by age). Speaker optimality and semantic knowledge parameters are additionally constrained by the data from the Mutual Exclusivity task ($d^{ME}$; Expt.~1), via the same RSA model with no common ground $L'_1$;  common ground sensitivity parameters $\rho_i$ are directly constrained by the data from the Common Ground experiment ($d^{CG}$; Expt.~2).  
   Each of these RSA parameters is sampled from a linear or logistic regression model that track developmental change (with intercepts and slopes given by $\beta_0$ and $\beta_1$, respectively). Additionally, the semantic knowledge parameters for individual items $j$ are sampled from global vocabulary developmental parameters $\mu$ and $\sigma$ that characterize the mean and standard deviation of the intercepts and slopes for individual item trajectories.}
   \label{fig:bayesnet}
 \end{figure}
