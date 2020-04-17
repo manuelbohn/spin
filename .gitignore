@@ -15,6 +15,14 @@ webppl/output/
 
 saves_old/*
 
+saves/model_pred_dmm.rds
+saves/model_pred_flat.rds
+saves/model_pred_global.rds
+saves/model_pred_mm.rds
+saves/model_pred_prag.rds
+saves/model_pred_prag_fb.rds
+saves/model_pred_prior.rds
+
 
 paper/manuscript_references.Rmd
 paper/manuscript_references.html
