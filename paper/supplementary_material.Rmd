@@ -99,7 +99,7 @@ The experiment was presented as an interactive picture book on a tablet computer
 In Experiment 1, on one table, there was a familiar object, on the other table, there was a novel object (drawn for the purpose of the study). The speaker requested an object by saying "Oh cool, there is a [non-word] on the table, how neat, can you give me the [non-word]?". Children responded by touching one of the objects. The location of the novel object (left or right table) and the animal character were counterbalanced. Each child received 12 trials, one with each familiar object. The novel object also changed from trial to trial. We coded as correct choice if children chose the novel object as the referent of the novel word.
 
 ```{r fig1,echo = F, fig.align = "center", fig.cap = "Schematic experimental procedure with screenshots from the experiments.", out.width="100%"}
-knitr::include_graphics("../graphs/method_overview.png")
+knitr::include_graphics("../figures/method_overview.png")
 ```
 
 Each child completed 12 trials, each with a different familiar and a different novel object. Familiar objects were selected to vary along the dimension of how likely children were to know the word for each object. This including objects that most 2-year-olds could name (e.g. a duck) as well as objects that only very few 5-year-olds could name (e.g. a pawn). The selection was based on age of acquisition ratings from Kuperman and colleagues [-@kuperman2012age]. While these ratings do not capture the absolute age when children acquire these words, they capture the relative order in which words are learned. Figure \@ref(fig:fig2)A shows the objects used in the experiment. We induced this variation to estimate the role of semantic knowledge in a mutual exclusivity inference. 
