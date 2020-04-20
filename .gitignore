@@ -23,6 +23,8 @@ saves/model_pred_prag.rds
 saves/model_pred_prag_fb.rds
 saves/model_pred_prior.rds
 
+paper/supplementary_material_files/*
+paper/supplementary_material_cache/*
 
 paper/manuscript_references.Rmd
 paper/manuscript_references.html
