@@ -53,8 +53,12 @@ d_model_comp <- data_comb%>%
 
 ```
 
-# Model comparison prediction
+# Model predictions
 
+Model predictions can be downloaded via the following link: https://keeper.mpdl.mpg.de/d/7ae3805dba064bada8e5/
+In the code below, model predictions are assumed to be in a subfolder called `saves/`. 
+
+# Model comparison prediction
 
 ```{r}
 
@@ -95,14 +99,14 @@ model_by_chain <- model_like %>%
   summarize(marginal_likelihood = matrixStats::logSumExp(total_likelihood_sample)) %>%
   spread(model, marginal_likelihood)
 
-saveRDS(model_by_chain, "../saves/pred_model_likelihood_chain.rds")
+#saveRDS(model_by_chain, "../saves/pred_model_likelihood_chain.rds")
 
 model <- model_like %>%
   na.omit(chain)%>%
   group_by(model) %>%
   summarize(marginal_likelihood = matrixStats::logSumExp(total_likelihood_sample))
 
-saveRDS(model, "../saves/pred_model_likelihood.rds")
+#saveRDS(model, "../saves/pred_model_likelihood.rds")
 
 
 model_comp <- model_like  %>%
@@ -119,12 +123,11 @@ model_comp <- model_like  %>%
   select(-pragmatic, -global, -flat, - prior) %>%
   gather(model, logBF)
 
-saveRDS(model_comp, "../saves/pred_model_comparison.rds")
+#saveRDS(model_comp, "../saves/pred_model_comparison.rds")
 
 ```
 
 # Model comparison explanation
-
 
 ```{r}
 
@@ -169,14 +172,14 @@ model_by_chain <- model_like %>%
   summarize(marginal_likelihood = matrixStats::logSumExp(total_likelihood_sample)) %>%
   spread(model, marginal_likelihood)
 
-saveRDS(model_by_chain, "../saves/expl_model_likelihood_chain.rds")
+#saveRDS(model_by_chain, "../saves/expl_model_likelihood_chain.rds")
 
 model <- model_like %>%
   na.omit(chain)%>%
   group_by(model) %>%
   summarize(marginal_likelihood = matrixStats::logSumExp(total_likelihood_sample))
 
-saveRDS(model, "../saves/expl_model_likelihood.rds")
+#saveRDS(model, "../saves/expl_model_likelihood.rds")
 
 model_comp <- model_like  %>%
   na.omit(chain)%>%
@@ -193,7 +196,7 @@ model_comp <- model_like  %>%
   select(-pragmatic, -fullBayes, -mixture, -dev_mixture) %>%
   gather(model, logBF)
 
-saveRDS(model_comp, "../saves/expl_model_comparison.rds")
+#saveRDS(model_comp, "../saves/expl_model_comparison.rds")
 
 ```
 
