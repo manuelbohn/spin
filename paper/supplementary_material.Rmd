@@ -3,15 +3,15 @@ title: "Word learning at the semantics pragmatics interface"
 subtitle: "Supplementary material"
 author: "Manuel Bohn, Michael Henry Tessler, Megan Merrick and Michael C. Frank"
 output: 
-  bookdown::pdf_document2:
-    toc: yes 
-    number_sections: false    
   bookdown::html_document2:
     toc: yes
     toc_float: true
     fig_caption: yes
     #code_folding: hide
     number_sections: false
+  bookdown::pdf_document2:
+    toc: yes 
+    number_sections: false    
 bibliography: library.bib
 #csl: pnas.csl
 header-includes:
@@ -536,7 +536,7 @@ A second locus of developmental change is a listener's expectations about speake
 Sensitivity to common ground $\rho$ refers to the probability that an object is taken to be the referent of the utterance, before actually hearing the utterance. In our paradigm, common ground takes the form of *discourse novelty*, and $\rho$ captures the salience (or lack thereof) of an object due to its presence or absence in the social interaction that precedes the utterance (see \@ref(fig:fig1)B). Specifically, the pragmatic listener uses the common ground parameter $\rho$ as the prior probability of the discourse-novel (i.e., the referent that was absent in the social interaction that preceded the utterance): In the *congruent* condition, the object in the prior social interaction (i.e., the discourse-familiar object) was the familiar object, and hence, both common ground (discourse novelty) and mutual exclusivity are cues to the same referent; in the *incongruent* condition, the object in the prior social interaction was the novel object, and hence, common ground (discourse-novelty) and mutual exclusitivity are cues to different referents (see Figure \@ref(fig:fig1)C).  
 We expect children at different ages to respond differently to the common ground manipulation, resulting in an age specific prior distribution over objects [@akhtar1996role; @diesendruck2004two], which we model with a logistic-linear function: $\rho_i = \text{logistic}(\beta^\rho_0 + i \cdot \beta^\rho_1)$.
 
-```{r bda, engine='tikz', echo = F , fig.cap = "Graphical model representing the Bayesian data analysis for **Integration model** used for *Explanation*. $L_1$ represents the RSA model defined by Eq. 2, used to predict the Combination Data $d^{Ex3}$ from Expt. 3 for each unique age bin $i$, lexical item $j$, and alignment condition $k$. This RSA model takes as input a speaker optimality parameter $\\alpha_i$ (which varies by age), a semantic knowledge parameter $\\theta_{ij}$ (which varies by age and item), and a common ground sensitivity parameter $\\rho_i$ (which varies by age). Speaker optimality and semantic knowledge parameters are additionally constrained by the data from the Mutual Exclusivity task ($d^{Ex1}$; Expt. 1), via the same RSA model with no common ground $L'_1$;  common ground sensitivity parameters $\\rho_i$ are directly constrained by the data from the Common Ground experiment ($d^{Ex2}$; Expt. 2). Each of these RSA parameters is sampled from a linear or logistic regression model that track developmental change (with intercepts and slopes given by $\\beta_0$ and $\\beta_1$, respectively). Additionally, the semantic knowledge parameters for individual items $j$ are sampled from global vocabulary developmental parameters $\\mu^{\\theta}$ and $\\sigma^{\\theta}$ that characterize the mean and standard deviation of the intercepts and slopes for individual item trajectories."}
+```{r bda, engine='tikz', echo = F , fig.cap = "Graphical model representing the Bayesian data analysis for **integration model** used for *Explanation*. $RSA$ represents the general model architecture and paremeters defined by Eq. \\@ref(eq:rsabasic1) - \\@ref(eq:rsabasic3). $L_1$ represents the RSA model defined by Eq. \\@ref(eq:rsafull1), used to predict the combination data $d^{Ex3}$ from Expt. 3 for each unique age bin $i$, lexical item $j$, and alignment condition $k$. This RSA model takes as input a speaker optimality parameter $\\alpha_i$ (which varies by age), a semantic knowledge parameter $\\theta_{ij}$ (which varies by age and item), and a common ground sensitivity $\\rho_i$ (which varies by age). Speaker optimality and semantic knowledge parameters are additionally constrained by the data from the Mutual Exclusivity task ($d^{Ex1}$; Expt. 1), via the same RSA model with no common ground $L$; common ground sensitivity parameters $\\rho_i$ are directly constrained by the data from the Common Ground experiment ($d^{Ex2}$; Expt. 2).  Each of these RSA parameters is sampled from a linear or logistic regression model that track developmental change (with intercepts and slopes given by $\\beta_0$ and $\\beta_1$, respectively). Additionally, the semantic knowledge parameters for individual items $j$ are sampled from global vocabulary developmental parameters $\\mu$ and $\\sigma$ that characterize the mean and standard deviation of the intercepts and slopes for individual item trajectories."}
 
 \usetikzlibrary{bayesnet}
 
@@ -548,8 +548,8 @@ We expect children at different ages to respond differently to the common ground
 \node[obs, xshift=-3cm, yshift=0cm](data_me){$d^{Ex1}_{ij}$};
 \node[obs, xshift=3cm,  yshift=0cm](data_cg){$d^{Ex2}_{i}$};
 
-\node[det, above=of data_me](L1_me){$L_1'$};
-\node[det, above=of data_comb](L1_comb){$L_1$};
+\node[det, above=of data_me](L1_me){$L'_{1_{ij}}$};
+\node[det, above=of data_comb](L1_comb){$L_{1_{ijk}}$};
 \node[det, above=of L1_comb, xshift=-1.5cm, yshift=-0.5cm](RSA){$RSA$};
 
 \edge{L1_me}{data_me};
@@ -632,19 +632,19 @@ We expect children at different ages to respond differently to the common ground
 
 
 
-\node[draw, align=left, execute at begin node=\setlength{\baselineskip}{3ex}] at (7.5,5) { 
+\node[draw, align=left, execute at begin node=\setlength{\baselineskip}{3ex}] at (7.5,5.75) { 
 $\beta^\rho_0 ,\beta^\rho_1 \sim \text{Uniform}(-2,2)$ \\
  $\rho_i = \text{logistic}(\beta^\rho_0  + i \cdot \beta^\alpha_1)$ \\
-$\beta^\alpha_0 \sim \text{Uniform}(-3,3)$ \\
-$\beta^\alpha_1 \sim \text{Uniform}(-0,4)$ \\
+ $d^{Ex2}_{i} \sim \text{Bernoulli}(\rho_i)$ \\
+ \\
+$\beta^\alpha_0 \sim \text{Uniform}(-3,3); \beta^\alpha_1 \sim \text{Uniform}(-0,4)$ \\
  $\alpha_i = \beta^\alpha_0  + i \cdot \beta^\alpha_1$ \\
- $\mu^\theta_0 \sim \text{Uniform}(-3,3)$ \\
- $\mu^\theta_1 \sim \text{Uniform}(0,2)$ \\
- $\sigma^\theta_0 \sim \text{Uniform}(0,2)$ \\
- $\sigma^\theta_1 \sim \text{Uniform}(0,1)$ \\
- $\beta^\theta_0 \sim \text{Gaussian}(\mu^\theta_0, \mu^\sigma_0)$ \\
-$\beta^\theta_1 \sim \text{Gaussian}(\mu^\theta_1, \mu^\sigma_1)$  \\
- $\theta_{ij} = \text{logistic}(\beta^\theta_{0,j}  + i \cdot \beta^\theta_{1,j})$
+ \\
+ $\mu^\theta_0 \sim \text{Uniform}(-3,3); \mu^\theta_1 \sim \text{Uniform}(0,2)$ \\
+ $\sigma^\theta_0 \sim \text{Uniform}(0,2); \sigma^\theta_1 \sim \text{Uniform}(0,1)$ \\
+ $\beta^\theta_0 \sim \text{Gaussian}(\mu^\theta_0, \mu^\sigma_0); \beta^\theta_1 \sim \text{Gaussian}(\mu^\theta_1, \mu^\sigma_1)$  \\
+ $\theta_{ij} = \text{logistic}(\beta^\theta_{0,j}  + i \cdot \beta^\theta_{1,j})$ \\
+ $d^{Ex1}_{ij} \sim L'_1,  d^{Ex3}_{ij} \sim L_1$
 };
 
 \node[draw, align=left, execute at begin node=\setlength{\baselineskip}{3ex}] at (8,0) {Integration model\\ $P_{L_1}(r \mid u; \{\rho_i, \alpha_i\, \theta_{ij}\})\propto P_{S_1}(u \mid r; \{\alpha_i, \theta_{ij}\}) \cdot P(r \mid \rho_i) $\\ 

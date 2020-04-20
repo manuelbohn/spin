@@ -32,3 +32,4 @@ paper/science.csl
 paper/visualizations.Rmd
 
 webppl/model_re.wppl
+webppl/move/*
