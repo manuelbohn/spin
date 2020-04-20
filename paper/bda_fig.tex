@@ -22,8 +22,8 @@
 \node[obs, xshift=-3cm, yshift=0cm](data_me){$d^{ME}_{ij}$};
 \node[obs, xshift=3cm,  yshift=0cm](data_cg){$d^{CG}_{i}$};
 
-\node[det, above=of data_me](L1_me){$L'$};
-\node[det, above=of data_comb](L1_comb){$L$};
+\node[det, above=of data_me](L1_me){$L'_{ij}$};
+\node[det, above=of data_comb](L1_comb){$L_{ijk}$};
 \node[det, above=of L1_comb, xshift=-1.5cm, yshift=-0.5cm](RSA){$RSA$};
 
 \edge{L1_me}{data_me};
@@ -106,19 +106,19 @@
 
 
 
-\node[draw, align=left, execute at begin node=\setlength{\baselineskip}{3ex}] at (7.5,5) { 
+\node[draw, align=left, execute at begin node=\setlength{\baselineskip}{3ex}] at (7.5,5.75) { 
 $\beta^\rho_0 ,\beta^\rho_1 \sim \text{Uniform}(-2,2)$ \\
  $\rho_i = \text{logistic}(\beta^\rho_0  + i \cdot \beta^\alpha_1)$ \\
-$\beta^\alpha_0 \sim \text{Uniform}(-3,3)$ \\
-$\beta^\alpha_1 \sim \text{Uniform}(-0,4)$ \\
+ $d^{CG}_{i} \sim \text{Bernoulli}(\rho_i)$ \\
+ \\
+$\beta^\alpha_0 \sim \text{Uniform}(-3,3); \beta^\alpha_1 \sim \text{Uniform}(-0,4)$ \\
  $\alpha_i = \beta^\alpha_0  + i \cdot \beta^\alpha_1$ \\
- $\mu^\theta_0 \sim \text{Uniform}(-3,3)$ \\
- $\mu^\theta_1 \sim \text{Uniform}(0,2)$ \\
- $\sigma^\theta_0 \sim \text{Uniform}(0,2)$ \\
- $\sigma^\theta_1 \sim \text{Uniform}(0,1)$ \\
- $\beta^\theta_0 \sim \text{Gaussian}(\mu^\theta_0, \mu^\sigma_0)$ \\
-$\beta^\theta_1 \sim \text{Gaussian}(\mu^\theta_1, \mu^\sigma_1)$  \\
- $\theta_{ij} = \text{logistic}(\beta^\theta_{0,j}  + i \cdot \beta^\theta_{1,j})$
+ \\
+ $\mu^\theta_0 \sim \text{Uniform}(-3,3); \mu^\theta_1 \sim \text{Uniform}(0,2)$ \\
+ $\sigma^\theta_0 \sim \text{Uniform}(0,2); \sigma^\theta_1 \sim \text{Uniform}(0,1)$ \\
+ $\beta^\theta_0 \sim \text{Gaussian}(\mu^\theta_0, \mu^\sigma_0); \beta^\theta_1 \sim \text{Gaussian}(\mu^\theta_1, \mu^\sigma_1)$  \\
+ $\theta_{ij} = \text{logistic}(\beta^\theta_{0,j}  + i \cdot \beta^\theta_{1,j})$ \\
+ $d^{ME}_{ij} \sim L',  d^{CM}_{ij} \sim L$
 };
 
 \node[draw, align=left, execute at begin node=\setlength{\baselineskip}{3ex}] at (8,0) {Integration model\\ $P_{L}(r \mid u; \{\rho_i, \alpha_i\, \theta_{ij}\})\propto P_{S}(u \mid r; \{\alpha_i, \theta_{ij}\}) \cdot P(r \mid \rho_i) $\\ 
