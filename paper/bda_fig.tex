@@ -16,6 +16,7 @@
 \begin{figure}[ht]
 \begin{center}
 \begin{tabular}{cc}
+
 \begin{tikzpicture}
 %% RSA nodes and data
 \node[obs](data_comb){$d^{CM}_{ijk}$};
@@ -121,7 +122,7 @@ $\beta^\alpha_0 \sim \text{Uniform}(-3,3); \beta^\alpha_1 \sim \text{Uniform}(-0
  $d^{ME}_{ij} \sim L',  d^{CM}_{ij} \sim L$
 };
 
-\node[draw, align=left, execute at begin node=\setlength{\baselineskip}{3ex}] at (8,0) {Integration model\\ $P_{L}(r \mid u; \{\rho_i, \alpha_i\, \theta_{ij}\})\propto P_{S}(u \mid r; \{\alpha_i, \theta_{ij}\}) \cdot P(r \mid \rho_i) $\\ 
+\node[draw, align=left, execute at begin node=\setlength{\baselineskip}{3ex}] at (8,0) {Integration model\\ $P_{L_{1}}(r \mid u; \{\rho_i, \alpha_i\, \theta_{ij}\})\propto P_{S}(u \mid r; \{\alpha_i, \theta_{ij}\}) \cdot P(r \mid \rho_i) $\\ 
 $P_{S}(u \mid r; \{\alpha_i\, \theta_{ij}\})\propto P(r \mid u; \{\theta_{ij}\}) ^{\alpha_i} $\\
 $P(r \mid u; \{\theta_{ij}\}) \propto \mathcal{L}(u, r \mid \theta_{ij})$
 };
@@ -331,6 +332,7 @@ $P(r \mid u; \{\theta_{ij}\}) \propto \mathcal{L}(u, r \mid \theta_{ij})$
   \caption{ Put a caption here.}
   \label{fig:bayesnet}
 \end{figure}
+
 
 
 
