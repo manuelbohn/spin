@@ -1241,8 +1241,8 @@ ggplot(item_comp_int, aes(x = value, fill = model, col = model))+
   theme_few()+
   xlim(-10,5)+
   theme(legend.position = "bottom")+
-  scale_fill_ptol(name = "Model")+
-  scale_color_ptol(name = "Model")
+  scale_fill_colorblind(name = "Model")+
+  scale_color_colorblind(name = "Model")
 ```
 
 ### Slope
@@ -1259,8 +1259,8 @@ ggplot(item_comp_slope, aes(x = value, fill = model, col = model))+
   xlim(-1,4)+
   theme_few()+
   theme(legend.position = "bottom")+
-  scale_fill_ptol(name = "Model")+
-  scale_color_ptol(name = "Model")
+  scale_fill_colorblind(name = "Model")+
+  scale_color_colorblind(name = "Model")
 ```
 
 ## Speaker informativeness and common ground sensitivity
@@ -1285,6 +1285,6 @@ ggplot(global_comp, aes(x = value, fill = model, col = model))+
   facet_grid(type ~ parameter, scales = 'free')+
   theme_few()+
   theme(legend.position = "right")+
-  scale_fill_ptol(name = "Model")+
-  scale_color_ptol(name = "Model")
+  scale_fill_colorblind(name = "Model")+
+  scale_color_colorblind(name = "Model")
 ```
