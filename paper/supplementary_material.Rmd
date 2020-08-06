@@ -321,7 +321,7 @@ plot_cg_map <- as_tibble(fixef(bm_cg), rownames = "term")%>%
 plot_cg <- ggplot() +
   geom_hline(yintercept = 1/2, lty=2, size = 1)+
   geom_jitter(data = plot_cg_data,aes(x = age_num, y= correct), width = .00, height = .01, alpha = .5)+
-  geom_line(data = plot_cg_samples, aes(x = age+min(prior_data$age_num), y = y, group = sample), size = .025)+
+  geom_line(data = plot_cg_samples, aes(x = age+min(prior_data$age_num), y = y, group = sample), alpha = .05)+
   geom_line(data = plot_cg_map, aes(x =age+min(prior_data$age_num), y = y), size = 1)+
   labs(x="Age",y="Proportion object new to speaker chosen")+
   theme_few() +
@@ -1232,7 +1232,7 @@ item_comp <- bind_rows(
 
 ```
 
-```{r figa1, include = T, cache=T,  fig.cap = "Posterior distribution of intercept term for semantic knowledge for each object by model.", fig.width=12, fig.height = 6}
+```{r figa1, include = T, cache=F,  fig.cap = "Posterior distribution of intercept term for semantic knowledge for each object by model.", fig.width=12, fig.height = 6}
 
 item_comp_int <- item_comp %>%
   filter(parameter == "intercept")
@@ -1250,7 +1250,7 @@ ggplot(item_comp_int, aes(x = value, fill = model, col = model))+
 
 ### Slope
 
-```{r figa2, include = T, cache=T,  fig.cap = "Posterior distribution of slope term for semantic knowledge for each object by model.", fig.width=12, fig.height = 6}
+```{r figa2, include = T, cache=F,  fig.cap = "Posterior distribution of slope term for semantic knowledge for each object by model.", fig.width=12, fig.height = 6}
 
 item_comp_slope <- item_comp %>%
   filter(parameter == "slope")
