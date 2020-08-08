@@ -76,6 +76,10 @@ new in context [@akhtar1996role], or related to the ongoing conversation [@sulli
 
 These mechanisms, however, have largely been investigated in isolation. The picture of the learning process that emerges is that of a “bag of tricks”: mechanisms that operate (and develop) independently from one another [@bloom2002children]. Yet in natural social interaction, many sources of information are present [@bergelson2017nature;@frank2013social]. -- childs needs to integrate the different inforamtion sources. talk about braodly speaking pragmatic theories of language development that solve this problem: grice, sperber tomasello: social inference based on multiple inforamtion sources. the actual process of inforamtion integration is, however, described only in vague terms -- As a consequence, we have no explicit and quantitative theory of how the different word learning mechanisms can be integrated. Quantitative framework allows directly testing and comparing different hypothesis, a feature we use later on. 
 
+intorduce previous work (including modelling work) looking at inforamtion integration: Mostly lingusitc with pragmatic infotmation - however, no manipulation of lingusitc ususally.
+
+More generally talk about quantitative models of child developmetn (review paper   gopnik and bonawitz, Sophie) and their usefulness in theory building.
+
 We present a theory of this integration process. Information sources serve different functional roles, all part of an integrated social inference process [@sperber2001relevance; @grice1991studies; @shafto2012learning]. Children use all available information to make inferences about the intentions behind a speaker’s utterance, which then leads them to correctly identify referents in the world and learn conventional word–object mappings. 
 -- mention that this is an old idea, but that the theories were vague with respect to the intergration process -- 
 
