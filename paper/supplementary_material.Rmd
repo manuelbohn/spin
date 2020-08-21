@@ -321,7 +321,7 @@ plot_cg_map <- as_tibble(fixef(bm_cg), rownames = "term")%>%
 plot_cg <- ggplot() +
   geom_hline(yintercept = 1/2, lty=2, size = 1)+
   geom_jitter(data = plot_cg_data,aes(x = age_num, y= correct), width = .00, height = .01, alpha = .5)+
-  geom_line(data = plot_cg_samples, aes(x = age+min(prior_data$age_num), y = y, group = sample), size = .025)+
+  geom_line(data = plot_cg_samples, aes(x = age+min(prior_data$age_num), y = y, group = sample), alpha = .05)+
   geom_line(data = plot_cg_map, aes(x =age+min(prior_data$age_num), y = y), size = 1)+
   labs(x="Age",y="Proportion object new to speaker chosen")+
   theme_few() +
@@ -851,9 +851,9 @@ P^{no\_cg}_{L_1}(r \mid u; \{\alpha_i\, \theta_{ij}\})\propto P_{S_1}(u \mid r; 
 (\#eq:nocg)
 \end{equation}
 
-#### No mutual exclusivity model
+#### No speaker informativeness model
 
-Finally, we consider a model that focuses only on common ground information and ignores the identity of the objects on the tables as well as any inferences their semantic knowledge of the familiar objects license. The predictions of this model correspond to the prior distribution over objects. 
+Finally, we consider a model that assumes that the speaker does not communicate in an informative way. This corresponds to $\alpha_i$ = 0, which causes the likelihood term to always be 1. As a consequence, this model also ignores semantic knowledge (which affects the likelihood term) and the predictions of this model correspond to the prior distribution over objects. 
 
 \begin{equation}
 P^{no\_me}_{L_1}(r \mid u; \{\rho_i\})\propto P(r \mid \rho_i) 
@@ -862,9 +862,9 @@ P^{no\_me}_{L_1}(r \mid u; \{\rho_i\})\propto P(r \mid \rho_i)
 
 ### Model comparison
 
-We compared the models mentioned above in two ways. First, we used correlations between model predictions and the data. For this analysis, we binned the model predictions and the data by age in years and by the type of familiar object. Figure \@ref(fig:fig6) visualizes the correlation between model predictions and the data for all models. The results shows a very high correlation between the predictions of the **rational integration model** and the data in all age groups indicating that the model accurately captures the variation in the data. Correlations for the **rational integration model** were also higher compared to the other models considered. The correlation increased from 2- to 3-year-olds but then again dropped for 4-year-olds. The mis-match for the oldest age group is probably a consequence of the model making very extreme predictions in the congruent condition. This results from the fact that 4-year-olds show very high performance both the mutual exclusivity and common ground tasks. When combined in the model, the two inferences amplify one another because we assume no cost of integration. We maintain no cost to integration because positing integration cost introduces a free parameter that could only be estimated based on the integration data of Experiment 3 itself (i.e., such a model would not make precise *a priori* predictions).
+We compared the models mentioned above in two ways. First, we used correlations between model predictions and the data. For this analysis, we binned the model predictions and the data by age in years and by the type of familiar object. Figure \@ref(fig:fig6) visualizes the correlation between model predictions and the data for all models. The results shows a very high correlation between the predictions of the **rational integration model** and the data in all age groups indicating that the model accurately captures the variation in the data. Correlations for the **rational integration model** were also higher compared to the other models considered. The correlation increased from 2- to 3-year-olds but then again dropped for 4-year-olds. The mismatch for the oldest age group is probably a consequence of the model making very extreme predictions in the congruent condition. This results from the fact that 4-year-olds show very high performance both the mutual exclusivity and common ground tasks. When combined in the model, the two inferences amplify one another because we assume no cost of integration. We maintain no cost to integration because positing integration cost introduces a free parameter that could only be estimated based on the integration data of Experiment 3 itself (i.e., such a model would not make precise *a priori* predictions).
 
-We additionally compared models based on the marginal likelihood of the data under each model -- the likelihood of the data averaging over ("marginalizing over") the prior distribution on parameters; the pair-wise ratio of marginal likelihoods for two models is known as the Bayes Factor (see file `model_comparison.Rmd` in the associated online repository). Bayes Factors quantify the quality of predictions of a model, averaging over the possible values of the parameters of the models (weighted by the prior probabilities of those parameter values); by averaging over the prior distribution on parameters, Bayes Factor implicitly take into account model complexity because models with more parameters will tend to have a broader prior distribution over parameters, which in effect, can water down the potential gains in predictive accuracy that a model with more parameters can achieve [@lee2014bayesian]. For this analysis, we treated age continuously. Table \@ref(tab:table5) lists the Bayes factors for the different model comparisons. The results show that the **rational integration model**, by far, outperformed all the other models. When comparing the lesioned models among each other, we see that models including the mutual exclusivity inference make better predictions compared to the **no mutual exclusivity model**.
+We additionally compared models based on the marginal likelihood of the data under each model -- the likelihood of the data averaging over ("marginalizing over") the prior distribution on parameters; the pair-wise ratio of marginal likelihoods for two models is known as the Bayes Factor (see file `model_comparison.Rmd` in the associated online repository). Bayes Factors quantify the quality of predictions of a model, averaging over the possible values of the parameters of the models (weighted by the prior probabilities of those parameter values); by averaging over the prior distribution on parameters, Bayes Factor implicitly take into account model complexity because models with more parameters will tend to have a broader prior distribution over parameters, which in effect, can water down the potential gains in predictive accuracy that a model with more parameters can achieve [@lee2014bayesian]. For this analysis, we treated age continuously. Table \@ref(tab:table5) lists the Bayes factors for the different model comparisons. The results show that the **rational integration model**, by far, outperformed all the other models. When comparing the lesioned models among each other, we see that the more information sources a model takes in, the better predictions it makes (roughly: **no word knowledge** > **no common ground** > **no speaker informativeness**.
 
 Taken together, these analyses showed two things. First, the **rational integration model** makes accurate predictions about how mutual exclusivity and common ground inferences are integrated. It does so based on knowing the strength and development of each inference alone, and incorporating them into a structured probabilistic model of pragmatic reasoning. Second, models that omit one or more types of information (object specific word knowledge, speaker informativeness, common ground sensitivity) make appreciably worse predictions. This result exemplifies that children across the entire age range flexibly integrate all the available information. In the next section we ask investigate alternative formulations of the process of information integration.
 
@@ -935,7 +935,7 @@ Taken together, these analyses showed two things. First, the **rational integrat
 #saveRDS(plot_cor_model_pred, "../saves/corr_model_data_pred.rds")
 
 plot_cor_model_pred <- readRDS( "../saves/corr_model_data_pred.rds")%>%
-  mutate(model = factor(model, levels = c("integration", "no word knowledge", "no common ground", "no mutual exclusivity")))
+  mutate(model = factor(model, levels = c("integration", "no word knowledge", "no common ground", "no speaker informativeness")))
  
 ggplot(data = plot_cor_model_pred,aes(x = model_mean, y = data_mean, col = alignment)) +
   geom_abline(intercept = 0, slope = 1, lty = 2, alpha = 1, size = .5)+
@@ -958,10 +958,10 @@ model_comp_pred <- readRDS("../saves/pred_model_comparison.rds")%>%
          `Model comparison` = fct_recode(model, 
                             "integration vs no word knowledge" = "prag_vs_global",
                             "integration vs no common ground" = "prag_vs_flat",
-                            "integration vs no mutual exclusivity" = "prag_vs_prior",
-                            "no word knowledge vs no mutual exclusivity" = "global_vs_flat",
-                            "no word knowledge vs no common ground" = "global_vs_prior",
-                            "no mutual exclusivity vs no common ground" = "flat_vs_prior"),
+                            "integration vs no speaker informativeness" = "prag_vs_prior",
+                            "no word knowledge vs no common ground" = "global_vs_flat",
+                            "no word knowledge vs no speaker informativeness" = "global_vs_prior",
+                            "no common ground vs no speaker informativeness" = "flat_vs_prior"),
         `Bayes factor` = format(round(exp(logBF)), trim = T, justify = "right", scientific = F))%>%
   select(-logBF, -model)
   
@@ -1232,7 +1232,7 @@ item_comp <- bind_rows(
 
 ```
 
-```{r figa1, include = T, cache=T,  fig.cap = "Posterior distribution of intercept term for semantic knowledge for each object by model.", fig.width=12, fig.height = 6}
+```{r figa1, include = T, cache=F,  fig.cap = "Posterior distribution of intercept term for semantic knowledge for each object by model.", fig.width=12, fig.height = 6}
 
 item_comp_int <- item_comp %>%
   filter(parameter == "intercept")
@@ -1250,7 +1250,7 @@ ggplot(item_comp_int, aes(x = value, fill = model, col = model))+
 
 ### Slope
 
-```{r figa2, include = T, cache=T,  fig.cap = "Posterior distribution of slope term for semantic knowledge for each object by model.", fig.width=12, fig.height = 6}
+```{r figa2, include = T, cache=F,  fig.cap = "Posterior distribution of slope term for semantic knowledge for each object by model.", fig.width=12, fig.height = 6}
 
 item_comp_slope <- item_comp %>%
   filter(parameter == "slope")
