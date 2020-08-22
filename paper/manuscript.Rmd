@@ -1,0 +1,198 @@
+---
+title             : "How young children integrate information sources to infer the meaning of words"
+shorttitle        : "Rational information integration in children"
+
+author: 
+  - name          : "Manuel Bohn"
+    affiliation   : "1,*"
+    corresponding : yes    # Define only one corresponding author
+    address       : "Max Planck Institute for Evolutionary Anthropology, Deutscher Platz 6, 04103 Leipzig, Germany"
+    email         : "manuel_bohn@eva.mpg.de"
+  - name          : "Michael Henry Tessler"
+    affiliation   : "2,*"
+  - name          : "Megan Merrick"
+    affiliation   : "3"
+  - name          : "Michael C. Frank"
+    affiliation   : "3"
+
+affiliation:
+  - id            : "1"
+    institution   : "Department of Comparative Cultural Psychology, Max Planck Institute for Evolutionary Anthropology"
+  - id            : "2"
+    institution   : "Department of Brain and Cognitive Sciences, Massachusetts Institute of Technology"
+  - id            : "3"
+    institution   : "Department of Psychology, Stanford University"
+  - id            : "*"
+    institution   : "These authors contributed equally to this work"
+
+abstract: |
+  Before formal education begins, children typically acquire a vocabulary of thousands of words. This learning process requires the use of many different information sources in their social environment, including their current knowledge state as well as the context in which they hear words used. How is this information integrated? We specify a model according to which children consider all available information sources and integrate them via Bayesian inference. This model accurately predicted 2-to-5 year-old children’s word learning across a range of experimental conditions. Model comparison suggests that the integration process is stable across development and that the main locus of development is an increased sensitivity to individual information sources. We present a quantitative developmental theory of information integration for language learning, embedded in a larger framework that grounds language use and learning in social cognition.
+
+keywords          : "language acquisition, social cognition, pragmatics, Bayesian modeling, common ground"
+wordcount         : "X"
+
+bibliography      : "library.bib"
+csl: nature.csl
+
+floatsintext      : yes
+figurelist        : no
+tablelist         : no
+footnotelist      : no
+linenumbers       : yes
+mask              : no
+draft             : no
+
+documentclass     : "apa6"
+classoption       : "man"
+output            : papaja::apa6_pdf
+
+header-includes:
+  - \usepackage{setspace}
+  - \captionsetup[figure]{font={stretch=1}}
+---
+
+```{r setup, include = FALSE}
+library("papaja")
+library("tidyverse")
+library("coda")
+
+estimate_mode <- function(s) {
+  d <- density(s)
+  return(d$x[which.max(d$y)])
+}
+
+
+hdi_upper<- function(s){
+  m <- HPDinterval(mcmc(s))
+  return(m["var1","upper"])
+}
+
+hdi_lower<- function(s){
+  m <- HPDinterval(mcmc(s))
+  return(m["var1","lower"])
+}
+
+```
+
+```{r analysis-preferences}
+# Seed for random number generation
+set.seed(42)
+knitr::opts_chunk$set(cache.extra = knitr::rand_seed)
+```
+
+Humans rely on language for communication, making language acquisition a key learning objective of early childhood [@tomasello2018natural]. A central problem in language learning is referent identification: To learn the conventional symbolic relation between a word and an object, the child has to determine the intended referent of the word. Referents can only be identified in an inferential manner by reasoning about the speaker’s intentions [@bohn2019pervasive; @bruner1983child; @clark2009first; @tomasello2009constructing]. That is, the child has to infer what the speaker is communicating about based on information sources in the social context of the utterance.
+
+From early on in development, children use a number of different mechanisms to harness such social-contextual information sources [@bohn2019pervasive; @clark2009first; @bloom2002children]. For example, children expect speakers to use novel words for unknown objects [@clark1987principle; @markman1988children; @carey1978acquiring; @halberda2003development], to talk about objects that are relevant [@frank2014inferring; @schulze20133], new in context [@akhtar1996role; @diesendruck2004two], or related to the ongoing conversation [@bohn_le_peloquin_koymen_frank_2020; @sullivan2016discourse; @horowitz2015young]. These different mechanisms, however, have largely been described and theorized about in isolation. The picture of the learning process that emerges is that of a “bag of tricks”: mechanisms that operate (and develop) independently from one another [@bloom2002children]. As such, this view of the learning process does not capture the complexity of natural social interaction during which many sources of information are present [@bergelson2017nature;@frank2013social]. Theses information sources need to be integrated in order to accurately infer a speaker's intention. 
+
+When researchers do look at information integration in children [@ganea2007infants; @graham2017words; @grosse201021; @jara2020social; @khu2020preschoolers; @matthews2006effect; @nilsen2009preschoolers], they mostly focus on how children interpret an ambiguous referring expression in light of social-contextual information. In one of these studies [@nadig2002evidence], children faced a 2 x 2 display with a ball, a pen and two glasses in it. The speaker, sitting on the opposite side of the display, saw only 3 of the compartments: the ball, the pen, and one of the glasses. When the speaker asked for "the glass", children had to integrate the semantics of the utterance with the perspective of the speaker to correctly infer which of the glasses - from their perspective - the speaker was referring to. This study, along with others, found that preschoolers use both information sources. What these studies do not do, however, is specify the process by which children integrate the different information sources. When discussing their results, authors refer to social-pragmatic theories of language use and learning [@grice1991studies; @sperber2001relevance; @clark1996using; @clark2009first; @tomasello2009constructing], all of which assume that information is integrated as part of a social inference process, but none of which clearly defines the process. As a consequence, we have no explicit and quantitative theory of how different information sources (and word learning mechanisms) are integrated. 
+
+We present a theory of this integration process. Following social-pragmatic theories of language learning [@clark2009first; @tomasello2009constructing], our theory is based on the following premises: information sources serve different functional roles, all part of an integrated social inference process [@clark1996using; @grice1991studies; @shafto2012learning; @sperber2001relevance]. Children use all available information to make inferences about the intentions behind a speaker’s utterance, which then leads them to correctly identify referents in the world and learn conventional word–object mappings. We formalize the computational steps that underlie this inference process in a cognitive model [@frank2012predicting; @goodman2016pragmatic; @oberauer2019addressing]. This model makes quantitative predictions about how children should integrate information sources - predictions we can test against new data. It also allows us to test alternative theories about *whether* and *how* information is integrated. Finally, we can compare alternative views on how the integration process itself *develops*.
+
+To test this model, we focus on three information sources that play an integral part in theorizing about language use and learning and operate on different timescales: (1) expectations that speakers communicate in a cooperative and informative manner [@frank2014inferring; @clark1987principle], (2) shared common ground about what is being talked about in conversation [@bohn2018common; @clark1996using], and (3) semantic knowledge about previously learned word–object mappings [@fenson1994variability; @bloom2002children]. While (1) is a momentary expectation about a particular utterance, (2) grows over the course of a conversation, and (3) is learned across development. This interplay of timescales has been hypothesized to be an important component of word meaning inference [@frank2009using; @mcmurray2012word]. 
+
+
+```{r fig1, include = T, fig.align = "center", fig.cap = "Experimental task and model. (A and B) Screenshots from the experimental task. (i) The speaker encounters one object and then leaves the scene (ii). While the speaker is away, a second object appears (iii), when returning, the speaker uses a novel word to request an object (iv). Sections (i) to (iii) establish common ground between the speaker and the listener, in that one object is new in context (green). The request in (iv) licenses an inference based on expectations about how informative speakers are (red). Listeners' semantic knowledge enters the task because the identity of the  known object on one of the tables is varied from well-known objects like a duck to relatively unfamiliar objects like a chess pawn (total of 12 objects - blue). (A) shows the condition in which common ground information is congruent (i.e. point to the same object) with speaker informativeness and (B) shows the incongruent condition. The congruent and incongruent conditions are each paired with the 12 known objects, resulting in 24 unique conditions. (C to E) show developmental trajectories for each information source, estimated from separate experiments (see supplement). (F) gives the model equation for the rational integration model and links information sources to model parameters.", out.width="100%"}
+knitr::include_graphics("./figures/figure1.png")
+```
+
+To test the predictive and explanatory power of our model, we developed an world-learning paradigm in which we jointly manipulated these three information sources (Fig. 1). Children interacted on a tablet computer with a series of storybook speakers [@frank2016using]. The speakers used novel words (e.g., "wug") in the context of two potential referents. This situation is depicted in Fig. 1A-iv, in which a speaker (here, a frog) appears with a known object (a duck, left) and an unfamiliar object (the diamond-shaped object, right). To identify the referent, the child could rely upon the three information sources described above. First, they may infer that a cooperative speaker would have used the word duck to refer to the known object (the duck); the fact that the speaker did not say duck then suggests that the speaker is most likely referring to a different object (the unfamiliar object). Thus, the listener can infer the referent of the novel word by assuming that the speaker is a rational agent who chooses the most informative words to refer to objects [@frank2014inferring]. Second, the child may rely upon what has already been established in the common ground with the speaker. Listeners expect speakers to communicate about things that are new to the common ground [@akhtar1996role; @diesendruck2004two]. Thus, the inference about the novel word referring to the unfamiliar object also depends on which object is new in context (Fig. 1A and B i-iii). Finally, the child may rely upon their previously acquired semantic knowledge, that is, how sure they are that the known object is called "duck". If the known object is something less familiar, such as a chess piece (e.g., a pawn), a 3-year-old child may draw a weaker inference, if they draw any inference at all [@lewis2020-me]. Taken together, the child has the opportunity to integrate their assumptions about (1) informative communication, (2) their understanding of the common ground, and (3) their existing semantic knowledge. In some versions of the experiment, some of these information sources were aligned (Fig. 1A) but in some they were in conflict (Fig. 1B). 
+
+Our *rational integration model* arbitrates between information sources via Bayesian inference (see Fig. 1F for model formula). A listener ($L_{1}$) reasons about the referent of a speaker's ($S_{1}$) utterance. This reasoning is contextualized by the prior probability of each referent $\rho$ which we take to be a function of the common ground shared between the listener and the speaker. To decide between referents, the listener ($L_{1}$) reasons about what a rational speaker ($S_{1}$) with informativeness $\alpha$ would say given an intended referent. This speaker is assumed to compute the informativity for each available utterance and then choose the most informative one. The informativity of each utterance is given by imagining which referent a listener who interprets words according to their literal semantics (what we call a literal listener, $L_{0}$), would infer upon hearing the utterance. Naturally, this reasoning depends on what kind of semantic knowledge (for object j) $\theta$~j~ the speaker ascribes to the (literal) listener. Taken together, this model provides a quantitative theory of information integration during language learning. Furthermore, the model presents an explicit and substantive theory of development. It assumes that, while children’s sensitivity to the individual information sources increases with age, the way integration proceeds remains constant [@bohn2019pervasive; @bohn_tessler_merrick_frank_2019]. In the model, this is accomplished by making the parameters capturing sensitivity to speaker informativeness ($\alpha$~i~, Fig. 1D), the common ground ($\rho$~i~, Fig. 1C), and object specific semantic knowledge ($\theta$~i,j~, Fig. 1E) a function of the child’s age. 
+
+# Results
+
+## Predicting information integration accross development
+
+We tested the model in its ability to predict children’s actual behavior - at an age (between 2 and 5 years) at which they learn language at an exponential rate [@bloom2002children]. We estimated children’s (N=148) developing sensitivity to individual information sources in separate experiments (see Fig. 1C-E). We then generated parameter-free, quantitative, *a priori* model predictions (developmental trajectories) representing the model's expectations about how children should behave in a new situation in which all three information sources had to be integrated. We generated model predictions for 24 experimental conditions: 12 objects of different familiarities (requiring different levels of semantic knowledge), with novelty either conflicting or coinciding; Fig. 1. We compared these predictions to newly collected data from N = 220 children from the same age range. The results showed a very close alignment between model predictions and the data across the entire age range. That is, the average developmental trajectories predicted by the model resembled the trajectories found in the data (Fig. S6). For a more quantitative analysis, we binned predictions and data by year and correlated them. We found a high correlation showing that the model explained 79% of the variance in the data (Fig. 2). These results seem to support the assumption in the model that children consider all available information source. However, it is still possible that simpler models might make equally good or better predictions.
+
+Thus, we formalized the alternative view that children selectively ignore information sources in the form of three lesioned models (Fig. 2). These models assume that children follow the heuristic “ignore X” (with X being one of the information sources) when multiple information sources are presented together.
+
+The marginally less-complex *no word knowledge model* uses the same model architecture as the rational integration model. It takes in expectations about speaker informativeness and common ground, but omits semantic knowledge that is specific to the familiar objects (i.e., uses only general semantic knowledge). The object specific parameters for semantic knowledge are fitted via a hierarchical regression (mixed effects) model. In this model, there is an overall developmental trajectory for semantic knowledge (main effect) and then there is object-specific variation around this trajectory (random effects). The no word knowledge model takes in the overall trajectory for semantic knowledge but ignores object-specific variation. That is, the model assumes a listener whose inference does not vary depending on the particular familiar object but only depends on the age specific average semantic knowledge.The *no common ground model* takes in object specific semantic knowledge and speaker informativeness but ignores common ground information. Instead of assuming that one object has a higher prior probability to be the referent because it is new in context, the speaker thinks that both objects are equally likely to be the referent. As a consequence, the listener does not differentiate between situations in which common ground is aligned or in conflict with the other information sources.Finally, according to the *no speaker inforamtiveness model*, the listener does not assume that the speaker is communicating in an informative way and hence ignores the information provided by the utterance. As a consequence, the inference is solely based on common ground expectations.
+
+We found little support that children make inferences following one of the heuristic models. When using Bayesian model comparison via marginal likelihood of the data, [@lee2014bayesian], we find that the data was several orders of magnitude more likely under the rational integration model compared to any of the lesioned models (Fig. 2). Taken together, we may conclude that children considered all available information sources.
+
+(ref:figlab2) **Predicting information integration**. Correlation between model predictions and child inference data for all 24 conditions and for each age group (binned by year) for the rational integration model and the three lesioned models. Horizontal and vertical error bars show 95% HDI. Inset shows an example of model predictions as developmental trajectories (see Fig. 3). The no word knowledge model includes developmental change for overall vocabulary development but ignores the identity of the known object. The no common ground model assumes that children ignore information from common ground and the no speaker informativeness model assumes that children ignore inferences that are licensed by expectations about informative communication. BF~10~ gives the Bayes Factor in favor of the integration model based on the marginal likelihood of the data under each model.
+
+```{r fig2, include = T, fig.align = "center", fig.cap = "(ref:figlab2)", out.width="100%"}
+
+knitr::include_graphics("./figures/figure2.png")
+```
+
+## Explaining the process of information integration
+
+The fact that children integrated all the available information sources may be surprising, but does not rule out that the integration process itself might be different from the one described in the rational integration model. Remember that this model assumes that all information sources enter into an integrated inference process. However, a more modular view seems equally plausible: children might compute separate inferences based on a subset of the available information and then integrate them by weighting them according to some ratio. This view would allow for the possibility that some information sources are considered to be more important than others. In other words, children might be biased towards some information sources (e.g. a 60:40 ratio). We formalized this alternative view as a *biased integration model*. This model assumes that semantic knowledge and expectations about speaker informativeness enter into one inference (mutual exclusivity inference [@markman1988children; @lewis2020-me; @clark1987principle]) while common ground information enters into a second one. The outcome of both processes are then weighted according to the parameter $\phi$. Like the rational integration model, this model takes in all available integration sources and assumes that they are integrated, the integration process itself, however, is construed in a different way. 
+
+The parameter $\phi$ in the biased integration model is unknown ahead of time and has to be estimated based on the experimental data. That is, in contrast to the rational integration model, the biased integration model does not allow to make *a priori* predictions about new data in the way we describe above. For the model comparison, we therefore constrained the parameters in the rational integration model by the experimental data as well. As a consequence, both models use all the information available to constrain their parameters (see Fig. S4).
+
+```{r}
+mixture_parameter <- readRDS("../saves/mixture_mm.rds")
+
+phi <- mixture_parameter%>%
+  summarise(mode = estimate_mode(p_informative), 
+            lci = hdi_lower(p_informative), 
+            uci = hdi_upper(p_informative))
+```
+
+
+The biased integration model makes reasonable predictions that explain a large proportion of the variance in the data (Fig. 3B). The parameter $\phi$ - indicating the bias to one of the inferences - was estimated to favor the mutual exclusivity inference (mode = `r phi%>%pull(mode)`; 95% HDI: `r phi%>%pull(lci)` - `r phi%>%pull(uci)`, see Fig. 3B). However, the rational integration model presented a much better fit to the data, both in terms of correlation and marginal likelihood of the data (Fig. 3B). Thus, a fully integrated - as opposed to a segmented, biased - integration process explains the data better.
+
+The rational integration model assumes that the integration process itself does not change with age [@bohn2019pervasive]. That is, while children's sensitivity to each information source develops, the way they relate to one another remains the same. An alternative perspective would be to assume that the integration process itself changes with age. The biased integration model provides a way to think about developmental change in the integration process: Children are biased towards some information sources, but this bias itself changes with age. We formalize such an alternative view as a *developmental bias model* which is structurally identical to the biased integration model but in which the parameter $\phi$ changes with age. The model assumes that the importance of the different information sources changes with age.
+
+```{r}
+developmental_mixture_parameter <- readRDS("../saves/mixture_dmm.rds")
+
+phi_dev <- developmental_mixture_parameter%>%
+  filter(type == "slope")%>%
+  summarise(mode = estimate_mode(value), 
+            lci = hdi_lower(value), 
+            uci = hdi_upper(value))
+```
+
+The developmental bias model explains a substantial portion of the variance in the data (Fig. 3B). The estimated developmental trajectory for the bias parameter $\phi$ (Fig. 3B) suggests that younger children put a higher emphasis on common ground information, while older children rely more on the mutual exclusivity inference. Yet again, when we directly compare the competitor models, we find that the data is several orders of magnitude more likely under the rational integration model (Fig. 3B). Interestingly, when we compare the rational integration model with its parameters not constrained by the experimental data (i.e. the "pure" prediction model described above), it also outperformed both bias models (see Fig. S10 and Tab. S6). Taken together, these results suggest that the integration process is best described as a) fully integrated and b) stable over time. 
+
+(ref:figlab3) **Explaining information integration across development**. (A) Model predictions from the rational integration model (colored lines) next to the behavioral data (dotted black lines with 95% CI in gray) for all 24 experimental conditions. Top row (blue) shows conditions in which common ground information is congruent with speaker informativeness, bottom row (red) shows conditions in which they are incongruent. Known objects are ordered based on their rated age of acquisition (left to right). Light dots represent individual data points. (B) Correlations between model predictions binned by age and condition for the integration model and (C) the two mixture models. Vertical and horizontal error bars show 95% HDIs. BF~10~ gives the Bayes Factor in favor of the rational integration model based on the marginal likelihood of the data under each model. (D) Posterior distribution of the bias parameter in the biased integration model and 300 random draws from the posterior distribution of the intercept and slope for the bias parameter in the developmental bias model.
+
+```{r fig3, include = T, fig.align = "center", fig.cap = "(ref:figlab3)", out.width="100%"}
+knitr::include_graphics("./figures/figure3.png")
+```
+
+# Discussion
+
+These findings show that young children can flexibly integrate multiple information sources during language learning, even from relatively early in development. To answer the question of how they do so, we presented a formal cognitive model that assumes that information sources are rationally integrated via Bayesian inference. This model accurately predicted children’s behavior between 2 and 5 years of age and provided a better explanation of the integration process and its development compared to a range of competitor models that either neglected or prioritized some information sources. 
+
+Replicate with other languages and other cultural settings.
+
+more explicit model of common ground (see perspective taking work mcc)
+
+integrate process of word learning itself via cross-situational learning [@frank2009using; @mcmurray2012word] dan yurovski work 
+
+
+The model is derived from a more general framework for pragmatic inference, which has been used to explain a wide variety of phenomena in adults’ language use and comprehension [@monroe2017colors; @wang2016learning; @tessler2019language; @yoon_frank_tessler_goodman_2018]. Thus, it can be generalized in a natural way to capture word learning in contexts that offer more, fewer, or different types of information [e.g. @bohn_tessler_merrick_frank_2019]. The flexibility of the framework stems from its conceptualization of human communication as a form of rational social action.
+
+Connections to naive utility caluclus stuff?
+
+As such, this work adds to theories that see the onto- and phylogenetic emergence of language as deeply rooted in social cognition.
+
+# Methods
+
+## Particiapnts
+
+## Materials
+
+## Procedure
+
+## Data analysis
+
+\newpage
+
+# References
+```{r create_r-references}
+r_refs(file = "r-references.bib")
+```
+
+\begingroup
+\setlength{\parindent}{-0.5in}
+\setlength{\leftskip}{0.5in}
+
+<div id = "refs"></div>
+\endgroup
