@@ -661,7 +661,7 @@ $P_{L_0}(r \mid u; \{\theta_{ij}\}) \propto \mathcal{L}(u, r \mid \theta_{ij})$
 
 ## Implementation details
 
-All Bayesian cognitive models were implemented in the probabilistic programming language `WebPPL` [@dippl]. The corresponding model code can be found in the associated online repository (file `webppl/prediction_model.wppl`). To generate model predictions, we estimated age sensitive parameter distributions for semantic knowledge (by familiar object), speaker informativeness and sensitivity to common ground and then passed them through the model in line with the different ways in which they can be combined and aligned (Figure \@ref(fig:bda)). The resulting predictions come in the form of distributions of developmental trajectories for each familiar object in the congruent and the incongruent condition.
+All Bayesian cognitive models were implemented in the probabilistic programming language `WebPPL` [@dippl]. The corresponding model code can be found in the associated online repository (file `webppl/prediction_all_models.wppl`). To generate model predictions, we estimated age sensitive parameter distributions for semantic knowledge (by familiar object), speaker informativeness and sensitivity to common ground and then passed them through the model in line with the different ways in which they can be combined and aligned (Figure \@ref(fig:bda)). The resulting predictions come in the form of distributions of developmental trajectories for each familiar object in the congruent and the incongruent condition.
 
 We used the following prior distributions for model parameters. Intercept and slope for sensitivity to common ground: $\beta^\rho_0 ,\beta^\rho_1 \sim \text{Uniform}(-2,2)$. Speaker informativeness:  $\beta^\alpha_0 \sim \text{Uniform}(-3,3)$ for the intercept and $\beta^\alpha_1 \sim \text{Uniform}(-0,4)$ for the slope. We restricted the slope to be positive because negative values for speaker informativeness are conceptually implausible: We do not expect sensitivity to speaker informativeness to decrease across our age range. For the global semantic knowledge (vocabulary) parameters, we used $\mu^\theta_0 \sim \text{Uniform}(-3,3)$ for the intercept and $\mu^\theta_1 \sim \text{Uniform}(0,2)$ for the slope, because it is implausible to assume that semantic knowledge decreases with age. For the parameters capturing the variability the object specific trajectories around these overall parameters we used $\sigma^\theta_0 \sim \text{Uniform}(0,2)$ for the intercept and $\sigma^\theta_1 \sim \text{Uniform}(0,1)$ for the slope. Some choices regarding these prior distributions were made to ease model convergence. However, please note that all models considered used the same prior distributions.
 
@@ -1040,7 +1040,7 @@ P_{ME}(r \mid u; \{\alpha_i, \theta_{ij}\}) \propto P_{S_1}(u \mid r; \{\alpha_i
 
 where $P_{ME}(r \mid u; \{\alpha_i, \theta_{ij}\})$ represents a mutual-exclusivity inference from a listener with a uniform prior on referents. $P_{S_1}(u \mid r; \{\alpha_i, \theta_{ij}\}$ is the same as in Eq. \@ref(eq:rsafull2) above.
 
-To estimate $\phi$ as well as the other parameters, we make use of all the available data. The model code can be found in the associated online repository (file: `webppl/explanation_mixture_model.wppl`). The posterior distribution for the bias parameter $\phi$ is shown in figure \@ref(fig:fig10)A. It suggests that the mutual exclusivity inference is weighted as slightly more important compared to the common ground inference.
+To estimate $\phi$ as well as the other parameters, we make use of all the available data. The model code can be found in the associated online repository (file: `webppl/explanation_bias_model.wppl`). The posterior distribution for the bias parameter $\phi$ is shown in figure \@ref(fig:fig10)A. It suggests that the mutual exclusivity inference is weighted as slightly more important compared to the common ground inference.
 
 ```{r}
 item_params_mixture <- readRDS("../saves/item_params_mm.rds")
@@ -1068,7 +1068,7 @@ P^{dev\_bias}_{L_1}(r \mid u; \{\phi_i, \rho_i, \alpha_i, \theta_{ij} \}) = \phi
 (\#eq:devmix)
 \end{equation}
 
-The model code can be found in the associated online repository (file: `webppl/explanation_mixture_model.wppl`). Figure \@ref(fig:fig10)B visualizes the developmental trajectory of the bias parameter. Based on this model, the common ground inference seems to decrease in importance compared to the mutual exclusivity inference with age.
+The model code can be found in the associated online repository (file: `webppl/explanation_dev_bias_model.wppl`). Figure \@ref(fig:fig10)B visualizes the developmental trajectory of the bias parameter. Based on this model, the common ground inference seems to decrease in importance compared to the mutual exclusivity inference with age.
 
 ```{r}
 item_params_dev_mixture <- readRDS("../saves/item_params_dmm.rds")

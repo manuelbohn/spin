@@ -34,4 +34,5 @@ paper/rsconnect/*
 paper/visualizations.Rmd
 
 webppl/model_re.wppl
+webppl/model-rsa.wppl
 webppl/move/*
