@@ -856,7 +856,7 @@ P^{no\_cg}_{L_1}(r \mid u; \{\alpha_i\, \theta_{ij}\})\propto P_{S_1}(u \mid r; 
 Finally, we consider a model that assumes that the speaker does not communicate in an informative way. This corresponds to $\alpha_i$ = 0, which causes the likelihood term to always be 1. As a consequence, this model also ignores semantic knowledge (which affects the likelihood term) and the predictions of this model correspond to the prior distribution over objects. 
 
 \begin{equation}
-P^{no\_me}_{L_1}(r \mid u; \{\rho_i\})\propto P(r \mid \rho_i) 
+P^{no\_si}_{L_1}(r \mid u; \{\rho_i\})\propto P(r \mid \rho_i) 
 (\#eq:nome)
 \end{equation}
 
