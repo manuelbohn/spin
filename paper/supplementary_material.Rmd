@@ -3,15 +3,15 @@ title: "Young children rationally integrate semantic and pragmatic information s
 subtitle: "Supplementary material"
 author: "Manuel Bohn, Michael Henry Tessler, Megan Merrick and Michael C. Frank"
 output: 
-  bookdown::pdf_document2:
-    toc: yes 
-    number_sections: false    
   bookdown::html_document2:
     toc: yes
     toc_float: true
     fig_caption: yes
     #code_folding: hide
     number_sections: false
+  bookdown::pdf_document2:
+    toc: yes 
+    number_sections: false    
 bibliography: library.bib
 #csl: pnas.csl
 header-includes:
@@ -935,7 +935,8 @@ Taken together, these analyses showed two things. First, the **rational integrat
 #saveRDS(plot_cor_model_pred, "../saves/corr_model_data_pred.rds")
 
 plot_cor_model_pred <- readRDS( "../saves/corr_model_data_pred.rds")%>%
-  mutate(model = factor(model, levels = c("integration", "no word knowledge", "no common ground", "no speaker informativeness")))
+  mutate(model = ifelse(model == "no mutual exclusivity", "no speaker informativeness", model),
+    model = factor(model, levels = c("integration", "no word knowledge", "no common ground", "no speaker informativeness")))
  
 ggplot(data = plot_cor_model_pred,aes(x = model_mean, y = data_mean, col = alignment)) +
   geom_abline(intercept = 0, slope = 1, lty = 2, alpha = 1, size = .5)+
