@@ -28,6 +28,7 @@ paper/supplementary_material_cache/*
 
 paper/manuscript_references.Rmd
 paper/manuscript.tex
+paper/manuscript.docx
 paper/manuscript_references.html
 paper/science.csl
 paper/rsconnect/*
