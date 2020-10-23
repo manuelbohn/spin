@@ -8,7 +8,7 @@ Experiments can be found in `experiments/`. To run the experiments, download the
 
 The main manuscript and the supplementary material can be found in `paper/`. For an easy to read version, open the respective `.pdf` file or, in case of the supplementary material, the `.html` file. For detailed information about the analyses reported in the manuscript or the supplementary material, take a look at the respective `.Rmd` files.
 
-All data sets can be found in `stats/data/`. 
+All data sets can be found in `data/`. 
 
 Code for cognitive models and Bayesian parameter estimation can be found in `webppl/`.
 
