@@ -1,0 +1,413 @@
+// example call: time webppl prior_only_likelihood.wppl --require webppl-json --require webppl-csv
+
+
+var all_objects = [
+  { shape: "novel_object"},
+  { shape: "familiar_object"}
+]
+
+var labels = ["novel_word", "familiar_word"]
+
+
+var lexicon1 = function(utterance, obj, sem_knowledge) {
+  utterance.label == "novel_word" ? obj.shape == "novel_object" :
+  utterance.label == "familiar_word" ? flip(sem_knowledge) ?
+  obj.shape == "familiar_object" :
+  flip() ? obj.shape == "familiar_object" : obj.shape == "novel_object" :
+  true
+}
+
+var lexicon2 = function(utterance, obj, sem_knowledge) {
+  utterance.label == "novel_word" ? obj.shape == "familiar_object" :
+  utterance.label == "familiar_word" ? flip(sem_knowledge) ?
+  obj.shape == "familiar_object" :
+  flip() ? obj.shape == "familiar_object" : obj.shape == "novel_object" :
+  true
+}
+
+var lexiconObjects = {
+  "novel_word = novel_object": {
+    novel_object: "novel_word",
+    familiar_object: "familiar_word"
+  },
+  "novel_word = familiar_object": {
+    novel_object: "familiar_word",
+    familiar_object: "familiar_word"
+  },
+}
+
+var lexiconObject = {
+  "novel_word = novel_object": lexicon1,
+  "novel_word = familiar_object": lexicon2
+}
+
+var utterancePrior = function() {
+  return uniformDraw([{
+    label: "novel_word"
+  }, {
+    label: "familiar_word"
+  }])
+}
+
+var LexiconPrior = Categorical({
+  vs: ["novel_word = novel_object", "novel_word = familiar_object"],
+  ps: [1, 1]
+})
+
+var foreach = function(fn, lst) {
+  var foreach_ = function(i) {
+    if (i < lst.length) {
+      fn(lst[i]);
+      foreach_(i + 1);
+    }
+  };
+  foreach_(0);
+};
+
+var logistic = function(x) {
+  1 / (1 + Math.exp(-x))
+}
+
+var levels = function(df, label) {
+  return _.uniq(_.map(df, label));
+}
+
+//////////////// Inferring parameters //////////////
+
+var meData = json.read('../data/me.json');
+var priorData = json.read('../data/novelty.json');
+var combData = json.read('../data/combination.json');
+
+var priorSubjects = levels(priorData, "subid")
+var priorSubjectsAges = sort(levels(priorData, "age_month"))
+var familiars = levels(meData, "item")
+var familiarsAges = sort(levels(meData, "age_month"))
+var subjects = levels(meData, "subid")
+var combDataAges = sort(levels(combData, "age_month"))
+
+var priorProbs = [.5, .5]
+
+var model = function() {
+
+  ////////////// Prior ////////////////////////
+
+  var prior_slope = uniformDrift({
+    a: -2,
+    b: 2,
+    width: 0.4
+  })
+  var prior_int = uniformDrift({
+    a: -2,
+    b: 2,
+    width: 0.4
+  })
+
+
+  foreach(function(age_month) {
+    var priorSubjectDataByAge = _.filter(priorData, {
+      age_month: age_month
+    })
+    var subj_age = priorSubjectDataByAge[0].age_month
+    var priorSubjectDataByAge_correct = _.map(priorSubjectDataByAge, "correct")
+
+    var priorReg = logistic(prior_int + prior_slope * subj_age)
+    var prior = [priorReg, 1 - priorReg]
+
+    var modelPredictions = Infer({
+      method: "enumerate",
+      model: function() {
+        var obj = sample(Categorical({
+          vs: all_objects,
+          ps: prior
+        }));
+        return obj.shape == "novel_object" ? 1 : 0
+      }
+    })
+
+    mapData({
+      data: priorSubjectDataByAge_correct
+    }, function(d) {
+      observe(modelPredictions, d);
+    })
+
+  }, priorSubjectsAges)
+
+  //query.add(["parameter","parameters", "prior", "intercept", "NA", "NA"], prior_int)
+  //query.add(["parameter","parameters", "prior", "slope", "NA", "NA"], prior_slope)
+
+  //////////////// Semantic knowledge and speaker optimality ////////////////////////
+
+  // var speakerOptimalityParameters = {
+  //   intercept: uniformDrift({
+  //     a: -3,
+  //     b: 3,
+  //     width: 0.5
+  //   }),
+  //   slope: uniformDrift({
+  //     a: 0,
+  //     b: 4,
+  //     width: 0.5
+  //   })
+  // }
+  //
+  // var globalLineParameters = {
+  //   intercept: uniformDrift({
+  //     a: -3,
+  //     b: 3,
+  //     width: 0.5
+  //   }),
+  //   slope: uniformDrift({
+  //     a: 0,
+  //     b: 2,
+  //     width: 0.5
+  //   })
+  // }
+  //
+  // var itemVariability = {
+  //   intercept: uniformDrift({
+  //     a: 0,
+  //     b: 2,
+  //     width: 0.2
+  //   }),
+  //   slope: uniformDrift({
+  //     a: 0,
+  //     b: 1,
+  //     width: 0.2
+  //   })
+  // }
+  //
+  // var sampleItemParameters = function(itemName) {
+  //   return [itemName, {
+  //     intercept: gaussianDrift({
+  //       mu: globalLineParameters.intercept,
+  //       sigma: itemVariability.intercept,
+  //       width: 0.5
+  //     }),
+  //     slope: gaussianDrift({
+  //       mu: globalLineParameters.slope,
+  //       sigma: itemVariability.slope,
+  //       width: 0.5
+  //     })
+  //   }]
+  // }
+  //
+  // var all_item_parameters = _.fromPairs(map(sampleItemParameters, familiars))
+  //
+  // var subject_sigma = uniformDrift({
+  //   a: 0,
+  //   b: 1,
+  //   width: 0.1
+  // })
+  //
+  // var sampleLinguisticCompetence = function(age) {
+  //   return gaussianDrift({
+  //     mu: age,
+  //     sigma: subject_sigma,
+  //     width: 0.1
+  //   })
+  // }
+  //
+  // foreach(function(age_month) {
+  //   var subjectData_byAge = _.filter(meData, {
+  //     age_month: age_month
+  //   })
+  //
+  //   var subj_age = subjectData_byAge[0].age_month
+  //   var speakerOptimality = speakerOptimalityParameters.intercept + speakerOptimalityParameters.slope * subj_age
+  //
+  //   foreach(function(item) {
+  //     var subjectData_byAgeItem = _.filter(subjectData_byAge, {
+  //       item: item
+  //     })
+  //     var subjectDataByAgeItem_correct = _.map(subjectData_byAgeItem, "correct")
+  //
+  //     var itemLineParameters = all_item_parameters[item]
+  //
+  //     var sem_knowledge = logistic(itemLineParameters.intercept +
+  //       itemLineParameters.slope * subj_age)
+  //
+  //       var literalListener = cache(function(utterance) {
+  //         Infer({
+  //           method: "enumerate",
+  //           model: function() {
+  //             var lexiconName = sample(LexiconPrior);
+  //             var lexicon = lexiconObject[lexiconName];
+  //             var obj = sample(Categorical({
+  //               vs: all_objects,
+  //               ps: [.5, .5]
+  //             }));
+  //             if ("label" in utterance) {
+  //               var truthValue = lexicon(utterance, obj, sem_knowledge);
+  //               condition(truthValue)
+  //             }
+  //             return obj.shape
+  //           }
+  //         })
+  //       }, 10000)
+  //
+  //       var speaker = cache(function(obj, lexiconName) {
+  //         Infer({
+  //           method: "enumerate",
+  //           model: function() {
+  //             var utterance = utterancePrior();
+  //             var L0 = literalListener(utterance);
+  //             factor(speakerOptimality * L0.score(obj.shape))
+  //             return utterance
+  //           }
+  //         })
+  //       }, 10000)
+  //
+  //       var pragmaticListener = function(utterance) {
+  //         Infer({
+  //           method: "enumerate",
+  //           model: function() {
+  //             var lexiconName = sample(LexiconPrior);
+  //             var obj = sample(Categorical({
+  //               vs: all_objects,
+  //               ps: [.5, .5]
+  //             }));
+  //             var S1 = speaker(obj, lexiconName);
+  //             observe(S1, utterance)
+  //             return obj.shape == "novel_object" ? 1 : 0
+  //           }
+  //         })
+  //       }
+  //
+  //       var modelPredictions = pragmaticListener({
+  //         label: "novel_word"
+  //       })
+  //
+  //       mapData({
+  //         data: subjectDataByAgeItem_correct
+  //       }, function(d) {
+  //         observe(modelPredictions, d)
+  //       })
+  //
+  //     }, familiars)
+  //
+  //   }, familiarsAges)
+
+
+    //////////////// Model predictions and combination ////////////////////////
+
+
+    foreach(function(age_month) {
+      var combData_byAge = _.filter(combData, {
+        age_month: age_month
+      })
+
+      var priorReg = logistic(prior_int + prior_slope * age_month)
+
+      // var global_sem_knowledge = logistic(globalLineParameters.intercept + globalLineParameters.slope * age_month)
+
+      // var speakerOptimality = speakerOptimalityParameters.intercept + speakerOptimalityParameters.slope * age_month
+
+      foreach(function(item) {
+
+      //  var itemLineParameters = all_item_parameters[item]
+      //  var item_sem_knowledge = logistic(itemLineParameters.intercept + itemLineParameters.slope * age_month)
+
+
+        foreach(function(alignment_condition) {
+
+          var priorComb = (alignment_condition == "congruent") ? [priorReg, 1 - priorReg] : [1 - priorReg, priorReg]
+
+          var combinationData_byAge_byItem_byCondition = _.filter(combData, {
+            age_month: age_month,
+            item: item,
+            alignment: alignment_condition
+          })
+
+          foreach(function(model_type) {
+
+            // var sem_knowledge = item_sem_knowledge
+            // var priorProbs = priorComb
+            //
+            // var literalListener = cache(function(utterance) {
+            //   Infer({
+            //     method: "enumerate",
+            //     model: function() {
+            //       var lexiconName = sample(LexiconPrior);
+            //       var lexicon = lexiconObject[lexiconName];
+            //       var obj = sample(Categorical({
+            //         vs: all_objects,
+            //         ps: [.5, .5]
+            //       }));
+            //       if ("label" in utterance) {
+            //         var truthValue = lexicon(utterance, obj, sem_knowledge);
+            //         condition(truthValue)
+            //       }
+            //       return obj.shape
+            //     }
+            //   })
+            // }, 10000)
+            //
+            // var speaker = cache(function(obj, lexiconName) {
+            //   Infer({
+            //     method: "enumerate",
+            //     model: function() {
+            //       var utterance = utterancePrior();
+            //       var L0 = literalListener(utterance);
+            //       factor(speakerOptimality * L0.score(obj.shape))
+            //       return utterance
+            //     }
+            //   })
+            // }, 10000)
+            //
+            // var pragmaticListener = function(utterance) {
+            //   Infer({
+            //     method: "enumerate",
+            //     model: function() {
+            //       var lexiconName = sample(LexiconPrior);
+            //       var obj = sample(Categorical({
+            //         vs: all_objects,
+            //         ps: priorProbs
+            //       }));
+            //       var S1 = speaker(obj, lexiconName);
+            //       observe(S1, utterance)
+            //       return obj.shape == "novel_object" ? 1 : 0
+            //     }
+            //   })
+            // }
+            //
+            // var modelPredictions = pragmaticListener({
+            //   label: "novel_word"
+            // })
+
+            var priorOnlyModelPredictions = Infer({method: "enumerate", model: function(){
+              var obj = sample( Categorical({vs: all_objects, ps: priorProbs}));
+              return obj.shape == "novel_object" ? 1 : 0
+            }})
+
+            var combinationData_byAge_byItem_byCondition_responses = _.map(combinationData_byAge_byItem_byCondition, "correct")
+
+            mapData({
+              data: combinationData_byAge_byItem_byCondition_responses
+            }, function(d) {
+              priorOnlyModelPredictions.score(d) == -Infinity ? display("WARNING: DATA IS UNDEFINED UNDER MODEL") : null
+              observe(priorOnlyModelPredictions, d)
+            })
+
+          }, ["prior_only"])
+
+        }, ["congruent", "incongruent"])
+
+      }, familiars)
+
+    }, combDataAges)
+
+  }
+
+  var steps = 1
+  var samples = 1
+
+  var resultsOutFile = "likelihood/llh_prior_only.csv"
+  var modelVariant = "prior_only"
+  var fileHandle = webpplCsv.openFile(resultsOutFile)
+  var header_to_write = ["modelVariant", "steps", "iter", "weight"].join(",")
+  webpplCsv.writeLine(header_to_write,fileHandle)
+  var weights = map(function(i) {
+    var weight = AIS(model, {samples: 1, steps: steps})
+    var line_to_write = [modelVariant, steps, i, weight].join(",")
+    webpplCsv.writeLine(line_to_write,fileHandle)
+  }, _.range(samples))

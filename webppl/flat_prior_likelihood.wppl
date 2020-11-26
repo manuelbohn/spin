@@ -1,4 +1,4 @@
-// example call: time webppl integration_likelihood.wppl --require webppl-json --require webppl-csv
+// example call: time webppl flat_prior_likelihood.wppl --require webppl-json --require webppl-csv
 
 
 var all_objects = [
@@ -85,55 +85,53 @@ var familiarsAges = sort(levels(meData, "age_month"))
 var subjects = levels(meData, "subid")
 var combDataAges = sort(levels(combData, "age_month"))
 
-var priorProbs = [.5, .5]
-
 var model = function() {
 
   ////////////// Prior ////////////////////////
 
-  var prior_slope = uniformDrift({
-    a: -2,
-    b: 2,
-    width: 0.4
-  })
-  var prior_int = uniformDrift({
-    a: -2,
-    b: 2,
-    width: 0.4
-  })
-
-
-  foreach(function(age_month) {
-    var priorSubjectDataByAge = _.filter(priorData, {
-      age_month: age_month
-    })
-    var subj_age = priorSubjectDataByAge[0].age_month
-    var priorSubjectDataByAge_correct = _.map(priorSubjectDataByAge, "correct")
-
-    var priorReg = logistic(prior_int + prior_slope * subj_age)
-    var prior = [priorReg, 1 - priorReg]
-
-    var modelPredictions = Infer({
-      method: "enumerate",
-      model: function() {
-        var obj = sample(Categorical({
-          vs: all_objects,
-          ps: prior
-        }));
-        return obj.shape == "novel_object" ? 1 : 0
-      }
-    })
-
-    mapData({
-      data: priorSubjectDataByAge_correct
-    }, function(d) {
-      observe(modelPredictions, d);
-    })
-
-  }, priorSubjectsAges)
-
-//  query.add(["parameter","parameters", "prior", "intercept", "NA", "NA"], prior_int)
-//  query.add(["parameter","parameters", "prior", "slope", "NA", "NA"], prior_slope)
+  // var prior_slope = uniformDrift({
+  //   a: -2,
+  //   b: 2,
+  //   width: 0.4
+  // })
+  // var prior_int = uniformDrift({
+  //   a: -2,
+  //   b: 2,
+  //   width: 0.4
+  // })
+  //
+  //
+  // foreach(function(age_month) {
+  //   var priorSubjectDataByAge = _.filter(priorData, {
+  //     age_month: age_month
+  //   })
+  //   var subj_age = priorSubjectDataByAge[0].age_month
+  //   var priorSubjectDataByAge_correct = _.map(priorSubjectDataByAge, "correct")
+  //
+  //   var priorReg = logistic(prior_int + prior_slope * subj_age)
+  //   var prior = [priorReg, 1 - priorReg]
+  //
+  //   var modelPredictions = Infer({
+  //     method: "enumerate",
+  //     model: function() {
+  //       var obj = sample(Categorical({
+  //         vs: all_objects,
+  //         ps: prior
+  //       }));
+  //       return obj.shape == "novel_object" ? 1 : 0
+  //     }
+  //   })
+  //
+  //   mapData({
+  //     data: priorSubjectDataByAge_correct
+  //   }, function(d) {
+  //     observe(modelPredictions, d);
+  //   })
+  //
+  // }, priorSubjectsAges)
+  //
+  // query.add(["parameter","parameters", "prior", "intercept", "NA", "NA"], prior_int)
+  // query.add(["parameter","parameters", "prior", "slope", "NA", "NA"], prior_slope)
 
   //////////////// Semantic knowledge and speaker optimality ////////////////////////
 
@@ -296,7 +294,7 @@ var model = function() {
         age_month: age_month
       })
 
-      var priorReg = logistic(prior_int + prior_slope * age_month)
+      //var priorReg = logistic(prior_int + prior_slope * age_month)
 
       var global_sem_knowledge = logistic(globalLineParameters.intercept + globalLineParameters.slope * age_month)
 
@@ -310,7 +308,7 @@ var model = function() {
 
         foreach(function(alignment_condition) {
 
-          var priorComb = (alignment_condition == "congruent") ? [priorReg, 1 - priorReg] : [1 - priorReg, priorReg]
+          //var priorComb = (alignment_condition == "congruent") ? [priorReg, 1 - priorReg] : [1 - priorReg, priorReg]
           var combinationData_byAge_byItem_byCondition = _.filter(combData, {
             age_month: age_month,
             item: item,
@@ -320,7 +318,7 @@ var model = function() {
           foreach(function(model_type) {
 
             var sem_knowledge = item_sem_knowledge
-            var priorProbs = priorComb
+            var priorProbs = [0.5, 0.5]
 
             var literalListener = cache(function(utterance) {
               Infer({
@@ -382,7 +380,7 @@ var model = function() {
               observe(modelPredictions, d)
             })
 
-          }, ["pragmatic"])
+          }, ["flat_prior"])
 
         }, ["congruent", "incongruent"])
 
@@ -395,8 +393,8 @@ var model = function() {
   var steps = 1
   var samples = 1
 
-  var resultsOutFile = "likelihood/llh_integration.csv"
-  var modelVariant = "integration"
+  var resultsOutFile = "likelihood/llh_flat_prior.csv"
+  var modelVariant = "flat_prior"
   var fileHandle = webpplCsv.openFile(resultsOutFile)
   var header_to_write = ["modelVariant", "steps", "iter", "weight"].join(",")
   webpplCsv.writeLine(header_to_write,fileHandle)

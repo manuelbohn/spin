@@ -219,10 +219,9 @@ cor_plot_me <- as_tibble(ranef_me$item, rownames = "item") %>%
 ```
 
 ```{r}
-#fig2 <- ggarrange(plot_aoa, plot_me, cor_plot_me,  labels = c("A","B","C"), nrow = 1, widths = c(1,1.3,1), common.legend = F)
-#ggsave(plot = fig2, "../figures/figureS2.png", width = 12, height = 4)
+#fig2 <- ggarrange(plot_aoa, plot_me, cor_plot_me,  labels = c("A","B","C"), nrow = 1, widths = c(1,1.2,1), common.legend = F)
+#ggsave(plot = fig2, "../figures/figureS2.png", width = 12, height = 3, scale = 1.5)
 ```
-
 
 As a second step, we investigated how the inference changed as a function of age and the familiar object. We modeled the trial by trial data using a Bayesian generalized linear mixed model (GLMM). We used the function `brm` from the package `brms` [@R-brms_a]. We pre-registered the use of default priors in all models. However, the model in Experiment 3 was unable to initialize with default priors and we thus used weakly informative priors for all models to be consistent. The priors we used were $\mathcal{N}(0,5)$ for fixed (population level) effects and $\text{Cauchy}(0,1)$ for standard deviations of random effects. The model formula was `correct ~ age + (1 | id) + (age | object) + (age | agent)`. That is, we modeled an overall slope for age (continuous, anchored at the minimum) and the object specific developmental trajectories as deviations from the overall intercept and slope (random effects). We did not pre-register agent as a random effect, but retrospectively included it to be consistent with Experiment 2 and 3.
 
