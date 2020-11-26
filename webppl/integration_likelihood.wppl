@@ -373,14 +373,14 @@ var model = function() {
               label: "novel_word"
             })
 
-            // var combinationData_byAge_byItem_byCondition_responses = _.map(combinationData_byAge_byItem_byCondition, "correct")
-            //
-            // mapData({
-            //   data: combinationData_byAge_byItem_byCondition_responses
-            // }, function(d) {
-            //   modelPredictions.score(d) == -Infinity ? display("WARNING: DATA IS UNDEFINED UNDER MODEL") : null
-            //   observe(modelPredictions, d)
-            // })
+            var combinationData_byAge_byItem_byCondition_responses = _.map(combinationData_byAge_byItem_byCondition, "correct")
+
+            mapData({
+              data: combinationData_byAge_byItem_byCondition_responses
+            }, function(d) {
+              modelPredictions.score(d) == -Infinity ? display("WARNING: DATA IS UNDEFINED UNDER MODEL") : null
+              observe(modelPredictions, d)
+            })
 
           }, ["pragmatic"])
 
@@ -392,7 +392,7 @@ var model = function() {
 
   }
 
-  var steps = 1
+  var steps = 1000
   var samples = 1
 
   var resultsOutFile = "likelihood/llh_integration.csv"
