@@ -9,6 +9,9 @@ stats/utils
 stats/kids_novelty_cache
 stats/kids_novelty_files
 /graphs
+stats_old/*
+
+saves/.Rapp.history
 
 *.DS_Store
 webppl/output/
@@ -37,3 +40,4 @@ paper/visualizations.Rmd
 webppl/model_re.wppl
 webppl/model-rsa.wppl
 webppl/move/*
+webppl/likelihood/*
