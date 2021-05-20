@@ -3,21 +3,21 @@ title: "How young children integrate information sources to infer the meaning of
 subtitle: "Supplementary material"
 author: "Manuel Bohn, Michael Henry Tessler, Megan Merrick and Michael C. Frank"
 output: 
-  bookdown::pdf_document2:
-    toc: yes 
-    number_sections: false    
   bookdown::html_document2:
     toc: yes
     toc_float: true
     fig_caption: yes
     #code_folding: hide
     number_sections: false
+  bookdown::pdf_document2:
+    toc: yes 
+    number_sections: false    
 bibliography: library.bib
 #csl: pnas.csl
 header-includes:
   \usepackage{caption}
-  \renewcommand{\thetable}{S\arabic{table}} 
-  \renewcommand{\thefigure}{S\arabic{figure}}
+  \renewcommand{\figurename}{Supplementary Figure}
+  \renewcommand{\tablename}{Supplementary Table}
 ---
 
 ```{r, include = F}
