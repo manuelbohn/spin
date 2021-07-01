@@ -1,14 +1,15 @@
 # How young children integrate information sources to infer the meaning of words
 
-*by Manuel Bohn, Michael Henry Tessler, Megan Merrick and Michael C. Frank*
-
 ------------------------------------------------------------------------
 
 > Here you find all experimental procedures, data files and analysis scripts associated with the study.
 
 ------------------------------------------------------------------------
 
-Please see the [paper](https://psyarxiv.com/2wgfb/) for additional details.
+## Paper
+
+Bohn, M.,Tessler, M. H., Merrick, M., & Frank, M. C. (2021). [How young children integrate information sources to infer the meaning of words](https://www.nature.com/articles/s41562-021-01145-1). *Nature Human Behaviour*
+
 
 ## Structure
 

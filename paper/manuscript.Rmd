@@ -1,5 +1,12 @@
 ---
-title             : "How young children integrate information sources to infer the meaning of words"
+title: |
+    | Published as:
+    | Bohn, M., Tessler, M. H., Merrick, M., & Frank, M. C. (2021). How young children integrate information sources to infer the meaning of words. Nature Human Behaviour. https://doi.org/10.1038/s41562-021-01145-1
+    | 
+    | 
+    | 
+    | How young children integrate information sources to infer the meaning of words
+
 shorttitle        : "Rational information integration in children"
 
 author: 
